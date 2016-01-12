@@ -23,38 +23,50 @@ import (
 //     rodsEnv myEnv;
 //     int status = getRodsEnv( &myEnv );
 //     if ( status != 0 ) {
-//         *err = (char *)"getRodsEnv failed.\n";
+//
+//                 //*err = (char *)"getRodsEnv failed.\n";
 //         return NULL;
 //     }
 //     rErrMsg_t errMsg;
 //
+//     *err = myEnv.rodsHost;
 //     rcComm_t* conn = rcConnect( myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone, 1, &errMsg );
 //
-//     /* Test that irods errors are compile time constants in c */
-//     switch (0) {
-//     case SYS_NO_HANDLER_REPLY_MSG: break;
-//     default: break;
-//     }
 //
 //     if ( !conn ) {
-//         *err = (char *)"rcConnect failed\n";
+//         //*err = (char *)"rcConnect failed\n";
 //         return NULL;
 //     }
 //
 //     return conn;
 // }
+//
+//char* irods_env_str() {
+//      rodsEnv myEnv;
+//     int status = getRodsEnv( &myEnv );
+//     if ( status != 0 ) {
+//         return (char *)"error getting env";
+//     }
+//
+//      char str[255];
+//
+//      sprintf(str, "Host: %s\nPort: %i\nUsername: %s\nZone: %s\n", myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone);
+//
+//
+//      return str;
+//
+// }
 import "C"
 
 func main() {
 
-		// Declare C string
-        var err *C.char;
+        var irodsEnv *C.char = C.irods_env_str()
 
-        // Pass pointer to error C string
-        var con *C.rcComm_t = C.irods_connect(&err)
+        filename := C.GoString(C.getRodsEnvFileName())
 
-        
-        fmt.Printf("error: %v %v", C.GoString(err), con)
+
+
+        fmt.Printf(C.GoString(irodsEnv) + filename)
 
 
 }
