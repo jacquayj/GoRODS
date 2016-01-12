@@ -47,10 +47,14 @@ import "C"
 
 func main() {
 
+		// Declare C string
         var err *C.char;
 
-        C.irods_connect(&err)
+        // Pass pointer to error C string
+        var con *C.rcComm_t = C.irods_connect(&err)
 
-        fmt.Println("hello")
+        
+        fmt.Printf("error: %v %v", C.GoString(err), con)
+
 
 }
