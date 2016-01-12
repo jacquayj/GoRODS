@@ -1,0 +1,5 @@
+bin
+*.sublime-workspace
+._*
+*.o
+empty.txt
