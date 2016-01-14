@@ -3,3 +3,4 @@ bin
 ._*
 *.o
 empty.txt
+sftp-config.json
