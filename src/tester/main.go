@@ -10,15 +10,10 @@ func main() {
 
     irods := gorods.NewConnection()
 
-    fmt.Printf("%v\n", irods.Connected)
+    rootColl := irods.GetCollection("/testZone/home/admin")
 
-    // rootColl := irods.Collection("/")
-
-    // for _, file := range rootColl.GetDataObjs() {
-    // 	fmt.Println(file.Name)
-    // }
-
-    //rootCol.GetColObjs()
-
+	for _, obj := range rootColl.GetDataObjs() {
+		fmt.Printf("%v \n", obj)
+	}
 
 }

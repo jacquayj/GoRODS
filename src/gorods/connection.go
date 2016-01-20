@@ -12,10 +12,16 @@ import (
 type Connection struct {
 	ccon *C.rcComm_t
 	Connected bool
+
 }
 
-func (con *Connection) Collection(startPath string) *Collection {
-	return NewCollection(startPath)
+func (obj *Connection) String() string {
+	return "Collection: "
+}
+
+
+func (con *Connection) GetCollection(startPath string) *Collection {
+	return NewCollection(startPath, con)
 }
 
 func NewConnection() *Connection {
@@ -23,7 +29,7 @@ func NewConnection() *Connection {
 
 	var errMsg *C.char;
 
-	if status := C.gorods_connect(con.ccon, &errMsg); status == 0 {
+	if status := C.gorods_connect(&con.ccon, &errMsg); status == 0 {
 		con.Connected = true
 	} else {
 		panic(fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
@@ -31,3 +37,11 @@ func NewConnection() *Connection {
 
 	return con
 }
+
+
+
+
+
+//
+
+

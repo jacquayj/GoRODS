@@ -11,7 +11,7 @@
 #include "dataObjClose.h"
 #include "lsUtil.h"
 
-int gorods_connect(rcComm_t* conn, char** err) {
+int gorods_connect(rcComm_t** conn, char** err) {
 
     rodsEnv myEnv;
     int status;
@@ -23,14 +23,14 @@ int gorods_connect(rcComm_t* conn, char** err) {
     }
 
     rErrMsg_t errMsg;
-    conn = rcConnect(myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone, 1, &errMsg);
+    *conn = rcConnect(myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone, 1, &errMsg);
 
-    if ( !conn ) {
+    if ( !*conn ) {
         *err = "rcConnect failed";
         return -1;
     }
     
-    status = clientLogin(conn);
+    status = clientLogin(*conn);
     if ( status != 0 ) {
         *err = "clientLogin failed";
         return -1;
@@ -40,7 +40,6 @@ int gorods_connect(rcComm_t* conn, char** err) {
 }
 
 int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) {
-
 	collInp_t collOpenInp; 
 
 	bzero(&collOpenInp, sizeof(collOpenInp)); 
@@ -52,6 +51,54 @@ int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) 
 	if ( *handle < 0 ) { 
 		*err = "rcOpenCollection failed";
 		return -1;
+	} 
+
+	return 0;
+}
+
+int gorods_read_collection_dataobjs(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
+
+	int collectionResponseCapacity = 100;
+	*size = 0;
+
+	*arr = malloc(sizeof(collEnt_t) * collectionResponseCapacity);
+	
+	collEnt_t* collEnt = NULL;
+	int status;
+	
+	while ( (status = rcReadCollection(conn, handleInx, &collEnt)) >= 0 ) { 
+		
+		if (collEnt->objType == DATA_OBJ_T) { 
+
+			// Expand array if needed
+			if ( *size >= collectionResponseCapacity ) {
+				collectionResponseCapacity += 1;
+				*arr = realloc(*arr, sizeof(collEnt_t) * collectionResponseCapacity);
+			}
+
+			collEnt_t* elem = &((*arr)[*size]);
+
+			// Add element to array
+    		memcpy(elem, collEnt, sizeof(collEnt_t));
+
+    		elem->collName = strcpy(malloc(strlen(elem->collName) + 1), elem->collName);
+    		elem->dataName = strcpy(malloc(strlen(elem->dataName) + 1), elem->dataName);
+    		elem->dataId = strcpy(malloc(strlen(elem->dataId) + 1), elem->dataId);
+    		elem->createTime = strcpy(malloc(strlen(elem->createTime) + 1), elem->createTime);
+    		elem->modifyTime = strcpy(malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
+    		elem->chksum = strcpy(malloc(strlen(elem->chksum) + 1), elem->chksum);
+    		elem->resource = strcpy(malloc(strlen(elem->resource) + 1), elem->resource);
+    		elem->rescGrp = strcpy(malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
+    		elem->phyPath = strcpy(malloc(strlen(elem->phyPath) + 1), elem->phyPath);
+    		elem->ownerName = strcpy(malloc(strlen(elem->ownerName) + 1), elem->ownerName);
+    		elem->dataType = strcpy(malloc(strlen(elem->dataType) + 1), elem->dataType);
+
+    		//printf("C:'%s' \n", elem->collName);
+
+    		(*size)++;
+		}
+
+		freeCollEnt(collEnt); 
 	} 
 
 	return 0;

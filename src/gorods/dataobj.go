@@ -6,8 +6,12 @@ type DataObj struct {
 
 type DataObjs []*DataObj
 
-func NewDataObj() *DataObj {
-	dataObj := &DataObj {"/"}
+func (obj *DataObj) String() string {
+	return "DataObject: " + obj.Path
+}
+
+func NewDataObj(path string) *DataObj {
+	dataObj := &DataObj {Path: path,}
 
 	return dataObj
 }

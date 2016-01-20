@@ -11,5 +11,6 @@
 #include "dataObjClose.h"
 #include "lsUtil.h"
 
-int gorods_connect(rcComm_t* conn, char** err);
-int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err);
+int gorods_connect(rcComm_t** conn, char** err);
+int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
+int gorods_read_collection_dataobjs(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
