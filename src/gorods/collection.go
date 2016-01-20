@@ -34,7 +34,6 @@ func NewCollection(startPath string, con *Connection) *Collection {
 	return col
 }
 
-
 func (col *Collection) GetDataObjs() DataObjs {
 
 	var err *C.char
@@ -47,21 +46,14 @@ func (col *Collection) GetDataObjs() DataObjs {
 	// Get result length
 	arrLen := int(arrSize)
 
-	// Convert C array to slice
+	// Convert C array to slice, backed by arr *C.collEnt_t
 	slice := (*[1 << 30]C.collEnt_t)(unsafe.Pointer(arr))[:arrLen:arrLen]
 
 	var objs DataObjs
-	for _, item := range slice {
-		objs = append(objs, NewDataObj(C.GoString(item.collName)))
+	for i, _ := range slice {
+		objs = append(objs, NewDataObj(&slice[i]))
 	}
 	
 	return objs
 }
-
-
-
-
-// func (col *Collection) GetCollObjs() Collections {
-
-// }
 
