@@ -94,9 +94,6 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 			elem->createTime = strcpy(malloc(strlen(elem->createTime) + 1), elem->createTime);
 	  		elem->modifyTime = strcpy(malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
 
-			
-    		//printf("C:'%s' \n", elem->collName);
-
     		(*size)++;
 		
 		freeCollEnt(collEnt); 

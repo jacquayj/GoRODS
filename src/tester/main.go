@@ -16,6 +16,8 @@ func main() {
     	fmt.Printf("%v \n", d)
     }
 
+   	fmt.Printf("%v \n", homeDir.Collections().Find("gorods").DataObjs().Find("build.sh")) 
+
     // dataObj := irods.DataObj("/testZone/home/admin/irods-icat-4.1.7-centos7-x86_64.rpm")
 
     // collection.DataObjs()     -> type: DataObjs

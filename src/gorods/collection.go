@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"unsafe"
 	"reflect"
+	"strings"
 )
 
 // collection.DataObjs()     -> type: DataObjs
@@ -15,6 +16,7 @@ import (
 // collection.Both()         -> (type: DataObjs, type: Collections)
 type Collection struct {
 	Path string
+	Name string
 	DataObjects []interface{}
 	Con *Connection
 	Col *Collection
@@ -29,7 +31,7 @@ type Collections []*Collection
 
 func (colls Collections) Find(path string) *Collection {
 	for i, col := range colls {
-		if col.Path == path {
+		if col.Path == path || col.Name == path {
 			return colls[i]
 		}
 	}
@@ -38,7 +40,17 @@ func (colls Collections) Find(path string) *Collection {
 }
 
 func (obj *Collection) String() string {
-	return "Collection: " + obj.Path
+	str := fmt.Sprintf("Collection: %v\n", obj.Path)
+
+	for _, o := range obj.DataObjs() {
+		str += fmt.Sprintf("\tD: %v\n", o.Name)
+	}
+
+	for _, o := range obj.Collections() {
+		str += fmt.Sprintf("\tC: %v\n", o.Name)
+	}
+
+	return str
 }
 
 // Init from *C.collEnt_t
@@ -47,8 +59,12 @@ func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	col.Col = acol
 	col.Con = col.Col.Con
+
 	col.Path = C.GoString(data.collName)
 	
+	pathSlice := strings.Split(col.Path, "/")
+	col.Name = pathSlice[len(pathSlice)-1]
+
 	if acol.Recursive {
 		col.Recursive = true
 		col.Init()
@@ -64,6 +80,9 @@ func GetCollection(startPath string, recursive bool, con *Connection) *Collectio
 	col.Con = con
 	col.Path = startPath
 	col.Recursive = recursive
+
+	pathSlice := strings.Split(col.Path, "/")
+	col.Name = pathSlice[len(pathSlice)-1]
 
 	if col.Recursive {
 		col.Init()
@@ -92,7 +111,7 @@ func (col *Collection) Open() {
 // Reads data into col.DataObjects
 func (col *Collection) ReadCollection() {
 
-	fmt.Printf("Debug: Reading %v \n", col.Path)
+	//fmt.Printf("Debug: Reading %v \n", col.Path)
 
 	// Init C varaibles
 	var err *C.char
