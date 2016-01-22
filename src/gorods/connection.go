@@ -12,20 +12,14 @@ import (
 type Connection struct {
 	ccon *C.rcComm_t
 	Connected bool
-
 }
 
-func (obj *Connection) String() string {
-	return "Collection: "
-}
-
-
-func (con *Connection) GetCollection(startPath string) *Collection {
-	return NewCollection(startPath, con)
+func New() *Connection {
+	return NewConnection()
 }
 
 func NewConnection() *Connection {
-	con := &Connection { }
+	con := new(Connection)
 
 	var errMsg *C.char;
 
@@ -38,10 +32,10 @@ func NewConnection() *Connection {
 	return con
 }
 
+func (obj *Connection) String() string {
+	return "Collection: IMPLEMENT ME"
+}
 
-
-
-
-//
-
-
+func (con *Connection) Collection(startPath string, recursive bool) *Collection {
+	return GetCollection(startPath, recursive, con)
+}

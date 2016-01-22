@@ -8,12 +8,33 @@ import (
 
 func main() {
 
-    irods := gorods.NewConnection()
+    irods := gorods.New()
 
-    rootColl := irods.GetCollection("/testZone/home/admin")
+    homeDir := irods.Collection("/tempZone/home/admin", true)
 
-	for _, obj := range rootColl.GetDataObjs() {
+    for _, d := range homeDir.Collections() {
+    	fmt.Printf("%v \n", d)
+    }
+
+    // dataObj := irods.DataObj("/testZone/home/admin/irods-icat-4.1.7-centos7-x86_64.rpm")
+
+    // collection.DataObjs()     -> type: DataObjs
+    // collection.Collections()  -> type: Collections
+    // collection.All()          -> type: []interface{}
+    // collection.Both()         -> (type: DataObjs, type: Collections)
+
+    // collections.Find(relPath) -> type: Collection
+
+    // dataObjs.Find(relPath)    -> type: DataObj
+
+
+}
+
+func PrintCollectionTree(c *gorods.Collection) {
+	for _, obj := range c.Collections() {
+		
 		fmt.Printf("%v \n", obj)
+		
+		PrintCollectionTree(obj)
 	}
-
 }
