@@ -11,7 +11,7 @@
 #include "dataObjClose.h"
 #include "lsUtil.h"
 
-int gorods_connect(rcComm_t** conn, char** err) {
+int gorods_connect(rcComm_t** conn, char* password, char** err) {
 
     rodsEnv myEnv;
     int status;
@@ -30,9 +30,39 @@ int gorods_connect(rcComm_t** conn, char** err) {
         return -1;
     }
     
-    status = clientLogin(*conn);
+    if ( password != NULL ) {
+    	status = clientLoginWithPassword(*conn, password);
+    } else {
+    	status = clientLogin(*conn);
+    }
+    
     if ( status != 0 ) {
-        *err = "clientLogin failed";
+        *err = "clientLogin failed. Invalid password?";
+        return -1;
+    }
+
+    return 0;
+}
+
+int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err) {
+    int status;
+
+    rErrMsg_t errMsg;
+    *conn = rcConnect(host, port, username, zone, 1, &errMsg);
+
+    if ( !*conn ) {
+        *err = "rcConnect failed";
+        return -1;
+    }
+    
+    if ( password != NULL ) {
+    	status = clientLoginWithPassword(*conn, password);
+    } else {
+    	status = clientLogin(*conn);
+    }
+    
+    if ( status != 0 ) {
+        *err = "clientLogin failed. Invalid password?";
         return -1;
     }
 
@@ -113,7 +143,7 @@ char* irods_env_str() {
 
      char* str = malloc(sizeof(char) * 255);
 
-     sprintf(str, "Host: %s\nPort: %i\nUsername: %s\nZone: %s\n", myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone);
+     sprintf(str, "\tHost: %s\n\tPort: %i\n\tUsername: %s\n\tZone: %s\n", myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone);
 
 
      return str;

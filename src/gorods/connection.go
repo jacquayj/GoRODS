@@ -9,31 +9,60 @@ import (
 	"fmt"
 )
 
+type Options struct {
+	Host string
+	Port int
+	Zone string
+
+	Username string
+	Password string
+}
+
 type Connection struct {
 	ccon *C.rcComm_t
+
 	Connected bool
+	Options *Options
 }
 
-func New() *Connection {
-	return NewConnection()
-}
-
-func NewConnection() *Connection {
+func New(opts *Options) *Connection {
 	con := new(Connection)
 
-	var errMsg *C.char;
+	con.Options = opts
 
-	if status := C.gorods_connect(&con.ccon, &errMsg); status == 0 {
+	var status C.int
+	var errMsg *C.char
+	var password *C.char
+
+	if con.Options.Password != "" {
+		password = C.CString(con.Options.Password)
+	}
+
+	// Are we passing env values?
+	if con.Options.Host != "" {
+		host := C.CString(con.Options.Host)
+		port := C.int(con.Options.Port)
+		username := C.CString(con.Options.Username)
+		zone := C.CString(con.Options.Zone)
+
+		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
+	} else {
+		status = C.gorods_connect(&con.ccon, password, &errMsg)
+	}
+
+	if status == 0 {
 		con.Connected = true
 	} else {
 		panic(fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
 	}
-
+	
 	return con
 }
 
 func (obj *Connection) String() string {
-	return "Collection: IMPLEMENT ME"
+	envString := C.GoString(C.irods_env_str())
+
+	return fmt.Sprintf("Connection Env:\n%v\tConnected: %v\n", envString, obj.Connected)
 }
 
 func (con *Connection) Collection(startPath string, recursive bool) *Collection {
