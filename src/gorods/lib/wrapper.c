@@ -86,6 +86,40 @@ int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) 
 	return 0;
 }
 
+int gorods_read_dataobject(char* path, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err) {
+	
+	dataObjInp_t dataObjInp; 
+	openedDataObjInp_t dataObjReadInp; 
+
+	int bytesRead; 
+	
+	bzero(&dataObjInp, sizeof(dataObjInp)); 
+	bzero(&dataObjReadInp, sizeof(dataObjReadInp)); 
+	
+	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
+	
+	dataObjInp.openFlags = O_RDONLY; 
+	dataObjReadInp.l1descInx = rcDataObjOpen(conn, &dataObjInp); 
+	
+	if ( dataObjReadInp.l1descInx < 0 ) { 
+		*err = "rcDataObjOpen failed";
+		return -1;
+	} 
+	
+	bzero(buffer, sizeof(*buffer)); 
+	
+	dataObjReadInp.len = (int)length;
+
+	bytesRead = rcDataObjRead(conn, &dataObjReadInp, buffer); 
+	
+	if ( bytesRead < 0 ) { 
+		*err = "rcDataObjRead failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 100;

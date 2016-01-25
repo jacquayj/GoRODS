@@ -15,4 +15,5 @@ int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
 int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
+int gorods_read_dataobject(char* path, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err);
 char* irods_env_str();

@@ -8,10 +8,6 @@ import (
 
 func main() {
 
-	// TODO: Implement new env parser
-	// Add password auth
-	// https://github.com/UPPMAX/irods/blob/master/iRODS/lib/core/src/clientLogin.c
-	// clientLoginWithPassword(rcComm_t *Conn, char* password) 
 
     irods := gorods.New(&gorods.Options {
     	Host: "localhost",
@@ -32,6 +28,7 @@ func main() {
 
    	fmt.Printf("%v \n", homeDir.Collections().Find("gorods").DataObjs().Find("build.sh")) 
 
+   	fmt.Printf(string(homeDir.Collections().Find("gorods").DataObjs().Find("build.sh").Read()))
 
     // dataObj := irods.DataObj("/testZone/home/admin/irods-icat-4.1.7-centos7-x86_64.rpm")
 

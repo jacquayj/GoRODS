@@ -3,6 +3,11 @@ package gorods
 // #include "wrapper.h"
 import "C"
 
+import (
+	"fmt"
+	"unsafe"
+)
+
 type DataObj struct {
 	Path string
 	Name string
@@ -43,6 +48,16 @@ func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 }
 
 
-// func (obj *DataObj) Read() []byte {
-	
-// }
+func (obj *DataObj) Read() []byte {
+
+	var buffer C.bytesBuf_t
+	var err *C.char
+
+	if status := C.gorods_read_dataobject(C.CString(obj.Path), obj.collent.dataSize, &buffer, obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	data := C.GoBytes(unsafe.Pointer(buffer.buf), C.int(obj.collent.dataSize))
+
+	return data
+}
