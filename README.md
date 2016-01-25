@@ -38,8 +38,11 @@ func main() {
 
 ## Installation
 
-` $ git clone https://github.com/jjacquay712/GoRods.git
-` $ cd GoRods/
-` $ ./build.sh
+
+```
+$ git clone https://github.com/jjacquay712/GoRods.git
+$ cd GoRods/
+$ ./build.sh
+```
 
 ## Contributing
