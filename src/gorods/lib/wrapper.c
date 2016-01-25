@@ -86,28 +86,49 @@ int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) 
 	return 0;
 }
 
-int gorods_read_dataobject(char* path, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err) {
-	
+int gorods_open_dataobject(char* path, int* handle, rodsLong_t length, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
-	openedDataObjInp_t dataObjReadInp; 
-
-	int bytesRead; 
 	
 	bzero(&dataObjInp, sizeof(dataObjInp)); 
-	bzero(&dataObjReadInp, sizeof(dataObjReadInp)); 
-	
 	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
 	
-	dataObjInp.openFlags = O_RDONLY; 
-	dataObjReadInp.l1descInx = rcDataObjOpen(conn, &dataObjInp); 
+	dataObjInp.openFlags = O_RDWR; 
 	
-	if ( dataObjReadInp.l1descInx < 0 ) { 
+	*handle = rcDataObjOpen(conn, &dataObjInp); 
+	if ( *handle < 0 ) { 
 		*err = "rcDataObjOpen failed";
 		return -1;
-	} 
+	}
+
+	return 0;
+}
+
+int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err) {
+	openedDataObjInp_t openedDataObjInp; 
 	
+	bzero(&openedDataObjInp, sizeof(openedDataObjInp)); 
+	
+	openedDataObjInp.l1descInx = handleInx; 
+	
+	int status;
+	status = rcDataObjClose(conn, &openedDataObjInp); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjClose failed";
+		return -1;
+	}
+
+	return 0;
+}
+
+int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err) {
+	
+	int bytesRead; 
+	openedDataObjInp_t dataObjReadInp; 
+	
+	bzero(&dataObjReadInp, sizeof(dataObjReadInp)); 
 	bzero(buffer, sizeof(*buffer)); 
-	
+
+	dataObjReadInp.l1descInx = handleInx; 
 	dataObjReadInp.len = (int)length;
 
 	bytesRead = rcDataObjRead(conn, &dataObjReadInp, buffer); 
