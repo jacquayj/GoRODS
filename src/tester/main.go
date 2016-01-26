@@ -10,7 +10,9 @@ func main() {
 
 
     irods := gorods.New(&gorods.Options {
-    	Host: "localhost",
+		Environment: gorods.UserDefined,
+
+		Host: "localhost",
 		Port: 1247,
 		Zone: "tempZone",
 

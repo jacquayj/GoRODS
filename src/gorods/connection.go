@@ -9,7 +9,15 @@ import (
 	"fmt"
 )
 
+
+const (
+	System = iota
+	UserDefined
+)
+
 type Options struct {
+	Environment int
+
 	Host string
 	Port int
 	Zone string
@@ -39,7 +47,7 @@ func New(opts *Options) *Connection {
 	}
 
 	// Are we passing env values?
-	if con.Options.Host != "" {
+	if con.Options.Environment == UserDefined {
 		host := C.CString(con.Options.Host)
 		port := C.int(con.Options.Port)
 		username := C.CString(con.Options.Username)

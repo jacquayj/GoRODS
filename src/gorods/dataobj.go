@@ -87,3 +87,30 @@ func (obj *DataObj) Read() []byte {
 
 	return data
 }
+
+func (obj *DataObj) Stat() map[string]interface{} {
+
+	var err *C.char
+	var statResult *C.rodsObjStat_t
+
+	if status := C.gorods_stat_dataobject(C.CString(obj.Path), &statResult, obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Close Stat Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	result := make(map[string]interface{})
+
+	result["objSize"]      = int(statResult.objSize)
+	result["dataMode"]     = int(statResult.dataMode)
+
+	result["dataId"]       = C.GoString(&statResult.dataId[0])
+	result["chksum"]       = C.GoString(&statResult.chksum[0])
+	result["ownerName"]    = C.GoString(&statResult.ownerName[0])
+	result["ownerZone"]    = C.GoString(&statResult.ownerZone[0])
+	result["createTime"]   = C.GoString(&statResult.createTime[0])
+	result["modifyTime"]   = C.GoString(&statResult.modifyTime[0])
+
+	C.freeRodsObjStat(statResult)
+
+	return result
+}
+

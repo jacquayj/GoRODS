@@ -141,6 +141,24 @@ int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer,
 	return 0;
 }
 
+int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t* conn, char** err) {
+	dataObjInp_t dataObjInp; 
+
+	*rodsObjStatOut = NULL;
+
+	bzero(&dataObjInp, sizeof(dataObjInp)); 
+	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
+	
+	// pass memory address of rodsObjStatOut pointer
+	int status = rcObjStat(conn, &dataObjInp, &(*rodsObjStatOut)); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjRead failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 100;
