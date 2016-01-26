@@ -11,17 +11,17 @@ import (
 type DataObj struct {
 	Path string
 	Name string
+	Size int64
 
 	Con *Connection
 	Col *Collection
 
 	chandle C.int
-	collent *C.collEnt_t
 }
 
 type DataObjOptions struct {
 	Name string
-	Size int
+	Size int64
 	Mode int
 	Force bool
 	Resource string
@@ -46,13 +46,12 @@ func (obj *DataObj) String() string {
 func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	
 	dataObj := new(DataObj)
-	
-	dataObj.collent = data
 
 	dataObj.Col = col
 	dataObj.Con = dataObj.Col.Con
-	dataObj.Name = C.GoString(dataObj.collent.dataName)
-	dataObj.Path = C.GoString(dataObj.collent.collName) + "/" + dataObj.Name
+	dataObj.Name = C.GoString(data.dataName)
+	dataObj.Path = C.GoString(data.collName) + "/" + dataObj.Name
+	dataObj.Size = int64(data.dataSize)
 
 	return dataObj
 }
@@ -76,9 +75,17 @@ func CreateDataObj(opts *DataObjOptions, coll *Collection) *DataObj {
 		panic(fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
 
-	coll.ReadCollection()
+	dataObj := new(DataObj)
 
-	return coll.DataObjs().Find(opts.Name)
+	dataObj.Col = coll
+	dataObj.Con = dataObj.Col.Con
+	dataObj.Name = opts.Name
+	dataObj.Path = path
+	dataObj.Size = opts.Size
+
+	coll.Add(dataObj)
+
+	return dataObj
 
 }
 
@@ -91,7 +98,7 @@ func (obj *DataObj) Init() {
 func (obj *DataObj) Open() {
 	var errMsg *C.char
 
-	if status := C.gorods_open_dataobject(C.CString(obj.Path), &obj.chandle, obj.collent.dataSize, obj.Con.ccon, &errMsg); status != 0 {
+	if status := C.gorods_open_dataobject(C.CString(obj.Path), &obj.chandle, C.rodsLong_t(obj.Size), obj.Con.ccon, &errMsg); status != 0 {
 		panic(fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
 }
@@ -110,11 +117,11 @@ func (obj *DataObj) Read() []byte {
 	var buffer C.bytesBuf_t
 	var err *C.char
 
-	if status := C.gorods_read_dataobject(obj.chandle, obj.collent.dataSize, &buffer, obj.Con.ccon, &err); status != 0 {
+	if status := C.gorods_read_dataobject(obj.chandle,  C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
-	data := C.GoBytes(unsafe.Pointer(buffer.buf), C.int(obj.collent.dataSize))
+	data := C.GoBytes(unsafe.Pointer(buffer.buf), C.int(obj.Size))
 
 	obj.Close()
 

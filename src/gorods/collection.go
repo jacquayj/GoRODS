@@ -23,7 +23,6 @@ type Collection struct {
 	Recursive bool
 	
 	chandle C.int
-	collent *C.collEnt_t
 }
 
 // collections.Find(relPath) -> type: Collection
@@ -169,6 +168,14 @@ func (col *Collection) Collections() Collections {
 	}
 	
 	return response
+}
+
+func (col *Collection) Add(dataObj interface{}) *Collection {
+	col.Init()
+
+	col.DataObjects = append(col.DataObjects, dataObj)
+	
+	return col
 }
 
 func (col *Collection) All() []interface{} {
