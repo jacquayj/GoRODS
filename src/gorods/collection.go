@@ -127,6 +127,8 @@ func (col *Collection) ReadCollection() {
 	// Convert C array to slice, backed by arr *C.collEnt_t
 	slice := (*[1 << 30]C.collEnt_t)(unsafe.Pointer(arr))[:arrLen:arrLen]
 
+	col.DataObjects = make([]interface{}, 0)
+	
 	for i, _ := range slice {
 		obj := &slice[i]
 

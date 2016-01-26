@@ -19,6 +19,14 @@ type DataObj struct {
 	collent *C.collEnt_t
 }
 
+type DataObjOptions struct {
+	Name string
+	Size int
+	Mode int
+	Force bool
+	Resource string
+}
+
 type DataObjs []*DataObj
 
 func (dos DataObjs) Find(path string) *DataObj {
@@ -47,6 +55,31 @@ func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.Path = C.GoString(dataObj.collent.collName) + "/" + dataObj.Name
 
 	return dataObj
+}
+
+func CreateDataObj(opts *DataObjOptions, coll *Collection) *DataObj {
+	
+	var errMsg *C.char
+	var handle C.int
+	
+	var force int
+
+	if opts.Force {
+		force = 1
+	} else {
+		force = 0
+	}
+	
+	path := coll.Path + "/" + opts.Name
+
+	if status := C.gorods_create_dataobject(C.CString(path), C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), C.CString(opts.Resource), &handle, coll.Con.ccon, &errMsg); status != 0 {
+		panic(fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
+	}
+
+	coll.ReadCollection()
+
+	return coll.DataObjs().Find(opts.Name)
+
 }
 
 func (obj *DataObj) Init() {

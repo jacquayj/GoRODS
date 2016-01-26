@@ -86,6 +86,32 @@ int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) 
 	return 0;
 }
 
+int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, char* resource, int* handle, rcComm_t* conn, char** err) {
+	dataObjInp_t dataObjInp; 
+	
+	bzero(&dataObjInp, sizeof(dataObjInp)); 
+	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
+
+	dataObjInp.createMode = mode; 
+	dataObjInp.dataSize = size; 
+
+	if ( resource != NULL && resource[0] != '\0' ) {
+		addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
+	}
+
+	if ( force > 0 ) {
+		addKeyVal(&dataObjInp.condInput, FORCE_FLAG_KW, ""); 
+	}
+	
+	*handle = rcDataObjCreate(conn, &dataObjInp); 
+	if ( *handle < 0 ) { 
+		*err = "rcDataObjCreate failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_open_dataobject(char* path, int* handle, rodsLong_t length, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 	

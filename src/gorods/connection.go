@@ -15,7 +15,7 @@ const (
 	UserDefined
 )
 
-type Options struct {
+type ConnectionOptions struct {
 	Environment int
 
 	Host string
@@ -30,10 +30,10 @@ type Connection struct {
 	ccon *C.rcComm_t
 
 	Connected bool
-	Options *Options
+	Options *ConnectionOptions
 }
 
-func New(opts *Options) *Connection {
+func New(opts *ConnectionOptions) *Connection {
 	con := new(Connection)
 
 	con.Options = opts
