@@ -33,6 +33,9 @@ func main() {
 	// Print []Byte as string
 	fmt.Printf(string(file))
 
+	// Add local file to collection
+	remoteFile := homeDir.Put("local_file.txt")
+
 	// Create file in home directory, overwrite if it exists
 	test := gorods.CreateDataObj(gorods.DataObjOptions {
 		Name: "test.lol",

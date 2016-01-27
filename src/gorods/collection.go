@@ -8,6 +8,8 @@ import (
 	"unsafe"
 	"reflect"
 	"strings"
+	"io/ioutil"
+	"path/filepath"
 )
 
 // collection.DataObjs()     -> type: DataObjs
@@ -157,6 +159,8 @@ func (col *Collection) ReadCollection() {
 		}	
 		
 	}
+
+	// .Close() is called in the read_collection wrapper
 }
 
 func (col *Collection) DataObjs() DataObjs {
@@ -185,6 +189,28 @@ func (col *Collection) Collections() Collections {
 	}
 	
 	return response
+}
+
+func (col *Collection) Put(localFile string) *DataObj {
+	col.Init()
+
+	data, err := ioutil.ReadFile(localFile)
+	if err != nil {
+		panic(fmt.Sprintf("Can't read file for Put(): %v", localFile))
+	}
+
+	fileName := filepath.Base(localFile)
+
+    newFile := CreateDataObj(DataObjOptions {
+		Name: fileName,
+		Size: int64(len(data)),
+		Mode: 0750,
+		Force: true,
+	}, col)
+
+	newFile.Write(data)
+	
+	return newFile
 }
 
 func (col *Collection) Add(dataObj interface{}) *Collection {

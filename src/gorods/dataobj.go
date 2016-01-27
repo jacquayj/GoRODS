@@ -82,6 +82,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	dataObj.Name = opts.Name
 	dataObj.Path = path
 	dataObj.Size = opts.Size
+	dataObj.chandle = handle
 
 	coll.Add(dataObj)
 
@@ -174,3 +175,70 @@ func (obj *DataObj) Stat() map[string]interface{} {
 	return result
 }
 
+// IMPLEMENT ME
+// Supports Collection struct and string
+func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
+	
+
+
+	return obj
+}
+
+// IMPLEMENT ME
+// Supports Collection struct and string
+func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
+	
+
+
+	return obj
+}
+
+// IMPLEMENT ME
+func (obj *DataObj) Rename(name string) *DataObj {
+	
+
+
+	return obj
+}
+
+
+// IMPLEMENT ME
+func (obj *DataObj) Delete(force bool) {
+	
+
+
+
+}
+
+// IMPLEMENT ME
+func (obj *DataObj) Chksum() *DataObj {
+	
+
+
+	return obj
+}
+
+
+// IMPLEMENT ME
+func (obj *DataObj) MoveToResource(resource string) *DataObj {
+	
+
+
+	return obj
+}
+
+// IMPLEMENT ME
+func (obj *DataObj) Replicate(resource string) *DataObj {
+	
+
+
+	return obj
+}
+
+// IMPLEMENT ME
+func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
+	//https://wiki.irods.org/doxygen_api/html/rc_data_obj_trim_8c_a7e4713d4b7617690e484fbada8560663.html
+
+
+	return obj
+}
