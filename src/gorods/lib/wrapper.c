@@ -173,6 +173,17 @@ int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
+	int status = rcCloseCollection(conn, handleInx);
+
+	if ( status < 0 ) { 
+		*err = "rcDataObjOpen failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err) {
 	
 	int bytesRead; 

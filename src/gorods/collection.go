@@ -90,21 +90,38 @@ func GetCollection(startPath string, recursive bool, con *Connection) *Collectio
 	return col
 }
 
-func (col *Collection) Init() {
-	// If generic data object slice hasn't been built, build it!
-	if len(col.DataObjects) == 0 {
+func (col *Collection) Init() *Collection {
+	// If connection hasn't been opened, do it!
+	if int(col.chandle) == 0 {
 		col.Open()
 		col.ReadCollection()
 	}
+
+	return col
 }
 
 // Opens connection to collection, passes in flag options
-func (col *Collection) Open() {
+func (col *Collection) Open() *Collection {
 	var errMsg *C.char
 
 	if status := C.gorods_open_collection(C.CString(col.Path), &col.chandle, col.Con.ccon, &errMsg); status != 0 {
 		panic(fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 	}
+
+	return col
+}
+
+
+func (col *Collection) Close() *Collection {
+	var errMsg *C.char
+
+	if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
+		panic(fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+	}
+
+	col.chandle = C.int(0)
+
+	return col
 }
 
 // Reads data into col.DataObjects
