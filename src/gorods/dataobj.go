@@ -182,18 +182,20 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	
 	var err *C.char
 	var destination string
+	var destinationCollectionString string
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
-		destination = iRodsCollection.(string)
+		destinationCollectionString = iRodsCollection.(string)
 
-		if destination[len(destination) - 1] != '/' {
-			destination += "/"
+		if destinationCollectionString[len(destinationCollectionString) - 1] != '/' {
+			destinationCollectionString += "/"
 		}
 
-		destination += obj.Name
+		destination += destinationCollectionString + obj.Name
 
 	} else {
-		destination = (iRodsCollection.(*Collection)).Path + "/" + obj.Name
+		destinationCollectionString = (iRodsCollection.(*Collection)).Path + "/"
+		destination = destinationCollectionString + obj.Name
 	}
 
 	C.gorods_copy_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err)
@@ -201,7 +203,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if expiredCollection := obj.Con.OpenedCollections.FindRecursive(iRodsCollection.(string)); expiredCollection != nil {
+		if expiredCollection := obj.Con.OpenedCollections.FindRecursive(destinationCollectionString[:len(destinationCollectionString) - 1]); expiredCollection != nil {
 			expiredCollection.Init()
 		}
 	} else {
@@ -241,7 +243,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	// Find & reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(iRodsCollection.(string)); destinationCollection != nil {
+		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString[:len(destinationCollectionString) - 1]); destinationCollection != nil {
 			destinationCollection.Init()
 		} else {
 			// Can't find, load collection into memory

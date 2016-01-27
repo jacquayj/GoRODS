@@ -84,3 +84,4 @@ Send me a pull request!
 * Build script requires pre compiled .o files, the ones included in this repo won't work on 32-bit systems. Will need to integrate iRods build from scratch.
 * There are probably memory leaks from C variables not being free()'d
 * If destination target in MoveTo() exists, the source DataObj will be left intact with no warnings
+* MoveTo() and CopyTo() require absolute paths if Collection struct isn't passed, need to add support for paths relative to source Collection
