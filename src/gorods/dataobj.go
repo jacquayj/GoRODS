@@ -56,7 +56,7 @@ func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	return dataObj
 }
 
-func CreateDataObj(opts *DataObjOptions, coll *Collection) *DataObj {
+func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	
 	var errMsg *C.char
 	var handle C.int
@@ -109,6 +109,9 @@ func (obj *DataObj) Close() {
 	if status := C.gorods_close_dataobject(obj.chandle, obj.Con.ccon, &errMsg); status != 0 {
 		panic(fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
+
+	obj.chandle = C.int(0)
+
 }
 
 func (obj *DataObj) Read() []byte {
@@ -126,6 +129,23 @@ func (obj *DataObj) Read() []byte {
 	obj.Close()
 
 	return data
+}
+
+func (obj *DataObj) Write(data []byte) {
+	obj.Init()
+
+	size := int64(len(data))
+
+	dataPointer := unsafe.Pointer(&data[0])
+
+	var err *C.char
+	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Write DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	obj.Size = size
+
+	obj.Close()
 }
 
 func (obj *DataObj) Stat() map[string]interface{} {

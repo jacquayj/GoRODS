@@ -33,10 +33,10 @@ type Connection struct {
 	Options *ConnectionOptions
 }
 
-func New(opts *ConnectionOptions) *Connection {
+func New(opts ConnectionOptions) *Connection {
 	con := new(Connection)
 
-	con.Options = opts
+	con.Options = &opts
 
 	var status C.int
 	var errMsg *C.char

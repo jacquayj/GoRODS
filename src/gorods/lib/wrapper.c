@@ -86,6 +86,33 @@ int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) 
 	return 0;
 }
 
+
+int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err) {
+	
+	openedDataObjInp_t dataObjWriteInp; 
+	bytesBuf_t dataObjWriteOutBBuf; 
+
+	bzero(&dataObjWriteInp, sizeof(dataObjWriteInp)); 
+	bzero(&dataObjWriteOutBBuf, sizeof(dataObjWriteOutBBuf)); 
+
+	dataObjWriteInp.l1descInx = handle;
+	
+	dataObjWriteOutBBuf.len = size; 
+	dataObjWriteOutBBuf.buf = malloc(size); 
+	
+	// copy data to dataObjWriteOutBBuf.buf 
+	memcpy(dataObjWriteOutBBuf.buf, data, size);
+	
+	int bytesWrite = rcDataObjWrite(conn, &dataObjWriteInp, &dataObjWriteOutBBuf); 
+	if ( bytesWrite < 0 ) { 
+		*err = "rcDataObjWrite failed";
+		return -1;
+	}
+
+	return 0;
+}
+
+
 int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, char* resource, int* handle, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 	

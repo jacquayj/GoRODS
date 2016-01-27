@@ -9,7 +9,7 @@ import (
 func main() {
 
 
-    irods := gorods.New(&gorods.ConnectionOptions {
+    irods := gorods.New(gorods.ConnectionOptions {
 		Environment: gorods.UserDefined,
 
 		Host: "localhost",

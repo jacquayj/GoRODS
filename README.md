@@ -14,7 +14,7 @@ import (
 func main() {
 
 	// Connect to server
-	irods := gorods.New(&gorods.ConnectionOptions {
+	irods := gorods.New(gorods.ConnectionOptions {
 		Environment: gorods.UserDefined,
 		Host: "localhost",
 		Port: 1247,
@@ -34,14 +34,20 @@ func main() {
 	fmt.Printf(string(file))
 
 	// Create file in home directory, overwrite if it exists
-	test := gorods.CreateDataObj(&gorods.DataObjOptions {
+	test := gorods.CreateDataObj(gorods.DataObjOptions {
 		Name: "test.lol",
 		Mode: 0750,
 		Force: true,
 	}, homeDir)
 
-	// Stat the new test.lol file
+	// Write string to test file
+	test.Write([]byte("This is a test!"))
+
+	// Stat the test.lol file
 	fmt.Printf("%v \n", test.Stat())
+
+	// Read the contents back, print to screen
+	fmt.Printf("%v \n", string(test.Read()))
 
 }
 
