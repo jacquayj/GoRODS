@@ -43,6 +43,9 @@ func main() {
 	// gorodsDir := homeDir.Collections().Find("gorods")
 	// remoteFile.CopyTo(gorodsDir)
 
+	// Move file/rename
+	remoteFile.MoveTo("/tempZone/home/admin/gorods/local_file2.txt")
+
 	// Create file in home directory, overwrite if it exists
 	test := gorods.CreateDataObj(gorods.DataObjOptions {
 		Name: "test.lol",
@@ -80,3 +83,4 @@ Send me a pull request!
 
 * Build script requires pre compiled .o files, the ones included in this repo won't work on 32-bit systems. Will need to integrate iRods build from scratch.
 * There are probably memory leaks from C variables not being free()'d
+* If destination target in MoveTo() exists, the source DataObj will be left intact with no warnings

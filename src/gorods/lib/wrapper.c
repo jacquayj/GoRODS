@@ -243,6 +243,22 @@ int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char
 	return 0;
 }
 
+int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err) {
+	dataObjCopyInp_t dataObjCopyInp; 
+	bzero(&dataObjCopyInp, sizeof(dataObjCopyInp)); 
+
+	rstrcpy(dataObjCopyInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
+	rstrcpy(dataObjCopyInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
+
+	int status = rcDataObjRename(conn, &dataObjCopyInp); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjRename failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 100;

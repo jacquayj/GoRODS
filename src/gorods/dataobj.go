@@ -201,7 +201,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if expiredCollection := openedCollections.FindRecursive(iRodsCollection.(string)); expiredCollection != nil {
+		if expiredCollection := obj.Con.OpenedCollections.FindRecursive(iRodsCollection.(string)); expiredCollection != nil {
 			expiredCollection.Init()
 		}
 	} else {
@@ -211,11 +211,49 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	return obj
 }
 
-// IMPLEMENT ME
 // Supports Collection struct and string
 func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	
+	var err *C.char
+	var destination string
+	var destinationCollectionString string
+	var destinationCollection *Collection
 
+	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+		destinationCollectionString = iRodsCollection.(string)
+
+		if destinationCollectionString[len(destinationCollectionString) - 1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + obj.Name
+
+	} else {
+		destinationCollectionString = (iRodsCollection.(*Collection)).Path + "/"
+		destination = destinationCollectionString + obj.Name
+	}
+
+	C.gorods_move_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err)
+	
+	// Reload source collection, we are now detached
+	obj.Col.Init()
+
+	// Find & reload destination collection
+	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+		// Find collection recursivly
+		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(iRodsCollection.(string)); destinationCollection != nil {
+			destinationCollection.Init()
+		} else {
+			// Can't find, load collection into memory
+			destinationCollection = obj.Con.Collection(destinationCollectionString, false)
+		}
+	} else {
+		destinationCollection = (iRodsCollection.(*Collection))
+		destinationCollection.Init()
+	}
+
+	// Reassign .Col to destination collection
+	obj.Col = destinationCollection
 
 	return obj
 }

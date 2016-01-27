@@ -14,8 +14,6 @@ const (
 	UserDefined
 )
 
-var openedCollections Collections
-
 type ConnectionOptions struct {
 	Environment int
 
@@ -32,6 +30,7 @@ type Connection struct {
 
 	Connected bool
 	Options *ConnectionOptions
+	OpenedCollections Collections
 }
 
 func New(opts ConnectionOptions) *Connection {
@@ -77,7 +76,7 @@ func (obj *Connection) String() string {
 func (con *Connection) Collection(startPath string, recursive bool) *Collection {
 	collection := GetCollection(startPath, recursive, con)
 
-	openedCollections = append(openedCollections, collection)
+	con.OpenedCollections = append(con.OpenedCollections, collection)
 
 	return collection
 }
