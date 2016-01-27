@@ -9,11 +9,12 @@ import (
 	"fmt"
 )
 
-
 const (
 	System = iota
 	UserDefined
 )
+
+var openedCollections Collections
 
 type ConnectionOptions struct {
 	Environment int
@@ -74,5 +75,9 @@ func (obj *Connection) String() string {
 }
 
 func (con *Connection) Collection(startPath string, recursive bool) *Collection {
-	return GetCollection(startPath, recursive, con)
+	collection := GetCollection(startPath, recursive, con)
+
+	openedCollections = append(openedCollections, collection)
+
+	return collection
 }

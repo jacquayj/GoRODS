@@ -40,6 +40,36 @@ func (colls Collections) Find(path string) *Collection {
 	return nil
 }
 
+func (colls Collections) FindRecursive(path string) *Collection {
+	for i, col := range colls {
+		if col.Path == path || col.Name == path {
+			return colls[i]
+		}
+
+		if col.Recursive {
+			// Use Collections() since we already loaded everything
+			if subCol := col.Collections().FindRecursive(path); subCol != nil {
+				return subCol
+			}
+		} else {
+			// Use DataObjects so we don't load new collections
+			var filtered Collections
+
+			for n, obj := range col.DataObjects {
+				if reflect.TypeOf(obj).String() == "*gorods.Collection" {
+					filtered = append(filtered, col.DataObjects[n].(*Collection))
+				}
+			}
+
+			if subCol := filtered.FindRecursive(path); subCol != nil {
+				return subCol
+			}
+		}
+	}
+
+	return nil
+}
+
 func (obj *Collection) String() string {
 	str := fmt.Sprintf("Collection: %v\n", obj.Path)
 
@@ -82,8 +112,12 @@ func GetCollection(startPath string, recursive bool, con *Connection) *Collectio
 	col.Path = startPath
 	col.Recursive = recursive
 
+	if col.Path[len(col.Path) - 1] == '/' {
+		col.Path = col.Path[:len(col.Path) - 1]
+	}
+
 	pathSlice := strings.Split(col.Path, "/")
-	col.Name = pathSlice[len(pathSlice)-1]
+	col.Name = pathSlice[len(pathSlice) - 1]
 
 	if col.Recursive {
 		col.Init()
@@ -129,8 +163,6 @@ func (col *Collection) Close() *Collection {
 // Reads data into col.DataObjects
 func (col *Collection) ReadCollection() {
 
-	//fmt.Printf("Debug: Reading %v \n", col.Path)
-
 	// Init C varaibles
 	var err *C.char
 	var arr *C.collEnt_t
@@ -156,11 +188,11 @@ func (col *Collection) ReadCollection() {
 			col.DataObjects = append(col.DataObjects, NewCollection(obj, col))
 		} else {
 			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
-		}	
+		}
 		
 	}
 
-	// .Close() is called in the read_collection wrapper
+	col.Close()
 }
 
 func (col *Collection) DataObjs() DataObjs {

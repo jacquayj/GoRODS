@@ -6,6 +6,7 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+	"reflect"
 )
 
 type DataObj struct {
@@ -175,11 +176,37 @@ func (obj *DataObj) Stat() map[string]interface{} {
 	return result
 }
 
-// IMPLEMENT ME
+
 // Supports Collection struct and string
 func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	
+	var err *C.char
+	var destination string
 
+	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+		destination = iRodsCollection.(string)
+
+		if destination[len(destination) - 1] != '/' {
+			destination += "/"
+		}
+
+		destination += obj.Name
+
+	} else {
+		destination = (iRodsCollection.(*Collection)).Path + "/" + obj.Name
+	}
+
+	C.gorods_copy_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err)
+	
+	// reload destination collection
+	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+		// Find collection recursivly
+		if expiredCollection := openedCollections.FindRecursive(iRodsCollection.(string)); expiredCollection != nil {
+			expiredCollection.Init()
+		}
+	} else {
+		(iRodsCollection.(*Collection)).Init()
+	}
 
 	return obj
 }

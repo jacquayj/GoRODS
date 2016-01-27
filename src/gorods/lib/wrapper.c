@@ -223,6 +223,26 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 	return 0;
 }
 
+
+int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char** err) {
+	dataObjCopyInp_t dataObjCopyInp; 
+	bzero(&dataObjCopyInp, sizeof(dataObjCopyInp)); 
+
+	rstrcpy(dataObjCopyInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
+	rstrcpy(dataObjCopyInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
+
+	addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, FORCE_FLAG_KW, ""); 
+	addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, REG_CHKSUM_KW, ""); 
+
+	int status = rcDataObjCopy(conn, &dataObjCopyInp); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjCopy failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 100;
@@ -265,8 +285,6 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 		
 		freeCollEnt(collEnt); 
 	} 
-
-	rcCloseCollection(conn, handleInx); 
 
 	return 0;
 }

@@ -36,6 +36,13 @@ func main() {
 	// Add local file to collection
 	remoteFile := homeDir.Put("local_file.txt")
 
+	// Copy file to gorods directory
+	remoteFile.CopyTo("/tempZone/home/admin/gorods")
+	// or
+	//
+	// gorodsDir := homeDir.Collections().Find("gorods")
+	// remoteFile.CopyTo(gorodsDir)
+
 	// Create file in home directory, overwrite if it exists
 	test := gorods.CreateDataObj(gorods.DataObjOptions {
 		Name: "test.lol",
