@@ -28,7 +28,7 @@ func main() {
 	homeDir := irods.Collection("/tempZone/home/admin", true)
 
 	// Read file from /tempZone/home/admin/gorods/build.sh
-	file := homeDir.Collections().Find("gorods").DataObjs().Find("build.sh").Read()
+	file := homeDir.Cd("gorods").DataObjs().Find("build.sh").Read()
 
 	// Print []Byte as string
 	fmt.Printf(string(file))
@@ -51,7 +51,7 @@ func main() {
 
 	// Create file in home directory, overwrite if it exists
 	test := gorods.CreateDataObj(gorods.DataObjOptions {
-		Name: "test.lol",
+		Name: "test.txt",
 		Mode: 0750,
 		Force: true,
 	}, homeDir)
@@ -59,11 +59,14 @@ func main() {
 	// Write string to test file
 	test.Write([]byte("This is a test!"))
 
-	// Stat the test.lol file
+	// Stat the test.txt file
 	fmt.Printf("%v \n", test.Stat())
 
 	// Read the contents back, print to screen
 	fmt.Printf("%v \n", string(test.Read()))
+
+	// Delete the file
+	test.Delete()
 
 }
 
