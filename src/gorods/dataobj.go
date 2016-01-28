@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"unsafe"
 	"reflect"
+	"strings"
 )
 
 type DataObj struct {
@@ -203,7 +204,9 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 		destination = destinationCollectionString + obj.Name
 	}
 
-	C.gorods_copy_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err)
+	if status := C.gorods_copy_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
+	}
 	
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
@@ -245,7 +248,9 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 		destination = destinationCollectionString + obj.Name
 	}
 
-	C.gorods_move_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err)
+	if status := C.gorods_move_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Move DataObject Failed S:%v, D:%v, %v", obj.Path, destination, C.GoString(err)))
+	}
 	
 	// Reload source collection, we are now detached
 	obj.Col.Init()
@@ -264,20 +269,38 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 		destinationCollection.Init()
 	}
 
-	// Reassign .Col to destination collection
+	// Reassign obj.Col to destination collection
 	obj.Col = destinationCollection
+	obj.Path = destinationCollection.Path + "/" + obj.Name
+
+	obj.chandle = C.int(0)
 
 	return obj
 }
 
-// IMPLEMENT ME
+
 func (obj *DataObj) Rename(name string) *DataObj {
 	
+	if strings.Contains(name, "/") {
+		panic(fmt.Sprintf("Can't Rename DataObject, path detected in: %v", name))
+	}
 
+	var err *C.char
+
+	source := obj.Path
+	destination := obj.Col.Path + "/" + name
+
+	if status := C.gorods_move_dataobject(C.CString(source), C.CString(destination), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Rename DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	obj.Name = name
+	obj.Path = destination
+
+	obj.chandle = C.int(0)
 
 	return obj
 }
-
 
 // IMPLEMENT ME
 func (obj *DataObj) Delete(force bool) {
