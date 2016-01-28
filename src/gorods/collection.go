@@ -31,6 +31,10 @@ type Collection struct {
 type Collections []*Collection
 
 func (colls Collections) Find(path string) *Collection {
+	if path[len(path) - 1] == '/' {
+		path = path[:len(path) - 1]
+	}
+	
 	for i, col := range colls {
 		if col.Path == path || col.Name == path {
 			return colls[i]
@@ -41,6 +45,10 @@ func (colls Collections) Find(path string) *Collection {
 }
 
 func (colls Collections) FindRecursive(path string) *Collection {
+	if path[len(path) - 1] == '/' {
+		path = path[:len(path) - 1]
+	}
+
 	for i, col := range colls {
 		if col.Path == path || col.Name == path {
 			return colls[i]

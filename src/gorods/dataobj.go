@@ -187,6 +187,11 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		destinationCollectionString = iRodsCollection.(string)
 
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = obj.Col.Path + "/" + destinationCollectionString
+		}
+
 		if destinationCollectionString[len(destinationCollectionString) - 1] != '/' {
 			destinationCollectionString += "/"
 		}
@@ -203,7 +208,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if expiredCollection := obj.Con.OpenedCollections.FindRecursive(destinationCollectionString[:len(destinationCollectionString) - 1]); expiredCollection != nil {
+		if expiredCollection := obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); expiredCollection != nil {
 			expiredCollection.Init()
 		}
 	} else {
@@ -224,6 +229,11 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		destinationCollectionString = iRodsCollection.(string)
 
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = obj.Col.Path + "/" + destinationCollectionString
+		}
+
 		if destinationCollectionString[len(destinationCollectionString) - 1] != '/' {
 			destinationCollectionString += "/"
 		}
@@ -243,7 +253,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	// Find & reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString[:len(destinationCollectionString) - 1]); destinationCollection != nil {
+		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
 			destinationCollection.Init()
 		} else {
 			// Can't find, load collection into memory
