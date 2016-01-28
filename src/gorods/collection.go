@@ -180,9 +180,11 @@ func (col *Collection) Close() *Collection {
 func (col *Collection) ReadCollection() {
 
 	// Init C varaibles
-	var err *C.char
-	var arr *C.collEnt_t
-	var arrSize C.int
+	var (
+		err *C.char
+		arr *C.collEnt_t
+		arrSize C.int
+	)
 
 	// Read data objs from collection
 	C.gorods_read_collection(col.Con.ccon, col.chandle, &arr, &arrSize, &err)

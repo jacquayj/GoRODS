@@ -278,6 +278,26 @@ int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err) 
 	return 0;
 }
 
+int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err) {
+
+	dataObjInp_t dataObjInp; 
+
+	*outChksum = NULL;
+
+	bzero(&dataObjInp, sizeof(dataObjInp)); 
+	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
+
+	addKeyVal(&dataObjInp.condInput, FORCE_CHKSUM_KW, ""); 
+
+	int status = rcDataObjChksum(conn, &dataObjInp, &(*outChksum)); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjChksum failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 100;

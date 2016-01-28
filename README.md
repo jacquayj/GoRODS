@@ -30,11 +30,16 @@ func main() {
 	// Open collection, preload sub collections into memory
 	homeDir := irods.Collection("/tempZone/home/admin", true)
 
+	buildFile := homeDir.Cd("gorods").Get("build.sh")
+	
+	// Returns true/false if checksum matches
+	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")
+	
 	// Read file from /tempZone/home/admin/gorods/build.sh
-	file := homeDir.Cd("gorods").Get("build.sh").Read()
+	contents := buildFile.Read()
 
 	// Print []Byte as string
-	fmt.Printf(string(file))
+	fmt.Printf(string(contents))
 
 	// Add local file to collection
 	remoteFile := homeDir.Put("local_file.txt")

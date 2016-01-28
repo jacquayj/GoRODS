@@ -68,10 +68,11 @@ func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	
-	var errMsg *C.char
-	var handle C.int
-	
-	var force int
+	var (
+		errMsg *C.char
+		handle C.int
+		force int
+	)
 
 	if opts.Force {
 		force = 1
@@ -129,8 +130,10 @@ func (obj *DataObj) Close() *DataObj {
 func (obj *DataObj) Read() []byte {
 	obj.Init()
 
-	var buffer C.bytesBuf_t
-	var err *C.char
+	var (
+		buffer C.bytesBuf_t		
+		err *C.char
+	)
 
 	if status := C.gorods_read_dataobject(obj.chandle,  C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
@@ -164,8 +167,10 @@ func (obj *DataObj) Write(data []byte) *DataObj {
 
 func (obj *DataObj) Stat() map[string]interface{} {
 
-	var err *C.char
-	var statResult *C.rodsObjStat_t
+	var (
+		err *C.char
+		statResult *C.rodsObjStat_t
+	)
 
 	if status := C.gorods_stat_dataobject(C.CString(obj.Path), &statResult, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Close Stat Failed: %v, %v", obj.Path, C.GoString(err)))
@@ -192,10 +197,12 @@ func (obj *DataObj) Stat() map[string]interface{} {
 // Supports Collection struct and string
 func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	
-	var err *C.char
-	var destination string
-	var destinationCollectionString string
-	var destinationCollection *Collection
+	var (
+		err *C.char
+		destination string
+		destinationCollectionString string
+		destinationCollection *Collection
+	)
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		destinationCollectionString = iRodsCollection.(string)
@@ -240,10 +247,12 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 // Supports Collection struct and string
 func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	
-	var err *C.char
-	var destination string
-	var destinationCollectionString string
-	var destinationCollection *Collection
+	var (
+		err *C.char
+		destination string
+		destinationCollectionString string
+		destinationCollection *Collection
+	)
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		destinationCollectionString = iRodsCollection.(string)
@@ -340,13 +349,25 @@ func (obj *DataObj) Unlink() {
 }
 
 
-
-// IMPLEMENT ME
-func (obj *DataObj) Chksum() *DataObj {
+func (obj *DataObj) Chksum() string {
 	
+	var (
+		err *C.char
+		chksumOut *C.char
+	)
+
+	if status := C.gorods_checksum_dataobject(C.CString(obj.Path), &chksumOut, obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Chksum DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	return C.GoString(chksumOut)
+}
 
 
-	return obj
+func (obj *DataObj) Verify(checksum string) bool {
+	chksum := strings.Split(obj.Chksum(), ":")
+
+	return (checksum == chksum[1])
 }
 
 

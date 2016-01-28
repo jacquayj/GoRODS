@@ -38,9 +38,11 @@ func New(opts ConnectionOptions) *Connection {
 
 	con.Options = &opts
 
-	var status C.int
-	var errMsg *C.char
-	var password *C.char
+	var (
+		status C.int
+		errMsg *C.char
+		password *C.char
+	)
 
 	if con.Options.Password != "" {
 		password = C.CString(con.Options.Password)
