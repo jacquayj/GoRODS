@@ -27,4 +27,4 @@ int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, c
 int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err);
 int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
 int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
-
+int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);

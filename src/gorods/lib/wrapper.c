@@ -259,6 +259,25 @@ int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char
 	return 0;
 }
 
+int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err) {
+	dataObjInp_t dataObjInp; 
+	bzero(&dataObjInp, sizeof(dataObjInp));
+
+	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
+	
+	if ( force != 0 ) {
+		addKeyVal(&dataObjInp.condInput, FORCE_FLAG_KW, ""); 
+	}
+	
+	int status = rcDataObjUnlink(conn, &dataObjInp); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjRename failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 100;

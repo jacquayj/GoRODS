@@ -30,11 +30,19 @@ type Collection struct {
 // collections.Find(relPath) -> type: Collection
 type Collections []*Collection
 
+func (colls Collections) Exists(path string) bool {
+	if c := colls.Find(path); c != nil {
+		return true
+	}
+
+	return false
+}
+
 func (colls Collections) Find(path string) *Collection {
 	if path[len(path) - 1] == '/' {
 		path = path[:len(path) - 1]
 	}
-	
+
 	for i, col := range colls {
 		if col.Path == path || col.Name == path {
 			return colls[i]
@@ -271,3 +279,22 @@ func (col *Collection) Both() (DataObjs, Collections) {
 	return col.DataObjs(), col.Collections()
 }
 
+func (col *Collection) Exists(path string) bool {
+	return col.DataObjs().Exists(path) || col.Collections().Exists(path)
+}
+
+func (col *Collection) Find(path string) interface{} {
+	if d := col.DataObjs().Find(path); d != nil {
+		return d
+	}
+
+	if c := col.Collections().Find(path); c != nil {
+		return c
+	}
+
+	return nil
+}
+
+func (col *Collection) Cd(path string) *Collection {
+	return col.Collections().Find(path)
+}

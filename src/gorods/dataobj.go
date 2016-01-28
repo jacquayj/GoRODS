@@ -31,6 +31,14 @@ type DataObjOptions struct {
 
 type DataObjs []*DataObj
 
+func (dos DataObjs) Exists(path string) bool {
+	if d := dos.Find(path); d != nil {
+		return true
+	}
+
+	return false
+}
+
 func (dos DataObjs) Find(path string) *DataObj {
 	for i, do := range dos {
 		if do.Path == path || do.Name == path {
@@ -106,7 +114,7 @@ func (obj *DataObj) Open() {
 	}
 }
 
-func (obj *DataObj) Close() {
+func (obj *DataObj) Close() *DataObj {
 	var errMsg *C.char
 
 	if status := C.gorods_close_dataobject(obj.chandle, obj.Con.ccon, &errMsg); status != 0 {
@@ -115,6 +123,7 @@ func (obj *DataObj) Close() {
 
 	obj.chandle = C.int(0)
 
+	return obj
 }
 
 func (obj *DataObj) Read() []byte {
@@ -134,7 +143,7 @@ func (obj *DataObj) Read() []byte {
 	return data
 }
 
-func (obj *DataObj) Write(data []byte) {
+func (obj *DataObj) Write(data []byte) *DataObj {
 	obj.Init()
 
 	size := int64(len(data))
@@ -149,6 +158,8 @@ func (obj *DataObj) Write(data []byte) {
 	obj.Size = size
 
 	obj.Close()
+
+	return obj
 }
 
 func (obj *DataObj) Stat() map[string]interface{} {
@@ -184,6 +195,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	var err *C.char
 	var destination string
 	var destinationCollectionString string
+	var destinationCollection *Collection
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		destinationCollectionString = iRodsCollection.(string)
@@ -211,14 +223,18 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if expiredCollection := obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); expiredCollection != nil {
-			expiredCollection.Init()
+		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
+			destinationCollection.Init()
+		} else {
+			// Can't find, load collection into memory
+			destinationCollection = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
-		(iRodsCollection.(*Collection)).Init()
+		destinationCollection = (iRodsCollection.(*Collection))
+		destinationCollection.Init()
 	}
 
-	return obj
+	return destinationCollection.DataObjs().Find(obj.Name)
 }
 
 // Supports Collection struct and string
@@ -302,13 +318,28 @@ func (obj *DataObj) Rename(name string) *DataObj {
 	return obj
 }
 
-// IMPLEMENT ME
-func (obj *DataObj) Delete(force bool) {
+
+func (obj *DataObj) Delete() {
 	
+	var err *C.char
 
-
+	if status := C.gorods_unlink_dataobject(C.CString(obj.Path), C.int(1), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
 
 }
+
+func (obj *DataObj) Unlink() {
+	
+	var err *C.char
+
+	if status := C.gorods_unlink_dataobject(C.CString(obj.Path), C.int(0), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+}
+
+
 
 // IMPLEMENT ME
 func (obj *DataObj) Chksum() *DataObj {
