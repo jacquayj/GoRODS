@@ -43,7 +43,7 @@ func main() {
 	remoteFile.CopyTo("gorods")
 	// or
 	//
-	// gorodsDir := homeDir.Collections().Find("gorods")
+	// gorodsDir := homeDir.Cd("gorods")
 	// remoteFile.CopyTo(gorodsDir)
 
 	// Move file
@@ -87,6 +87,13 @@ $ ./build.sh
 ## Contributing
 
 Send me a pull request!
+
+## Todo
+
+* Implement DataObj: Chksum(), MoveToResource(), Replicate(), ReplSettings()
+* Implement metadata operations
+* Add godoc compatible comments to all functions so documentation can be generated
+* Add unit tests
 
 ## Known Issues
 
