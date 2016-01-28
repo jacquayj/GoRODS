@@ -298,3 +298,7 @@ func (col *Collection) Find(path string) interface{} {
 func (col *Collection) Cd(path string) *Collection {
 	return col.Collections().Find(path)
 }
+
+func (col *Collection) Get(path string) *DataObj {
+	return col.DataObjs().Find(path)
+}

@@ -15,7 +15,10 @@ func main() {
 
 	// Connect to server
 	irods := gorods.New(gorods.ConnectionOptions {
-		Environment: gorods.UserDefined,
+
+		// Or gorods.System to use the systems preconfigured environment
+		Environment: gorods.UserDefined, 
+
 		Host: "localhost",
 		Port: 1247,
 		Zone: "tempZone",
@@ -24,11 +27,11 @@ func main() {
 		Password: "password",
 	})
 
-	// Open collection
+	// Open collection, preload sub collections into memory
 	homeDir := irods.Collection("/tempZone/home/admin", true)
 
 	// Read file from /tempZone/home/admin/gorods/build.sh
-	file := homeDir.Cd("gorods").DataObjs().Find("build.sh").Read()
+	file := homeDir.Cd("gorods").Get("build.sh").Read()
 
 	// Print []Byte as string
 	fmt.Printf(string(file))
