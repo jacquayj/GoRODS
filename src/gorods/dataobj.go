@@ -8,6 +8,7 @@ import (
 	"unsafe"
 	"reflect"
 	"strings"
+	"io/ioutil"
 )
 
 type DataObj struct {
@@ -144,6 +145,15 @@ func (obj *DataObj) Read() []byte {
 	obj.Close()
 
 	return data
+}
+
+func (obj *DataObj) DownloadTo(localPath string) *DataObj {
+
+	if err := ioutil.WriteFile(localPath, obj.Read(), 0644); err != nil {
+		panic(fmt.Sprintf("iRods Download DataObject Failed: %v, %v", obj.Path, err))
+	}
+
+	return obj
 }
 
 func (obj *DataObj) Write(data []byte) *DataObj {

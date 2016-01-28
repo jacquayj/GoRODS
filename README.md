@@ -35,6 +35,9 @@ func main() {
 	// Returns true/false if checksum matches
 	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")
 	
+	// Download remote file
+	buildFile.DownloadTo("build.sh")
+
 	// Read file from /tempZone/home/admin/gorods/build.sh
 	contents := buildFile.Read()
 
@@ -95,8 +98,9 @@ Send me a pull request!
 
 ## Todo
 
-* Implement DataObj: Chksum(), MoveToResource(), Replicate(), ReplSettings()
-* Implement metadata operations
+* Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
+* Implement DataObj metadata operations
+* Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Add godoc compatible comments to all functions so documentation can be generated
 * Add unit tests
 
