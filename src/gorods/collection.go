@@ -102,14 +102,20 @@ func (obj *Collection) String() string {
 
 // Init from *C.collEnt_t
 func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
+	
+	defer C.free(unsafe.Pointer(data.ownerName))
+	defer C.free(unsafe.Pointer(data.collName))
+	defer C.free(unsafe.Pointer(data.createTime))
+	defer C.free(unsafe.Pointer(data.modifyTime))
+	
 	col := new(Collection)
 
 	col.Col = acol
 	col.Con = col.Col.Con
-
 	col.Path = C.GoString(data.collName)
 	
 	pathSlice := strings.Split(col.Path, "/")
+	
 	col.Name = pathSlice[len(pathSlice)-1]
 
 	if acol.Recursive {
@@ -156,7 +162,11 @@ func (col *Collection) Init() *Collection {
 func (col *Collection) Open() *Collection {
 	var errMsg *C.char
 
-	if status := C.gorods_open_collection(C.CString(col.Path), &col.chandle, col.Con.ccon, &errMsg); status != 0 {
+	path := C.CString(col.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
 		panic(fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 	}
 
@@ -185,27 +195,29 @@ func (col *Collection) ReadCollection() {
 		arr *C.collEnt_t
 		arrSize C.int
 	)
-
+	
 	// Read data objs from collection
 	C.gorods_read_collection(col.Con.ccon, col.chandle, &arr, &arrSize, &err)
 	
 	// Get result length
 	arrLen := int(arrSize)
 
+	unsafeArr := unsafe.Pointer(arr)
+	defer C.free(unsafeArr)
+
 	// Convert C array to slice, backed by arr *C.collEnt_t
-	slice := (*[1 << 30]C.collEnt_t)(unsafe.Pointer(arr))[:arrLen:arrLen]
+	slice := (*[1 << 30]C.collEnt_t)(unsafeArr)[:arrLen:arrLen]
 
 	col.DataObjects = make([]interface{}, 0)
 	
-	for i, _ := range slice {
-		obj := &slice[i]
+	for _, obj := range slice {
 
 		isCollection := (obj.objType != C.DATA_OBJ_T)
 
 		if isCollection {
-			col.DataObjects = append(col.DataObjects, NewCollection(obj, col))
+			col.DataObjects = append(col.DataObjects, NewCollection(&obj, col))
 		} else {
-			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
+			col.DataObjects = append(col.DataObjects, NewDataObj(&obj, col))
 		}
 		
 	}

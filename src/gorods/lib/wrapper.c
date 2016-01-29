@@ -109,6 +109,8 @@ int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, ch
 		return -1;
 	}
 
+	free(dataObjWriteOutBBuf.buf);
+
 	return 0;
 }
 
@@ -310,33 +312,33 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 	
 	while ( (status = rcReadCollection(conn, handleInx, &collEnt)) >= 0 ) { 
 		
-			// Expand array if needed
-			if ( *size >= collectionResponseCapacity ) {
-				collectionResponseCapacity += 1;
-				*arr = realloc(*arr, sizeof(collEnt_t) * collectionResponseCapacity);
-			}
+		// Expand array if needed
+		if ( *size >= collectionResponseCapacity ) {
+			collectionResponseCapacity += 1;
+			*arr = realloc(*arr, sizeof(collEnt_t) * collectionResponseCapacity);
+		}
 
-			collEnt_t* elem = &((*arr)[*size]);
+		collEnt_t* elem = &((*arr)[*size]);
 
-			// Add element to array
-    		memcpy(elem, collEnt, sizeof(collEnt_t));
-			
-			if ( collEnt->objType == DATA_OBJ_T ) { 
-	    		elem->dataName = strcpy(malloc(strlen(elem->dataName) + 1), elem->dataName);
-	    		elem->dataId = strcpy(malloc(strlen(elem->dataId) + 1), elem->dataId);
-	    		elem->chksum = strcpy(malloc(strlen(elem->chksum) + 1), elem->chksum);
-	    		elem->dataType = strcpy(malloc(strlen(elem->dataType) + 1), elem->dataType);
-	    		elem->resource = strcpy(malloc(strlen(elem->resource) + 1), elem->resource);
-   				elem->rescGrp = strcpy(malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
-   				elem->phyPath = strcpy(malloc(strlen(elem->phyPath) + 1), elem->phyPath);
-			}
+		// Add element to array
+		memcpy(elem, collEnt, sizeof(collEnt_t));
+		
+		if ( collEnt->objType == DATA_OBJ_T ) { 
+			elem->dataName = strcpy(malloc(strlen(elem->dataName) + 1), elem->dataName);
+			elem->dataId = strcpy(malloc(strlen(elem->dataId) + 1), elem->dataId);
+			elem->chksum = strcpy(malloc(strlen(elem->chksum) + 1), elem->chksum);
+			elem->dataType = strcpy(malloc(strlen(elem->dataType) + 1), elem->dataType);
+			elem->resource = strcpy(malloc(strlen(elem->resource) + 1), elem->resource);
+			elem->rescGrp = strcpy(malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
+			elem->phyPath = strcpy(malloc(strlen(elem->phyPath) + 1), elem->phyPath);
+		}
 
-			elem->ownerName = strcpy(malloc(strlen(elem->ownerName) + 1), elem->ownerName);
-			elem->collName = strcpy(malloc(strlen(elem->collName) + 1), elem->collName);
-			elem->createTime = strcpy(malloc(strlen(elem->createTime) + 1), elem->createTime);
-	  		elem->modifyTime = strcpy(malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
+		elem->ownerName = strcpy(malloc(strlen(elem->ownerName) + 1), elem->ownerName);
+		elem->collName = strcpy(malloc(strlen(elem->collName) + 1), elem->collName);
+		elem->createTime = strcpy(malloc(strlen(elem->createTime) + 1), elem->createTime);
+		elem->modifyTime = strcpy(malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
 
-    		(*size)++;
+		(*size)++;
 		
 		freeCollEnt(collEnt); 
 	} 

@@ -7,6 +7,7 @@ import "C"
 
 import (
 	"fmt"
+	"unsafe"
 )
 
 const (
@@ -46,6 +47,8 @@ func New(opts ConnectionOptions) *Connection {
 
 	if con.Options.Password != "" {
 		password = C.CString(con.Options.Password)
+		
+		defer C.free(unsafe.Pointer(password))
 	}
 
 	// Are we passing env values?
@@ -54,6 +57,10 @@ func New(opts ConnectionOptions) *Connection {
 		port := C.int(con.Options.Port)
 		username := C.CString(con.Options.Username)
 		zone := C.CString(con.Options.Zone)
+
+		defer C.free(unsafe.Pointer(host))
+		defer C.free(unsafe.Pointer(username))
+		defer C.free(unsafe.Pointer(zone))
 
 		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
 	} else {
@@ -75,7 +82,11 @@ func (con *Connection) Disconnect() {
 }
 
 func (obj *Connection) String() string {
-	envString := C.GoString(C.irods_env_str())
+	cEnvString := C.irods_env_str()
+
+	defer C.free(unsafe.Pointer(cEnvString))
+
+	envString := C.GoString(cEnvString)
 
 	return fmt.Sprintf("Connection Env:\n%v\tConnected: %v\n", envString, obj.Connected)
 }

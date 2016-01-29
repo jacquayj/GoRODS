@@ -55,7 +55,19 @@ func (obj *DataObj) String() string {
 }
 
 func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
-	
+
+	defer C.free(unsafe.Pointer(data.ownerName))
+	defer C.free(unsafe.Pointer(data.collName))
+	defer C.free(unsafe.Pointer(data.createTime))
+	defer C.free(unsafe.Pointer(data.modifyTime))
+	defer C.free(unsafe.Pointer(data.dataName))
+	defer C.free(unsafe.Pointer(data.dataId))
+	defer C.free(unsafe.Pointer(data.chksum))
+	defer C.free(unsafe.Pointer(data.dataType))
+	defer C.free(unsafe.Pointer(data.resource))
+	defer C.free(unsafe.Pointer(data.rescGrp))
+	defer C.free(unsafe.Pointer(data.phyPath))
+
 	dataObj := new(DataObj)
 
 	dataObj.Col = col
@@ -81,9 +93,13 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 		force = 0
 	}
 	
-	path := coll.Path + "/" + opts.Name
+	path := C.CString(coll.Path + "/" + opts.Name)
+	resource := C.CString(opts.Resource)
 
-	if status := C.gorods_create_dataobject(C.CString(path), C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), C.CString(opts.Resource), &handle, coll.Con.ccon, &errMsg); status != 0 {
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(resource))
+
+	if status := C.gorods_create_dataobject(path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, &handle, coll.Con.ccon, &errMsg); status != 0 {
 		panic(fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
 
@@ -92,7 +108,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	dataObj.Col = coll
 	dataObj.Con = dataObj.Col.Con
 	dataObj.Name = opts.Name
-	dataObj.Path = path
+	dataObj.Path = C.GoString(path)
 	dataObj.Size = opts.Size
 	dataObj.chandle = handle
 
@@ -111,7 +127,11 @@ func (obj *DataObj) Init() {
 func (obj *DataObj) Open() {
 	var errMsg *C.char
 
-	if status := C.gorods_open_dataobject(C.CString(obj.Path), &obj.chandle, C.rodsLong_t(obj.Size), obj.Con.ccon, &errMsg); status != 0 {
+	path := C.CString(obj.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	if status := C.gorods_open_dataobject(path, &obj.chandle, C.rodsLong_t(obj.Size), obj.Con.ccon, &errMsg); status != 0 {
 		panic(fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
 }
@@ -136,11 +156,14 @@ func (obj *DataObj) Read() []byte {
 		err *C.char
 	)
 
-	if status := C.gorods_read_dataobject(obj.chandle,  C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
-	data := C.GoBytes(unsafe.Pointer(buffer.buf), C.int(obj.Size))
+	buf := unsafe.Pointer(buffer.buf)
+	defer C.free(buf)
+
+	data := C.GoBytes(buf, C.int(obj.Size))
 
 	obj.Close()
 
@@ -161,7 +184,7 @@ func (obj *DataObj) Write(data []byte) *DataObj {
 
 	size := int64(len(data))
 
-	dataPointer := unsafe.Pointer(&data[0])
+	dataPointer := unsafe.Pointer(&data[0]) // Do I need to free this? It might be done by go
 
 	var err *C.char
 	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), obj.Con.ccon, &err); status != 0 {
@@ -181,8 +204,12 @@ func (obj *DataObj) Stat() map[string]interface{} {
 		err *C.char
 		statResult *C.rodsObjStat_t
 	)
+	
+	path := C.CString(obj.Path)
+	
+	defer C.free(unsafe.Pointer(path))
 
-	if status := C.gorods_stat_dataobject(C.CString(obj.Path), &statResult, obj.Con.ccon, &err); status != 0 {
+	if status := C.gorods_stat_dataobject(path, &statResult, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Close Stat Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
@@ -233,7 +260,13 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 		destination = destinationCollectionString + obj.Name
 	}
 
-	if status := C.gorods_copy_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err); status != 0 {
+	path := C.CString(obj.Path)
+	dest := C.CString(destination)
+	
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(dest))
+
+	if status := C.gorods_copy_dataobject(path, dest, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
 	}
 	
@@ -283,7 +316,13 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 		destination = destinationCollectionString + obj.Name
 	}
 
-	if status := C.gorods_move_dataobject(C.CString(obj.Path), C.CString(destination), obj.Con.ccon, &err); status != 0 {
+	path := C.CString(obj.Path)
+	dest := C.CString(destination)
+	
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(dest))
+
+	if status := C.gorods_move_dataobject(path, dest, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Move DataObject Failed S:%v, D:%v, %v", obj.Path, destination, C.GoString(err)))
 	}
 	
@@ -325,7 +364,13 @@ func (obj *DataObj) Rename(name string) *DataObj {
 	source := obj.Path
 	destination := obj.Col.Path + "/" + name
 
-	if status := C.gorods_move_dataobject(C.CString(source), C.CString(destination), obj.Con.ccon, &err); status != 0 {
+	s := C.CString(source)
+	d := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(s))
+	defer C.free(unsafe.Pointer(d))
+
+	if status := C.gorods_move_dataobject(s, d, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Rename DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
@@ -342,7 +387,11 @@ func (obj *DataObj) Delete() {
 	
 	var err *C.char
 
-	if status := C.gorods_unlink_dataobject(C.CString(obj.Path), C.int(1), obj.Con.ccon, &err); status != 0 {
+	path := C.CString(obj.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	if status := C.gorods_unlink_dataobject(path, C.int(1), obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
@@ -352,7 +401,11 @@ func (obj *DataObj) Unlink() {
 	
 	var err *C.char
 
-	if status := C.gorods_unlink_dataobject(C.CString(obj.Path), C.int(0), obj.Con.ccon, &err); status != 0 {
+	path := C.CString(obj.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	if status := C.gorods_unlink_dataobject(path, C.int(0), obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
@@ -366,7 +419,12 @@ func (obj *DataObj) Chksum() string {
 		chksumOut *C.char
 	)
 
-	if status := C.gorods_checksum_dataobject(C.CString(obj.Path), &chksumOut, obj.Con.ccon, &err); status != 0 {
+	path := C.CString(obj.Path)
+
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(chksumOut))
+
+	if status := C.gorods_checksum_dataobject(path, &chksumOut, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Chksum DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
