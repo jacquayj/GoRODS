@@ -69,6 +69,11 @@ func New(opts ConnectionOptions) *Connection {
 	return con
 }
 
+func (con *Connection) Disconnect() {
+	C.rcDisconnect(con.ccon)
+	con.Connected = false
+}
+
 func (obj *Connection) String() string {
 	envString := C.GoString(C.irods_env_str())
 
