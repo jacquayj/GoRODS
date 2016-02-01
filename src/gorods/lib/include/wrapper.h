@@ -11,6 +11,16 @@
 #include "dataObjClose.h"
 #include "lsUtil.h"
 
+typedef struct {
+	char* name;
+	char* value;
+} goRodsMeta_t;
+
+typedef struct {
+	int size;
+	goRodsMeta_t* metaArr;
+} goRodsMetaResult_t;
+
 int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
 char* irods_env_str();
@@ -29,3 +39,8 @@ int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char
 int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
 int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);
 int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err);
+
+void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMeta_t* item);
+void freeGoRodsMetaResult(goRodsMetaResult_t* result);
+goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
+int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResult_t* result, rcComm_t* conn, char** err);

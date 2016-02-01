@@ -101,10 +101,11 @@ Send me a pull request!
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
 * Implement DataObj metadata operations
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
+* Add more robust error handling
 * Add godoc compatible comments to all functions so documentation can be generated
 * Add unit tests
 
 ## Known Issues
 
 * Build script requires pre compiled .o files, the ones included in this repo won't work on 32-bit systems. Will need to integrate iRods build from scratch.
-* There are probably memory leaks from C variables not being free()'d
+* There might be memory leaks from C variables not being free()'d

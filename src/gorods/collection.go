@@ -210,14 +210,15 @@ func (col *Collection) ReadCollection() {
 
 	col.DataObjects = make([]interface{}, 0)
 	
-	for _, obj := range slice {
+	for i, _ := range slice {
+		obj := &slice[i]
 
 		isCollection := (obj.objType != C.DATA_OBJ_T)
 
 		if isCollection {
-			col.DataObjects = append(col.DataObjects, NewCollection(&obj, col))
+			col.DataObjects = append(col.DataObjects, NewCollection(obj, col))
 		} else {
-			col.DataObjects = append(col.DataObjects, NewDataObj(&obj, col))
+			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
 		}
 		
 	}

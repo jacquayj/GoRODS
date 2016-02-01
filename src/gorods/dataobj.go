@@ -230,6 +230,25 @@ func (obj *DataObj) Stat() map[string]interface{} {
 	return result
 }
 
+func (obj *DataObj) Meta() *DataObj {
+	var (
+		err *C.char
+		metaResult C.goRodsMetaResult_t
+	)
+
+	name := C.CString(obj.Name)
+	attrName := C.CString("")
+	cwd := C.CString(obj.Col.Path)
+
+
+	C.gorods_meta_dataobject(name, cwd, attrName, &metaResult, obj.Con.ccon, &err)
+
+	//metaResult.size
+
+
+	return obj
+}
+
 
 // Supports Collection struct and string
 func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
