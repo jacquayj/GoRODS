@@ -344,6 +344,8 @@ void freeGoRodsMetaResult(goRodsMetaResult_t* result) {
 		free(result->metaArr[n].name);
 		free(result->metaArr[n].value);
 	}
+
+	free(result->metaArr);
 }
 
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length) {
