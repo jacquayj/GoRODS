@@ -5,10 +5,10 @@ import "C"
 
 import (
 	"fmt"
-	"unsafe"
+	"io/ioutil"
 	"reflect"
 	"strings"
-	"io/ioutil"
+	"unsafe"
 )
 
 type DataObj struct {
@@ -23,10 +23,10 @@ type DataObj struct {
 }
 
 type DataObjOptions struct {
-	Name string
-	Size int64
-	Mode int
-	Force bool
+	Name     string
+	Size     int64
+	Mode     int
+	Force    bool
 	Resource string
 }
 
@@ -80,11 +80,11 @@ func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 }
 
 func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
-	
+
 	var (
 		errMsg *C.char
 		handle C.int
-		force int
+		force  int
 	)
 
 	if opts.Force {
@@ -92,7 +92,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	} else {
 		force = 0
 	}
-	
+
 	path := C.CString(coll.Path + "/" + opts.Name)
 	resource := C.CString(opts.Resource)
 
@@ -152,8 +152,8 @@ func (obj *DataObj) Read() []byte {
 	obj.Init()
 
 	var (
-		buffer C.bytesBuf_t		
-		err *C.char
+		buffer C.bytesBuf_t
+		err    *C.char
 	)
 
 	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
@@ -201,12 +201,12 @@ func (obj *DataObj) Write(data []byte) *DataObj {
 func (obj *DataObj) Stat() map[string]interface{} {
 
 	var (
-		err *C.char
+		err        *C.char
 		statResult *C.rodsObjStat_t
 	)
-	
+
 	path := C.CString(obj.Path)
-	
+
 	defer C.free(unsafe.Pointer(path))
 
 	if status := C.gorods_stat_dataobject(path, &statResult, obj.Con.ccon, &err); status != 0 {
@@ -215,49 +215,69 @@ func (obj *DataObj) Stat() map[string]interface{} {
 
 	result := make(map[string]interface{})
 
-	result["objSize"]      = int(statResult.objSize)
-	result["dataMode"]     = int(statResult.dataMode)
+	result["objSize"] = int(statResult.objSize)
+	result["dataMode"] = int(statResult.dataMode)
 
-	result["dataId"]       = C.GoString(&statResult.dataId[0])
-	result["chksum"]       = C.GoString(&statResult.chksum[0])
-	result["ownerName"]    = C.GoString(&statResult.ownerName[0])
-	result["ownerZone"]    = C.GoString(&statResult.ownerZone[0])
-	result["createTime"]   = C.GoString(&statResult.createTime[0])
-	result["modifyTime"]   = C.GoString(&statResult.modifyTime[0])
+	result["dataId"] = C.GoString(&statResult.dataId[0])
+	result["chksum"] = C.GoString(&statResult.chksum[0])
+	result["ownerName"] = C.GoString(&statResult.ownerName[0])
+	result["ownerZone"] = C.GoString(&statResult.ownerZone[0])
+	result["createTime"] = C.GoString(&statResult.createTime[0])
+	result["modifyTime"] = C.GoString(&statResult.modifyTime[0])
 
 	C.freeRodsObjStat(statResult)
 
 	return result
 }
 
-func (obj *DataObj) Meta() *DataObj {
+func (obj *DataObj) Meta() map[string]string {
 	var (
-		err *C.char
+		err        *C.char
 		metaResult C.goRodsMetaResult_t
 	)
+
+	result := make(map[string]string)
 
 	name := C.CString(obj.Name)
 	attrName := C.CString("")
 	cwd := C.CString(obj.Col.Path)
 
+	defer C.free(unsafe.Pointer(name))
+	defer C.free(unsafe.Pointer(attrName))
+	defer C.free(unsafe.Pointer(cwd))
 
-	C.gorods_meta_dataobject(name, cwd, attrName, &metaResult, obj.Con.ccon, &err)
+	if status := C.gorods_meta_dataobject(name, cwd, attrName, &metaResult, obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods DataObj Get Meta Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
 
-	//metaResult.size
+	size := int(metaResult.size)
 
+	slice := (*[1 << 30]C.goRodsMeta_t)(unsafe.Pointer(metaResult.metaArr))[:size:size]
 
-	return obj
+	for _, meta := range slice {
+		key := C.GoString(meta.name)
+		value := C.GoString(meta.value)
+
+		result[key] = value
+	}
+
+	C.freeGoRodsMetaResult(&metaResult)
+
+	return result
 }
 
+func (obj *DataObj) GetMeta(key string) string {
+	return obj.Meta()[key]
+}
 
 // Supports Collection struct and string
 func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
-	
+
 	var (
-		err *C.char
-		destination string
+		err                         *C.char
+		destination                 string
 		destinationCollectionString string
-		destinationCollection *Collection
+		destinationCollection       *Collection
 	)
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
@@ -268,7 +288,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 			destinationCollectionString = obj.Col.Path + "/" + destinationCollectionString
 		}
 
-		if destinationCollectionString[len(destinationCollectionString) - 1] != '/' {
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
 			destinationCollectionString += "/"
 		}
 
@@ -281,14 +301,14 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 
 	path := C.CString(obj.Path)
 	dest := C.CString(destination)
-	
+
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(dest))
 
 	if status := C.gorods_copy_dataobject(path, dest, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
 	}
-	
+
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
@@ -308,12 +328,12 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 
 // Supports Collection struct and string
 func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
-	
+
 	var (
-		err *C.char
-		destination string
+		err                         *C.char
+		destination                 string
 		destinationCollectionString string
-		destinationCollection *Collection
+		destinationCollection       *Collection
 	)
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
@@ -324,7 +344,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 			destinationCollectionString = obj.Col.Path + "/" + destinationCollectionString
 		}
 
-		if destinationCollectionString[len(destinationCollectionString) - 1] != '/' {
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
 			destinationCollectionString += "/"
 		}
 
@@ -337,14 +357,14 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 
 	path := C.CString(obj.Path)
 	dest := C.CString(destination)
-	
+
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(dest))
 
 	if status := C.gorods_move_dataobject(path, dest, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Move DataObject Failed S:%v, D:%v, %v", obj.Path, destination, C.GoString(err)))
 	}
-	
+
 	// Reload source collection, we are now detached
 	obj.Col.Init()
 
@@ -371,9 +391,8 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	return obj
 }
 
-
 func (obj *DataObj) Rename(name string) *DataObj {
-	
+
 	if strings.Contains(name, "/") {
 		panic(fmt.Sprintf("Can't Rename DataObject, path detected in: %v", name))
 	}
@@ -401,9 +420,8 @@ func (obj *DataObj) Rename(name string) *DataObj {
 	return obj
 }
 
-
 func (obj *DataObj) Delete() {
-	
+
 	var err *C.char
 
 	path := C.CString(obj.Path)
@@ -417,7 +435,7 @@ func (obj *DataObj) Delete() {
 }
 
 func (obj *DataObj) Unlink() {
-	
+
 	var err *C.char
 
 	path := C.CString(obj.Path)
@@ -430,11 +448,10 @@ func (obj *DataObj) Unlink() {
 
 }
 
-
 func (obj *DataObj) Chksum() string {
-	
+
 	var (
-		err *C.char
+		err       *C.char
 		chksumOut *C.char
 	)
 
@@ -450,26 +467,20 @@ func (obj *DataObj) Chksum() string {
 	return C.GoString(chksumOut)
 }
 
-
 func (obj *DataObj) Verify(checksum string) bool {
 	chksum := strings.Split(obj.Chksum(), ":")
 
 	return (checksum == chksum[1])
 }
 
-
 // IMPLEMENT ME
 func (obj *DataObj) MoveToResource(resource string) *DataObj {
-	
-
 
 	return obj
 }
 
 // IMPLEMENT ME
 func (obj *DataObj) Replicate(resource string) *DataObj {
-	
-
 
 	return obj
 }
@@ -477,7 +488,6 @@ func (obj *DataObj) Replicate(resource string) *DataObj {
 // IMPLEMENT ME
 func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
 	//https://wiki.irods.org/doxygen_api/html/rc_data_obj_trim_8c_a7e4713d4b7617690e484fbada8560663.html
-
 
 	return obj
 }

@@ -31,6 +31,9 @@ func main() {
 	homeDir := irods.Collection("/tempZone/home/admin", true)
 
 	buildFile := homeDir.Cd("gorods").Get("build.sh")
+
+	// Returns map[string]string of all metadata for buildFile DataObject
+	buildFile.Meta()
 	
 	// Returns true/false if checksum matches
 	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")
@@ -99,7 +102,7 @@ Send me a pull request!
 ## Todo
 
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement DataObj metadata operations
+* Implement DataObj set metadata operations
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Add more robust error handling
 * Add godoc compatible comments to all functions so documentation can be generated
@@ -108,4 +111,5 @@ Send me a pull request!
 ## Known Issues
 
 * Build script requires pre compiled .o files, the ones included in this repo won't work on 32-bit systems. Will need to integrate iRods build from scratch.
+* DataObj.Read() loads entire file into buffer, this could be problematic for low-memory systems handling large files
 * There might be memory leaks from C variables not being free()'d

@@ -40,7 +40,7 @@ int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char
 int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);
 int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err);
 
-void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMeta_t* item);
+void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result);
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
 int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResult_t* result, rcComm_t* conn, char** err);

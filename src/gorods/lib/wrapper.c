@@ -358,12 +358,14 @@ goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length) {
 }
 
 
-void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMeta_t* item) {
+void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result) {
 
 	int i, j;
 
 	for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
-
+		
+		goRodsMeta_t* lastItem = expandGoRodsMetaResult(result, 1);
+		
 		for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
 			char *tResult;
 
@@ -373,11 +375,11 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMeta_
 			if ( *descriptions[j] != '\0' ) {
 
 				if ( descriptions[j] == "attribute" ) {
-					item->name = strcpy(malloc(strlen(tResult) + 1), tResult);
+					lastItem->name = strcpy(malloc(strlen(tResult) + 1), tResult);
 				}
 
 				if ( descriptions[j] == "value" ) {
-					item->value = strcpy(malloc(strlen(tResult) + 1), tResult);
+					lastItem->value = strcpy(malloc(strlen(tResult) + 1), tResult);
 				}
 			}
 		}
@@ -387,11 +389,9 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMeta_
 
 
 int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
-	int debug = 0;
 	int testMode = 0; /* some some particular internal tests */
 	int longMode = 0; /* more detailed listing */
 	char zoneArgument[MAX_NAME_LEN + 2] = "";
-	int printCount = 0;
 	// End global vars
 	
 	genQueryInp_t genQueryInp;
@@ -414,7 +414,6 @@ int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResu
 	memset(result, 0, sizeof(goRodsMetaResult_t));
 	memset(&genQueryInp, 0, sizeof(genQueryInp_t));
 
-	printCount = 0;
 	i1a[0] = COL_META_DATA_ATTR_NAME;
 	i1b[0] = 0;
 	i1a[1] = COL_META_DATA_ATTR_VALUE;
@@ -474,11 +473,7 @@ int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResu
 	if ( attrName != NULL && *attrName != '\0' ) {
 		i2a[2] = COL_META_DATA_ATTR_NAME;
 
-		// if ( wild ) {
-		// 	sprintf(v3,"like '%s'",attrName);
-		// } else {
-			sprintf(v3, "= '%s'", attrName);
-		//}
+		sprintf(v3, "= '%s'", attrName);
 
 		condVal[2] = v3;
 		genQueryInp.sqlCondInp.len++;
@@ -492,36 +487,31 @@ int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResu
 		addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneArgument);
 	}
 
-
-
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 	if ( status == CAT_NO_ROWS_FOUND ) {
 		i1a[0] = COL_D_DATA_PATH;
 		genQueryInp.selectInp.len = 1;
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
-		
-		if ( status == 0 ) {
-			printf("None\n");
-			return 0;
-		}
-		if ( status == CAT_NO_ROWS_FOUND ) {
-			printf("Dataobject %s does not exist.\n", fullName);
-			return 0;
-		}
-		
 
+		if ( status == 0 ) {
+			*err = "None";
+			return -1;
+		}
+
+		if ( status == CAT_NO_ROWS_FOUND ) {
+			*err = "DataObject does not exist.\n";
+			return -1;
+		}
 	}
 
-	goRodsMeta_t* lastItem = expandGoRodsMetaResult(result, 1);
-	setGoRodsMeta(genQueryOut, columnNames, lastItem); 
+	setGoRodsMeta(genQueryOut, columnNames, result); 
 
 	while ( status == 0 && genQueryOut->continueInx > 0 ) {
 
 		genQueryInp.continueInx = genQueryOut->continueInx;
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
-		lastItem = expandGoRodsMetaResult(result, 1);
-		setGoRodsMeta(genQueryOut, columnNames, lastItem);
+		setGoRodsMeta(genQueryOut, columnNames, result); 
 	}
 
 	return 0;

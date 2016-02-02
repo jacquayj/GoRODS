@@ -29,8 +29,8 @@ type ConnectionOptions struct {
 type Connection struct {
 	ccon *C.rcComm_t
 
-	Connected bool
-	Options *ConnectionOptions
+	Connected         bool
+	Options           *ConnectionOptions
 	OpenedCollections Collections
 }
 
@@ -40,14 +40,14 @@ func New(opts ConnectionOptions) *Connection {
 	con.Options = &opts
 
 	var (
-		status C.int
-		errMsg *C.char
+		status   C.int
+		errMsg   *C.char
 		password *C.char
 	)
 
 	if con.Options.Password != "" {
 		password = C.CString(con.Options.Password)
-		
+
 		defer C.free(unsafe.Pointer(password))
 	}
 
@@ -72,7 +72,7 @@ func New(opts ConnectionOptions) *Connection {
 	} else {
 		panic(fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
 	}
-	
+
 	return con
 }
 

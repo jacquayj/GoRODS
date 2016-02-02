@@ -5,11 +5,11 @@ import "C"
 
 import (
 	"fmt"
-	"unsafe"
-	"reflect"
-	"strings"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
+	"strings"
+	"unsafe"
 )
 
 // collection.DataObjs()     -> type: DataObjs
@@ -17,13 +17,13 @@ import (
 // collection.All()          -> type: []interface{}
 // collection.Both()         -> (type: DataObjs, type: Collections)
 type Collection struct {
-	Path string
-	Name string
+	Path        string
+	Name        string
 	DataObjects []interface{}
-	Con *Connection
-	Col *Collection
-	Recursive bool
-	
+	Con         *Connection
+	Col         *Collection
+	Recursive   bool
+
 	chandle C.int
 }
 
@@ -39,8 +39,8 @@ func (colls Collections) Exists(path string) bool {
 }
 
 func (colls Collections) Find(path string) *Collection {
-	if path[len(path) - 1] == '/' {
-		path = path[:len(path) - 1]
+	if path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
 	}
 
 	for i, col := range colls {
@@ -53,8 +53,8 @@ func (colls Collections) Find(path string) *Collection {
 }
 
 func (colls Collections) FindRecursive(path string) *Collection {
-	if path[len(path) - 1] == '/' {
-		path = path[:len(path) - 1]
+	if path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
 	}
 
 	for i, col := range colls {
@@ -102,20 +102,20 @@ func (obj *Collection) String() string {
 
 // Init from *C.collEnt_t
 func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
-	
+
 	defer C.free(unsafe.Pointer(data.ownerName))
 	defer C.free(unsafe.Pointer(data.collName))
 	defer C.free(unsafe.Pointer(data.createTime))
 	defer C.free(unsafe.Pointer(data.modifyTime))
-	
+
 	col := new(Collection)
 
 	col.Col = acol
 	col.Con = col.Col.Con
 	col.Path = C.GoString(data.collName)
-	
+
 	pathSlice := strings.Split(col.Path, "/")
-	
+
 	col.Name = pathSlice[len(pathSlice)-1]
 
 	if acol.Recursive {
@@ -134,12 +134,12 @@ func GetCollection(startPath string, recursive bool, con *Connection) *Collectio
 	col.Path = startPath
 	col.Recursive = recursive
 
-	if col.Path[len(col.Path) - 1] == '/' {
-		col.Path = col.Path[:len(col.Path) - 1]
+	if col.Path[len(col.Path)-1] == '/' {
+		col.Path = col.Path[:len(col.Path)-1]
 	}
 
 	pathSlice := strings.Split(col.Path, "/")
-	col.Name = pathSlice[len(pathSlice) - 1]
+	col.Name = pathSlice[len(pathSlice)-1]
 
 	if col.Recursive {
 		col.Init()
@@ -173,7 +173,6 @@ func (col *Collection) Open() *Collection {
 	return col
 }
 
-
 func (col *Collection) Close() *Collection {
 	var errMsg *C.char
 
@@ -191,14 +190,14 @@ func (col *Collection) ReadCollection() {
 
 	// Init C varaibles
 	var (
-		err *C.char
-		arr *C.collEnt_t
+		err     *C.char
+		arr     *C.collEnt_t
 		arrSize C.int
 	)
-	
+
 	// Read data objs from collection
 	C.gorods_read_collection(col.Con.ccon, col.chandle, &arr, &arrSize, &err)
-	
+
 	// Get result length
 	arrLen := int(arrSize)
 
@@ -209,7 +208,7 @@ func (col *Collection) ReadCollection() {
 	slice := (*[1 << 30]C.collEnt_t)(unsafeArr)[:arrLen:arrLen]
 
 	col.DataObjects = make([]interface{}, 0)
-	
+
 	for i, _ := range slice {
 		obj := &slice[i]
 
@@ -220,7 +219,7 @@ func (col *Collection) ReadCollection() {
 		} else {
 			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
 		}
-		
+
 	}
 
 	col.Close()
@@ -236,7 +235,7 @@ func (col *Collection) DataObjs() DataObjs {
 			response = append(response, col.DataObjects[i].(*DataObj))
 		}
 	}
-	
+
 	return response
 }
 
@@ -250,7 +249,7 @@ func (col *Collection) Collections() Collections {
 			response = append(response, col.DataObjects[i].(*Collection))
 		}
 	}
-	
+
 	return response
 }
 
@@ -264,15 +263,15 @@ func (col *Collection) Put(localFile string) *DataObj {
 
 	fileName := filepath.Base(localFile)
 
-    newFile := CreateDataObj(DataObjOptions {
-		Name: fileName,
-		Size: int64(len(data)),
-		Mode: 0750,
+	newFile := CreateDataObj(DataObjOptions{
+		Name:  fileName,
+		Size:  int64(len(data)),
+		Mode:  0750,
 		Force: true,
 	}, col)
 
 	newFile.Write(data)
-	
+
 	return newFile
 }
 
@@ -280,13 +279,13 @@ func (col *Collection) Add(dataObj interface{}) *Collection {
 	col.Init()
 
 	col.DataObjects = append(col.DataObjects, dataObj)
-	
+
 	return col
 }
 
 func (col *Collection) All() []interface{} {
 	col.Init()
-	
+
 	return col.DataObjects
 }
 
