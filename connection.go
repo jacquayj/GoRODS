@@ -3,8 +3,9 @@
 
 package gorods
 
-// #cgo LDFLAGS: -L./lib/build -lgorods
-// #cgo CFLAGS: -I./lib/include -I./lib/irods/lib/core/include -I./lib/irods/lib/api/include -I./lib/irods/lib/md5/include -I./lib/irods/lib/sha1/include -I./lib/irods/server/core/include -I./lib/irods/server/icat/include -I./lib/irods/server/drivers/include -I./lib/irods/server/re/include
+
+// #cgo CFLAGS: -I${SRCDIR}/lib/include -I${SRCDIR}/lib/irods/lib/core/include -I${SRCDIR}/lib/irods/lib/api/include -I${SRCDIR}/lib/irods/lib/md5/include -I${SRCDIR}/lib/irods/lib/sha1/include -I${SRCDIR}/lib/irods/server/core/include -I${SRCDIR}/lib/irods/server/icat/include -I${SRCDIR}/lib/irods/server/drivers/include -I${SRCDIR}/lib/irods/server/re/include
+// #cgo LDFLAGS: -L${SRCDIR}/lib/build -lgorods
 // #include "wrapper.h"
 import "C"
 
