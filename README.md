@@ -113,3 +113,9 @@ Send me a pull request!
 * Build script requires pre compiled .o files, the ones included in this repo won't work on 32-bit systems. Will need to integrate iRods build from scratch.
 * DataObj.Read() loads entire file into buffer, this could be problematic for low-memory systems handling large files
 * There might be memory leaks from C variables not being free()'d
+
+## License & Copyright
+
+Copyright (c) 2016, University of Florida Research Foundation, Inc. All Rights Reserved.
+
+GoRods is released under a 3-clause BSD License. For more information please refer to the LICENSE.md file

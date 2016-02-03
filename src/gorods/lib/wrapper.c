@@ -1,3 +1,6 @@
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. ***
+ *** For more information please refer to the LICENSE.md file            ***/
+
 #include "wrapper.h"
 
 int gorods_connect(rcComm_t** conn, char* password, char** err) {

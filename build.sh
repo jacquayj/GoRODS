@@ -1,3 +1,5 @@
+### Copyright (c) 2016, University of Florida Research Foundation, Inc. ###
+### For more information please refer to the LICENSE.md file            ###
 
 # Get directory where build.sh is located (this file)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
