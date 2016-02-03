@@ -1,6 +1,12 @@
 # GoRods
 GoLang wrapper of iRods C API
 
+## Installation
+
+```
+$ go get github.com/jjacquay712/GoRods
+```
+
 ## Example Usage
 
 ```go
@@ -8,7 +14,7 @@ package main
 
 import (
 	"fmt"
-	"gorods"
+	"github.com/jjacquay712/GoRods"
 )
 
 func main() {
@@ -84,15 +90,6 @@ func main() {
 
 }
 
-```
-
-## Installation
-
-
-```
-$ git clone https://github.com/jjacquay712/GoRods.git
-$ cd GoRods/
-$ ./build.sh
 ```
 
 ## Contributing
