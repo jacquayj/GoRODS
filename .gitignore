@@ -1,5 +1,5 @@
 bin
-*.sublime-workspace
+*.sublime-*
 ._*
 *.o
 empty.txt
