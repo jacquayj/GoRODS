@@ -218,20 +218,20 @@ func (col *Collection) ReadCollection() {
 			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
 
 			// Strings only in DataObj types
-			C.free(unsafe.Pointer(data.dataName))
-			C.free(unsafe.Pointer(data.dataId))
-			C.free(unsafe.Pointer(data.chksum))
-			C.free(unsafe.Pointer(data.dataType))
-			C.free(unsafe.Pointer(data.resource))
-			C.free(unsafe.Pointer(data.rescGrp))
-			C.free(unsafe.Pointer(data.phyPath))
+			C.free(unsafe.Pointer(obj.dataName))
+			C.free(unsafe.Pointer(obj.dataId))
+			C.free(unsafe.Pointer(obj.chksum))
+			C.free(unsafe.Pointer(obj.dataType))
+			C.free(unsafe.Pointer(obj.resource))
+			C.free(unsafe.Pointer(obj.rescGrp))
+			C.free(unsafe.Pointer(obj.phyPath))
 		}
 
 		// String in both object types
-		C.free(unsafe.Pointer(data.ownerName))
-		C.free(unsafe.Pointer(data.collName))
-		C.free(unsafe.Pointer(data.createTime))
-		C.free(unsafe.Pointer(data.modifyTime))
+		C.free(unsafe.Pointer(obj.ownerName))
+		C.free(unsafe.Pointer(obj.collName))
+		C.free(unsafe.Pointer(obj.createTime))
+		C.free(unsafe.Pointer(obj.modifyTime))
 
 	}
 
