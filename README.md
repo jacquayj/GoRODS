@@ -99,7 +99,7 @@ Send me a pull request!
 ## Todo
 
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement DataObj set metadata operations
+* Implement DataObj set metadata operations, chunked write support. API not planned yet
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Add more robust error handling
 * Add godoc compatible comments to all functions so documentation can be generated

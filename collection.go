@@ -106,11 +106,6 @@ func (obj *Collection) String() string {
 // Init from *C.collEnt_t
 func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
-	defer C.free(unsafe.Pointer(data.ownerName))
-	defer C.free(unsafe.Pointer(data.collName))
-	defer C.free(unsafe.Pointer(data.createTime))
-	defer C.free(unsafe.Pointer(data.modifyTime))
-
 	col := new(Collection)
 
 	col.Col = acol
@@ -221,7 +216,22 @@ func (col *Collection) ReadCollection() {
 			col.DataObjects = append(col.DataObjects, NewCollection(obj, col))
 		} else {
 			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
+
+			// Strings only in DataObj types
+			C.free(unsafe.Pointer(data.dataName))
+			C.free(unsafe.Pointer(data.dataId))
+			C.free(unsafe.Pointer(data.chksum))
+			C.free(unsafe.Pointer(data.dataType))
+			C.free(unsafe.Pointer(data.resource))
+			C.free(unsafe.Pointer(data.rescGrp))
+			C.free(unsafe.Pointer(data.phyPath))
 		}
+
+		// String in both object types
+		C.free(unsafe.Pointer(data.ownerName))
+		C.free(unsafe.Pointer(data.collName))
+		C.free(unsafe.Pointer(data.createTime))
+		C.free(unsafe.Pointer(data.modifyTime))
 
 	}
 

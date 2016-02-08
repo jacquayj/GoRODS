@@ -60,18 +60,6 @@ func (obj *DataObj) String() string {
 
 func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
-	defer C.free(unsafe.Pointer(data.ownerName))
-	defer C.free(unsafe.Pointer(data.collName))
-	defer C.free(unsafe.Pointer(data.createTime))
-	defer C.free(unsafe.Pointer(data.modifyTime))
-	defer C.free(unsafe.Pointer(data.dataName))
-	defer C.free(unsafe.Pointer(data.dataId))
-	defer C.free(unsafe.Pointer(data.chksum))
-	defer C.free(unsafe.Pointer(data.dataType))
-	defer C.free(unsafe.Pointer(data.resource))
-	defer C.free(unsafe.Pointer(data.rescGrp))
-	defer C.free(unsafe.Pointer(data.phyPath))
-
 	dataObj := new(DataObj)
 
 	dataObj.Col = col
