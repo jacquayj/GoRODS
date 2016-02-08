@@ -18,6 +18,7 @@ type DataObj struct {
 	Path string
 	Name string
 	Size int64
+	Offset int64
 
 	Con *Connection
 	Col *Collection
@@ -75,6 +76,7 @@ func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 	dataObj.Col = col
 	dataObj.Con = dataObj.Col.Con
+	dataObj.Offset = 0
 	dataObj.Name = C.GoString(data.dataName)
 	dataObj.Path = C.GoString(data.collName) + "/" + dataObj.Name
 	dataObj.Size = int64(data.dataSize)
@@ -110,6 +112,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 
 	dataObj.Col = coll
 	dataObj.Con = dataObj.Col.Con
+	dataObj.Offset = 0
 	dataObj.Name = opts.Name
 	dataObj.Path = C.GoString(path)
 	dataObj.Size = opts.Size
@@ -159,6 +162,8 @@ func (obj *DataObj) Read() []byte {
 		err    *C.char
 	)
 
+	obj.LSeek(0)
+
 	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
 		panic(fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
@@ -172,6 +177,52 @@ func (obj *DataObj) Read() []byte {
 
 	return data
 }
+
+func (obj *DataObj) LSeek(offset int64) *DataObj {
+	var (
+		err *C.char
+	)
+
+	if status := C.gorods_lseek_dataobject(obj.chandle, C.rodsLong_t(offset), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods LSeek DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	obj.Offset = offset
+
+	return obj
+}
+
+
+func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
+	obj.Init()
+
+	var (
+		buffer C.bytesBuf_t
+		err    *C.char
+	)
+
+	obj.LSeek(0)
+
+	for obj.Offset < obj.Size {
+		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, obj.Con.ccon, &err); status != 0 {
+			panic(fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		}
+
+		buf := unsafe.Pointer(buffer.buf)
+
+		chunk := C.GoBytes(buf, C.int(size))
+		C.free(buf)
+
+		callback(chunk)
+
+		obj.LSeek(obj.Offset + size)
+	}
+
+	obj.Close()
+
+	return obj
+}
+
 
 func (obj *DataObj) DownloadTo(localPath string) *DataObj {
 

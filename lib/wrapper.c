@@ -199,6 +199,33 @@ int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer,
 	return 0;
 }
 
+int gorods_lseek_dataobject(int handleInx, rodsLong_t offset, rcComm_t* conn, char** err) {
+	int status; 
+
+	openedDataObjInp_t dataObjLseekInp;
+	fileLseekOut_t *dataObjLseekOut = NULL; 
+
+	bzero(&dataObjLseekInp, sizeof(dataObjLseekInp)); 
+	
+	dataObjLseekInp.l1descInx = handleInx; 
+	
+	if ( dataObjLseekInp.l1descInx < 0 ) { 
+		*err = "rcDataObjLSeek failed, invalid handle passed";
+		return -1;
+	} 
+	
+	dataObjLseekInp.offset = offset; 
+	dataObjLseekInp.whence = SEEK_SET; 
+	
+	status = rcDataObjLseek(conn, &dataObjLseekInp, &dataObjLseekOut); 
+	if ( status < 0 ) { 
+		*err = "rcDataObjLSeek failed";
+		return -1;
+	}
+
+	return 0;
+}
+
 int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 

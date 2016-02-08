@@ -109,7 +109,6 @@ Send me a pull request!
 
 * The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Will need to integrate iRods build from scratch.
 * Build script requires pre compiled .o files to generate libgorods.a (not included in this repo)
-* DataObj.Read() loads entire file into buffer, this could be problematic for low-memory systems handling large files
 * There might be memory leaks from C variables not being free()'d
 
 ## License & Copyright
