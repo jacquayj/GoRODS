@@ -224,6 +224,8 @@ func (obj *DataObj) DownloadTo(localPath string) *DataObj {
 func (obj *DataObj) Write(data []byte) *DataObj {
 	obj.Init()
 
+	obj.LSeek(0)
+
 	size := int64(len(data))
 
 	dataPointer := unsafe.Pointer(&data[0]) // Do I need to free this? It might be done by go

@@ -50,6 +50,15 @@ func main() {
 	// Read file from /tempZone/home/admin/gorods/build.sh
 	contents := buildFile.Read()
 
+	// Read file in 5 byte chunks
+	var wholeFile []byte
+
+	buildFile.ReadChunk(5, func(chunk []byte) {
+		wholeFile = append(wholeFile, chunk...)
+	})
+
+	fmt.Printf(string(wholeFile))
+
 	// Print []Byte as string
 	fmt.Printf(string(contents))
 
