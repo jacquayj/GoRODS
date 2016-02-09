@@ -88,6 +88,15 @@ func main() {
 	// Write string to test file
 	test.Write([]byte("This is a test!"))
 
+	// Write 5 copies of "test" to file
+	// Will start writing at last offset (seek) position (typically 0)
+	for n := 0; n < 5; n++ {
+		test.WriteBytes([]byte("test\n"))
+	}
+
+	// We must close the file explicitly after calling WriteBytes()
+	test.Close()
+
 	// Stat the test.txt file
 	fmt.Printf("%v \n", test.Stat())
 

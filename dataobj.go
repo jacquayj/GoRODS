@@ -166,6 +166,28 @@ func (obj *DataObj) Read() []byte {
 	return data
 }
 
+func (obj *DataObj) ReadBytes(pos int64, length int) []byte {
+	obj.Init()
+
+	var (
+		buffer C.bytesBuf_t
+		err    *C.char
+	)
+
+	obj.LSeek(pos)
+
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods ReadBytes DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	buf := unsafe.Pointer(buffer.buf)
+	defer C.free(buf)
+
+	data := C.GoBytes(buf, C.int(obj.Size))
+
+	return data
+}
+
 func (obj *DataObj) LSeek(offset int64) *DataObj {
 	var (
 		err *C.char
@@ -206,6 +228,8 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 		obj.LSeek(obj.Offset + size)
 	}
 
+	obj.LSeek(0)
+
 	obj.Close()
 
 	return obj
@@ -238,6 +262,25 @@ func (obj *DataObj) Write(data []byte) *DataObj {
 	obj.Size = size
 
 	obj.Close()
+
+	return obj
+}
+
+func (obj *DataObj) WriteBytes(data []byte) *DataObj {
+	obj.Init()
+
+	size := int64(len(data))
+
+	dataPointer := unsafe.Pointer(&data[0]) // Do I need to free this? It might be done by go
+
+	var err *C.char
+	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), obj.Con.ccon, &err); status != 0 {
+		panic(fmt.Sprintf("iRods Write DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	}
+
+	obj.Size = size + obj.Offset
+
+	obj.LSeek(obj.Size)
 
 	return obj
 }
