@@ -15,9 +15,9 @@ import (
 )
 
 type DataObj struct {
-	Path string
-	Name string
-	Size int64
+	Path   string
+	Name   string
+	Size   int64
 	Offset int64
 
 	Con *Connection
@@ -202,7 +202,6 @@ func (obj *DataObj) LSeek(offset int64) *DataObj {
 	return obj
 }
 
-
 func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 	obj.Init()
 
@@ -234,7 +233,6 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 
 	return obj
 }
-
 
 func (obj *DataObj) DownloadTo(localPath string) *DataObj {
 
