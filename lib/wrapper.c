@@ -344,7 +344,7 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 		
 		// Expand array if needed
 		if ( *size >= collectionResponseCapacity ) {
-			collectionResponseCapacity += 1;
+			collectionResponseCapacity *= 2;
 			*arr = realloc(*arr, sizeof(collEnt_t) * collectionResponseCapacity);
 		}
 
