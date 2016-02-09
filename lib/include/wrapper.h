@@ -24,6 +24,7 @@ typedef struct {
 	goRodsMeta_t* metaArr;
 } goRodsMetaResult_t;
 
+void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
 char* irods_env_str();

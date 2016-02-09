@@ -3,6 +3,17 @@
 
 #include "wrapper.h"
 
+
+void* gorods_malloc(size_t size) {
+	void* mem = malloc(size);
+	if ( mem == NULL ) {
+		printf("GoRods error: Unable to allocate %i bytes\n", size);
+		exit(1);
+	}
+
+	return mem;
+}
+
 int gorods_connect(rcComm_t** conn, char* password, char** err) {
 
     rodsEnv myEnv;
@@ -90,7 +101,7 @@ int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, ch
 	dataObjWriteInp.l1descInx = handle;
 	
 	dataObjWriteOutBBuf.len = size; 
-	dataObjWriteOutBBuf.buf = malloc(size); 
+	dataObjWriteOutBBuf.buf = gorods_malloc(size); 
 	
 	// copy data to dataObjWriteOutBBuf.buf 
 	memcpy(dataObjWriteOutBBuf.buf, data, size);
@@ -324,7 +335,7 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 	int collectionResponseCapacity = 100;
 	*size = 0;
 
-	*arr = malloc(sizeof(collEnt_t) * collectionResponseCapacity);
+	*arr = gorods_malloc(sizeof(collEnt_t) * collectionResponseCapacity);
 	
 	collEnt_t* collEnt = NULL;
 	int status;
@@ -343,19 +354,19 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 		memcpy(elem, collEnt, sizeof(collEnt_t));
 		
 		if ( collEnt->objType == DATA_OBJ_T ) { 
-			elem->dataName = strcpy(malloc(strlen(elem->dataName) + 1), elem->dataName);
-			elem->dataId = strcpy(malloc(strlen(elem->dataId) + 1), elem->dataId);
-			elem->chksum = strcpy(malloc(strlen(elem->chksum) + 1), elem->chksum);
-			elem->dataType = strcpy(malloc(strlen(elem->dataType) + 1), elem->dataType);
-			elem->resource = strcpy(malloc(strlen(elem->resource) + 1), elem->resource);
-			elem->rescGrp = strcpy(malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
-			elem->phyPath = strcpy(malloc(strlen(elem->phyPath) + 1), elem->phyPath);
+			elem->dataName = strcpy(gorods_malloc(strlen(elem->dataName) + 1), elem->dataName);
+			elem->dataId = strcpy(gorods_malloc(strlen(elem->dataId) + 1), elem->dataId);
+			elem->chksum = strcpy(gorods_malloc(strlen(elem->chksum) + 1), elem->chksum);
+			elem->dataType = strcpy(gorods_malloc(strlen(elem->dataType) + 1), elem->dataType);
+			elem->resource = strcpy(gorods_malloc(strlen(elem->resource) + 1), elem->resource);
+			elem->rescGrp = strcpy(gorods_malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
+			elem->phyPath = strcpy(gorods_malloc(strlen(elem->phyPath) + 1), elem->phyPath);
 		}
 
-		elem->ownerName = strcpy(malloc(strlen(elem->ownerName) + 1), elem->ownerName);
-		elem->collName = strcpy(malloc(strlen(elem->collName) + 1), elem->collName);
-		elem->createTime = strcpy(malloc(strlen(elem->createTime) + 1), elem->createTime);
-		elem->modifyTime = strcpy(malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
+		elem->ownerName = strcpy(gorods_malloc(strlen(elem->ownerName) + 1), elem->ownerName);
+		elem->collName = strcpy(gorods_malloc(strlen(elem->collName) + 1), elem->collName);
+		elem->createTime = strcpy(gorods_malloc(strlen(elem->createTime) + 1), elem->createTime);
+		elem->modifyTime = strcpy(gorods_malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
 
 		(*size)++;
 		
@@ -407,11 +418,11 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 			if ( *descriptions[j] != '\0' ) {
 
 				if ( descriptions[j] == "attribute" ) {
-					lastItem->name = strcpy(malloc(strlen(tResult) + 1), tResult);
+					lastItem->name = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
 				}
 
 				if ( descriptions[j] == "value" ) {
-					lastItem->value = strcpy(malloc(strlen(tResult) + 1), tResult);
+					lastItem->value = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
 				}
 			}
 		}
@@ -557,7 +568,7 @@ char* irods_env_str() {
         return (char *)"error getting env";
     }
 
-     char* str = malloc(sizeof(char) * 255);
+     char* str = gorods_malloc(sizeof(char) * 255);
 
      sprintf(str, "\tHost: %s\n\tPort: %i\n\tUsername: %s\n\tZone: %s\n", myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone);
 
