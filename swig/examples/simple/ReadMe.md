@@ -7,3 +7,5 @@ Python specifics, take a look at http://www.swig.org/Doc3.0/Ruby.html
 and http://www.swig.org/Doc3.0/Python.html.
 
 Use "make" to build target modules; and "make test" to verify.
+
+Tested on Ubuntu. Needs testing on other Linuxes and MAC OS.
