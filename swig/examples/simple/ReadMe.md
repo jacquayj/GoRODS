@@ -7,5 +7,8 @@ Python specifics, take a look at http://www.swig.org/Doc3.0/Ruby.html
 and http://www.swig.org/Doc3.0/Python.html.
 
 Use "make" to build target modules; and "make test" to verify.
+Edit the make macros inthe Makefile to point to the desired
+installation(s) of Ruby and Python. The initial version of the
+Makefile sets the macros to /opt/include and /opt/lib etc.
 
 Tested on Ubuntu. Needs testing on other Linuxes and MAC OS.
