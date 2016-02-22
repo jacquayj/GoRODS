@@ -1,0 +1,86 @@
+# built swig with
+# ./configure --prefix=/opt --with-go=/opt/bin/go --with-ruby=/opt/bin/ruby --with-python3=/opt/bin/python3.5
+
+.PHONY: clean newmath rbnewmath pynewmath jsnewmath jvmnewmath
+
+#PREFIX := /opt
+PREFIX := /Users/davidhon/opt
+
+#SHELL := /bin/tcsh -f
+SHELL := /bin/bash
+
+SRC := $(shell ls -1 *.c)
+OBJC := $(patsubst %.c,%.o,$(SRC))
+
+SRCC := $(shell ls -1 *.cc)
+OBJCC := $(patsubst %.cc,%.o,$(SRCC))
+
+CLEANME := tags TAGS $(OBJC) $(OBJCC) *_wrap.c *cache* lib*/*.so *~
+
+#GOINC := -I$(PREFIX)/include/go
+RBINC := -I$(PREFIX)/include/ruby-2.3.0 -I$(PREFIX)/include/ruby-2.3.0/x86_64-darwin14
+PYINC := -I$(PREFIX)/include/python3.5m
+JVMINC := -I$(PREFIX)/jvm/jdk/include -I$(PREFIX)/jvm/jdk/include/x86_64-darwin14
+JSINC := -I$(PREFIX)/include/node
+
+FLAGS := -Wall -fPIC 
+CFLAGS := -std=c99 $(FLAGS)
+#CFLAGS := -std=c11 $(FLAGS)
+CXXFLAGS := -std=c++11 $(FLAGS)
+
+LDFLAGS := -L$(PREFIX)/lib -L$(PREFIX)/lib/ruby -L$(PREFIX)/lib/python3 -L$(PREFIX)/jvm/jdk/lib 
+LD := gcc -rdynamic $(LDFLAGS)
+LD++ := g++ -rdynamic $(LDFLAGS)
+
+RM := rm -rf
+
+newmath: rbnewmath pynewmath 
+	@echo made newmath
+
+rbnewmath: clean
+# generate fact_wrap.c
+	~/opt/bin/swig -ruby fact.h
+	gcc -c $(CFLAGS) $(RBINC) fact.c fact_wrap.c
+# note lower case ruby extension filename for require statement; see swig notes at test target below ...
+	$(LD++) -o libruby/newmath.so -shared $(CFLAGS) $(RBINC) fact.o fact_wrap.o 
+#	g++ -c $(CXXFLAGS) $(PRBINC) fact.cc fact_wrap.cxx
+#	$(LD++) -o libruby/newmath.so -shared $(CXXFLAGS) $(RBINC) fact.o fact_wrap.o 
+
+pynewmath: clean
+# generate fact_wrap.c
+	~/opt/bin/swig -python fact.h
+	gcc -c $(CFLAGS) $(PYINC) fact.c fact_wrap.c
+# note pythom import expects underscore prefix to module shared-lib name:
+	$(LD++) -o libpython/_newmath.so -shared $(CFLAGS) $(PYINC) fact.o fact_wrap.o 
+#	g++ -c $(CXXFLAGS) $(PYINC) fact.cc fact_wrap.cxx
+#	$(LD++) -o libpython/_newmath.so -shared $(CXXFLAGS) $(PYINC) fact.o fact_wrap.o 
+
+clean:
+	-@mkdir libpython libruby
+# according to the man page: rm -f, --force -- ignore nonexistent files and arguments, never prompt
+# yet this rm complains, so pre-touch  ...
+	-@touch $(CLEANME)
+	-$(RM) $(CLEANME)
+
+# from the swig ruby docs:
+# Ruby module names must be capitalized, but the convention for Ruby feature names is to use lowercase
+# names. To stay consistent with this practice, you should always specify a lowercase module name with
+# SWIG's %module directive. SWIG will automatically correct the resulting Ruby module name for your
+# extension. So for example, a SWIG interface file that begins with:
+# %module example
+# will result in an extension module using the feature name "example" and Ruby module name "Example".
+test:
+	env RUBYLIB=./libruby ruby -e "print $$:"
+	env RUBYLIB=./libruby ruby -e "require 'newmath' ; f = Newmath.fact(7)"
+	env PYTHONPATH=./libpython python3 -c "import newmath ; f = newmath.fact(7)"
+
+$(OBJC): $(SRC)
+
+$(OBJCC): $(SRCC)
+
+%.o : %.c
+	gcc -c $(CFLAGS) -o $@ $< ; touch OTAGS tags ; etags --append $< ; ctags --update $< 
+
+%.o : %.cc
+	g++ -c $(CXXFLAGS) -o $@ $< ; touch OTAGS tags ; etags --append $< ; ctags --update $< 
+
