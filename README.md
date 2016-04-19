@@ -19,8 +19,8 @@ import (
 
 func main() {
 
-	// Connect to server
-	irods := gorods.New(gorods.ConnectionOptions {
+	// Connect to server, error provided by second parameter
+	irods, _ := gorods.New(gorods.ConnectionOptions {
 
 		// Or gorods.System to use the systems preconfigured environment
 		Environment: gorods.UserDefined, 
@@ -38,8 +38,11 @@ func main() {
 
 	buildFile := homeDir.Cd("gorods").Get("build.sh")
 
-	// Returns map[string]string of all metadata for buildFile DataObject
-	buildFile.Meta()
+	// Returns DataObjMetaCollection containing all metadata for buildFile DataObject
+	metas := buildFile.Meta()
+
+	// Returns pointer to DataObjMeta struct
+	metas.Get("MyAttribute")
 	
 	// Returns true/false if checksum matches
 	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")

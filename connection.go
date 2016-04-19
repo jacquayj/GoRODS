@@ -11,6 +11,7 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+	"errors"
 )
 
 const (
@@ -37,7 +38,7 @@ type Connection struct {
 	OpenedCollections Collections
 }
 
-func New(opts ConnectionOptions) *Connection {
+func New(opts ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
 
 	con.Options = &opts
@@ -65,18 +66,21 @@ func New(opts ConnectionOptions) *Connection {
 		defer C.free(unsafe.Pointer(username))
 		defer C.free(unsafe.Pointer(zone))
 
+		// FIXME: iRods C API code outputs errors messages, need to implement connect wrapper from a lower level to suppress this output
+		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
 		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
 	} else {
+		// FIXME: ^
 		status = C.gorods_connect(&con.ccon, password, &errMsg)
 	}
 
 	if status == 0 {
 		con.Connected = true
 	} else {
-		panic(fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+		return nil, errors.New(fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
 	}
 
-	return con
+	return con, nil
 }
 
 func (con *Connection) Disconnect() {
