@@ -384,6 +384,7 @@ void freeGoRodsMetaResult(goRodsMetaResult_t* result) {
 	for ( n = 0; n < result->size; n++ ) {
 		free(result->metaArr[n].name);
 		free(result->metaArr[n].value);
+		free(result->metaArr[n].units);
 	}
 
 	free(result->metaArr);
@@ -423,6 +424,10 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 
 				if ( descriptions[j] == "value" ) {
 					lastItem->value = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+				}
+
+				if ( descriptions[j] == "units" ) {
+					lastItem->units = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
 				}
 			}
 		}

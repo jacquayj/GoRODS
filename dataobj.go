@@ -34,6 +34,39 @@ type DataObjOptions struct {
 	Resource string
 }
 
+type DataObjMeta struct {
+	Attribute string
+	Value	  string
+	Units 	  string
+}
+
+type DataObjMetaCollection []*DataObjMeta
+
+
+func (m *DataObjMeta) String() string {
+	return m.Attribute + ": " + m.Value + " (unit: " + m.Units + ")"
+}
+
+func (metas DataObjMetaCollection) String() string {
+	var str string
+
+	for _, m := range metas {
+		str += m.String() + "\n"
+	}
+
+	return str
+}
+
+func (metas DataObjMetaCollection) Get(attr string) *DataObjMeta {
+	for i, m := range metas {
+		if m.Attribute == attr {
+			return metas[i]
+		}
+	}
+
+	return nil
+}
+
 type DataObjs []*DataObj
 
 func (dos DataObjs) Exists(path string) bool {
@@ -315,13 +348,13 @@ func (obj *DataObj) Stat() map[string]interface{} {
 	return result
 }
 
-func (obj *DataObj) Meta() map[string]string {
+func (obj *DataObj) Meta() DataObjMetaCollection {
 	var (
 		err        *C.char
 		metaResult C.goRodsMetaResult_t
 	)
 
-	result := make(map[string]string)
+	result := make(DataObjMetaCollection, 0)
 
 	name := C.CString(obj.Name)
 	attrName := C.CString("")
@@ -340,19 +373,19 @@ func (obj *DataObj) Meta() map[string]string {
 	slice := (*[1 << 30]C.goRodsMeta_t)(unsafe.Pointer(metaResult.metaArr))[:size:size]
 
 	for _, meta := range slice {
-		key := C.GoString(meta.name)
-		value := C.GoString(meta.value)
 
-		result[key] = value
+		m := new(DataObjMeta)
+
+		m.Attribute = C.GoString(meta.name)
+		m.Value = C.GoString(meta.value)
+		m.Units = C.GoString(meta.units)
+
+		result = append(result, m)
 	}
 
 	C.freeGoRodsMetaResult(&metaResult)
 
 	return result
-}
-
-func (obj *DataObj) GetMeta(key string) string {
-	return obj.Meta()[key]
 }
 
 // Supports Collection struct and string

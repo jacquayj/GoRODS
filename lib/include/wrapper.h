@@ -17,6 +17,7 @@
 typedef struct {
 	char* name;
 	char* value;
+	char* units;
 } goRodsMeta_t;
 
 typedef struct {
