@@ -1,13 +1,13 @@
 # GoRods
 GoLang wrapper of iRods C API
 
-## Installation
+# Installation
 
 ```
 $ go get github.com/jjacquay712/GoRods
 ```
 
-## Docs
+# Docs
 
 https://godoc.org/github.com/jjacquay712/GoRods
 
@@ -138,6 +138,7 @@ Send me a pull request!
 * The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Will need to integrate iRods build from scratch.
 * Build script requires pre compiled .o files to generate libgorods.a (not included in this repo)
 * There might be memory leaks from C variables not being free()'d
+* Bug list: https://godoc.org/github.com/jjacquay712/GoRods#pkg-note-bug
 
 ## License & Copyright
 
