@@ -94,11 +94,11 @@ func (colls Collections) FindRecursive(path string) *Collection {
 
 // String shows the contents of the collection. D = DataObj, C = Collection. Sample output:
 //
-// Collection: /tempZone/home/admin/gorods
-// 	D: build.sh
-// 	C: bin
-// 	C: pkg
-// 	C: src
+// 	Collection: /tempZone/home/admin/gorods
+// 		D: build.sh
+// 		C: bin
+// 		C: pkg
+// 		C: src
 func (obj *Collection) String() string {
 	str := fmt.Sprintf("Collection: %v\n", obj.Path)
 
@@ -135,7 +135,7 @@ func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
 	return col
 }
 
-// GetCollection initializes specified collection located at startPath using gorods.Connection
+// GetCollection initializes specified collection located at startPath using gorods.Connection. 
 // Could be considered alias of Connection.Collection()
 func GetCollection(startPath string, recursive bool, con *Connection) *Collection {
 	col := new(Collection)

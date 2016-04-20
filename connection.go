@@ -19,7 +19,7 @@ import (
 // System and UserDefined constants are used when calling
 // gorods.New(ConnectionOptions{ Environment: ... })
 // When System is specified, the options stored in ~/.irods/.irodsEnv will be used. 
-// When UserDefined is specified you must also pass Host, Port, Username, and Zone
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone. 
 // Password should be set regardless. The five type constants are used internally for metadata
 // operations.
 const (
