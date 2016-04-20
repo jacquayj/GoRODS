@@ -1,13 +1,13 @@
 # GoRods
 GoLang wrapper of iRods C API
 
-# Installation
+### Installation
 
 ```
 $ go get github.com/jjacquay712/GoRods
 ```
 
-# Docs
+### Docs
 
 https://godoc.org/github.com/jjacquay712/GoRods
 
