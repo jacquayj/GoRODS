@@ -34,7 +34,7 @@ func main() {
 	})
 
 	// Open collection, preload sub collections into memory
-	homeDir := irods.Collection("/tempZone/home/admin", true)
+	homeDir, _ := irods.Collection("/tempZone/home/admin", true)
 
 	buildFile := homeDir.Cd("gorods").Get("build.sh")
 
@@ -123,7 +123,7 @@ Send me a pull request!
 ## Todo
 
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement DataObj set metadata operations, chunked write support
+* Implement DataObj set metadata operations
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Add more robust error handling, replace panic()'s by returning error interface
 * Add godoc compatible comments to all functions so documentation can be generated
