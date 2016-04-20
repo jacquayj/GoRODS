@@ -16,6 +16,12 @@ import (
 	"errors"
 )
 
+// System and UserDefined constants are used when calling
+// gorods.New(ConnectionOptions{ Environment: ... })
+// When System is specified, the options stored in ~/.irods/.irodsEnv will be used. 
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone
+// Password should be set regardless. The five type constants are used internally for metadata
+// operations.
 const (
 	System = iota
 	UserDefined
@@ -46,6 +52,7 @@ type Connection struct {
 	OpenedCollections Collections
 }
 
+
 func New(opts ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
 
@@ -74,12 +81,11 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		defer C.free(unsafe.Pointer(username))
 		defer C.free(unsafe.Pointer(zone))
 
-		// FIXME: iRods C API code outputs errors messages, need to implement connect wrapper from a lower level to suppress this output
+		// BUG(jjacquay712): iRods C API code outputs errors messages, need to implement connect wrapper (gorods_connect_env) from a lower level to suppress this output
 		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
 		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
 	} else {
-		// FIXME: ^
-		// FIXME: Implements getRodsEnv() which I believe reads the old ~/.irods/.irodsEnv file format
+		// BUG(jjacquay712): Implements getRodsEnv() which I believe reads the old ~/.irods/.irodsEnv file format
 		status = C.gorods_connect(&con.ccon, password, &errMsg)
 	}
 
@@ -92,6 +98,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	return con, nil
 }
 
+// Disconnect closes connection to iRods
 func (con *Connection) Disconnect() {
 	C.rcDisconnect(con.ccon)
 	con.Connected = false

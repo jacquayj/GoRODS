@@ -28,9 +28,10 @@ type Collection struct {
 	chandle C.int
 }
 
-// collections.Find(relPath) -> type: Collection
 type Collections []*Collection
 
+// Exists checks to see if a collection exists in the slice
+// and returns true or false
 func (colls Collections) Exists(path string) bool {
 	if c := colls.Find(path); c != nil {
 		return true
@@ -39,6 +40,8 @@ func (colls Collections) Exists(path string) bool {
 	return false
 }
 
+// Find gets a collection from the slice and returns nil if one is not found.
+// Both the collection name and path can be used as input.
 func (colls Collections) Find(path string) *Collection {
 	if path[len(path)-1] == '/' {
 		path = path[:len(path)-1]
@@ -53,6 +56,8 @@ func (colls Collections) Find(path string) *Collection {
 	return nil
 }
 
+// FindRecursive acts just like Find, but also searches sub collections recursively.
+// If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (colls Collections) FindRecursive(path string) *Collection {
 	if path[len(path)-1] == '/' {
 		path = path[:len(path)-1]
@@ -87,6 +92,13 @@ func (colls Collections) FindRecursive(path string) *Collection {
 	return nil
 }
 
+// String shows the contents of the collection. D = DataObj, C = Collection. Sample output:
+//
+// Collection: /tempZone/home/admin/gorods
+// 	D: build.sh
+// 	C: bin
+// 	C: pkg
+// 	C: src
 func (obj *Collection) String() string {
 	str := fmt.Sprintf("Collection: %v\n", obj.Path)
 
@@ -101,7 +113,8 @@ func (obj *Collection) String() string {
 	return str
 }
 
-// Init from *C.collEnt_t
+
+// NewCollection initializes collection from *C.collEnt_t. This is used internally in the gorods package, maybe it should be lowercased?
 func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	col := new(Collection)
@@ -122,7 +135,8 @@ func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
 	return col
 }
 
-// Called from connection
+// GetCollection initializes specified collection located at startPath using gorods.Connection
+// Could be considered alias of Connection.Collection()
 func GetCollection(startPath string, recursive bool, con *Connection) *Collection {
 	col := new(Collection)
 
@@ -144,6 +158,7 @@ func GetCollection(startPath string, recursive bool, con *Connection) *Collectio
 	return col
 }
 
+// Init opens and reads collection information from iRods if the handle isn't set
 func (col *Collection) Init() *Collection {
 	// If connection hasn't been opened, do it!
 	if int(col.chandle) == 0 {
@@ -154,12 +169,14 @@ func (col *Collection) Init() *Collection {
 	return col
 }
 
+// Attribute gets specific metadata AVU triple for Collection
 func (col *Collection) Attribute(attr string) *Meta {
 	col.Init()
 
 	return col.Meta().Get(attr)
 }
 
+// Meta returns collection of all metadata AVU triples for Collection
 func (col *Collection) Meta() MetaCollection {
 	col.Init()
 
@@ -171,7 +188,8 @@ func (col *Collection) Meta() MetaCollection {
 }
 
 
-// Opens connection to collection, passes in flag options
+// Open connects to iRods and sets the handle for Collection
+// Usually called by Collection.Init()
 func (col *Collection) Open() *Collection {
 	var errMsg *C.char
 
@@ -186,6 +204,8 @@ func (col *Collection) Open() *Collection {
 	return col
 }
 
+
+// Close closes the Collection connection and resets the handle
 func (col *Collection) Close() *Collection {
 	var errMsg *C.char
 
