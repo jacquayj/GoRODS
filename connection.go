@@ -17,6 +17,12 @@ import (
 const (
 	System = iota
 	UserDefined
+
+	DataObjType
+	CollectionType
+	ResourceType
+	ResourceGroupType
+	UserType
 )
 
 type ConnectionOptions struct {
@@ -71,6 +77,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
 	} else {
 		// FIXME: ^
+		// FIXME: Implements getRodsEnv() which I believe reads the old ~/.irods/.irodsEnv file format
 		status = C.gorods_connect(&con.ccon, password, &errMsg)
 	}
 
@@ -89,19 +96,22 @@ func (con *Connection) Disconnect() {
 }
 
 func (obj *Connection) String() string {
-	cEnvString := C.irods_env_str()
-
-	defer C.free(unsafe.Pointer(cEnvString))
-
-	envString := C.GoString(cEnvString)
-
-	return fmt.Sprintf("Connection Env:\n%v\tConnected: %v\n", envString, obj.Connected)
+	if obj.Options.Environment == UserDefined {
+		return fmt.Sprintf("Host: %v:%v/%v, Connected: %v\n", obj.Options.Host, obj.Options.Port, obj.Options.Zone, obj.Connected)
+	}
+	return fmt.Sprintf("Host: ?, Connected: %v\n", obj.Connected)
 }
 
-func (con *Connection) Collection(startPath string, recursive bool) *Collection {
-	collection := GetCollection(startPath, recursive, con)
+func (con *Connection) Collection(startPath string, recursive bool) (collection *Collection, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(r.(string))
+		}
+	}()
 
+	collection = GetCollection(startPath, recursive, con)
 	con.OpenedCollections = append(con.OpenedCollections, collection)
 
-	return collection
+	return
 }
+

@@ -14,18 +14,25 @@ import (
 	"unsafe"
 )
 
+// DataObj structs contain information about single data objects in an iRods zone.
 type DataObj struct {
 	Path   string
 	Name   string
 	Size   int64
 	Offset int64
 
+	MetaCol MetaCollection
+
+	// Con field is a pointer to the Connection used to fetch the data object
 	Con *Connection
+
+	// Col field is a pointer to the Collection containing the data object
 	Col *Collection
 
 	chandle C.int
 }
 
+// DataObjOptions is used for passing options to the CreateDataObj function
 type DataObjOptions struct {
 	Name     string
 	Size     int64
@@ -34,38 +41,6 @@ type DataObjOptions struct {
 	Resource string
 }
 
-type DataObjMeta struct {
-	Attribute string
-	Value	  string
-	Units 	  string
-}
-
-type DataObjMetaCollection []*DataObjMeta
-
-
-func (m *DataObjMeta) String() string {
-	return m.Attribute + ": " + m.Value + " (unit: " + m.Units + ")"
-}
-
-func (metas DataObjMetaCollection) String() string {
-	var str string
-
-	for _, m := range metas {
-		str += m.String() + "\n"
-	}
-
-	return str
-}
-
-func (metas DataObjMetaCollection) Get(attr string) *DataObjMeta {
-	for i, m := range metas {
-		if m.Attribute == attr {
-			return metas[i]
-		}
-	}
-
-	return nil
-}
 
 type DataObjs []*DataObj
 
@@ -222,6 +197,8 @@ func (obj *DataObj) ReadBytes(pos int64, length int) []byte {
 }
 
 func (obj *DataObj) LSeek(offset int64) *DataObj {
+	obj.Init()
+
 	var (
 		err *C.char
 	)
@@ -268,6 +245,8 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 }
 
 func (obj *DataObj) DownloadTo(localPath string) *DataObj {
+	obj.Init()
+
 
 	if err := ioutil.WriteFile(localPath, obj.Read(), 0644); err != nil {
 		panic(fmt.Sprintf("iRods Download DataObject Failed: %v, %v", obj.Path, err))
@@ -317,6 +296,7 @@ func (obj *DataObj) WriteBytes(data []byte) *DataObj {
 }
 
 func (obj *DataObj) Stat() map[string]interface{} {
+	obj.Init()
 
 	var (
 		err        *C.char
@@ -348,44 +328,20 @@ func (obj *DataObj) Stat() map[string]interface{} {
 	return result
 }
 
-func (obj *DataObj) Meta() DataObjMetaCollection {
-	var (
-		err        *C.char
-		metaResult C.goRodsMetaResult_t
-	)
+func (obj *DataObj) Attribute(attr string) *Meta {
+	obj.Init()
 
-	result := make(DataObjMetaCollection, 0)
+	return obj.Meta().Get(attr)
+}
 
-	name := C.CString(obj.Name)
-	attrName := C.CString("")
-	cwd := C.CString(obj.Col.Path)
+func (obj *DataObj) Meta() MetaCollection {
+	obj.Init()
 
-	defer C.free(unsafe.Pointer(name))
-	defer C.free(unsafe.Pointer(attrName))
-	defer C.free(unsafe.Pointer(cwd))
-
-	if status := C.gorods_meta_dataobject(name, cwd, attrName, &metaResult, obj.Con.ccon, &err); status != 0 {
-		panic(fmt.Sprintf("iRods DataObj Get Meta Failed: %v, %v", obj.Path, C.GoString(err)))
+	if obj.MetaCol == nil {
+		obj.MetaCol = NewMetaCollection(DataObjType, obj.Name, obj.Col.Path, obj.Con.ccon)
 	}
-
-	size := int(metaResult.size)
-
-	slice := (*[1 << 30]C.goRodsMeta_t)(unsafe.Pointer(metaResult.metaArr))[:size:size]
-
-	for _, meta := range slice {
-
-		m := new(DataObjMeta)
-
-		m.Attribute = C.GoString(meta.name)
-		m.Value = C.GoString(meta.value)
-		m.Units = C.GoString(meta.units)
-
-		result = append(result, m)
-	}
-
-	C.freeGoRodsMetaResult(&metaResult)
-
-	return result
+	
+	return obj.MetaCol
 }
 
 // Supports Collection struct and string
@@ -434,7 +390,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 			destinationCollection.Init()
 		} else {
 			// Can't find, load collection into memory
-			destinationCollection = obj.Con.Collection(destinationCollectionString, false)
+			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
@@ -493,7 +449,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 			destinationCollection.Init()
 		} else {
 			// Can't find, load collection into memory
-			destinationCollection = obj.Con.Collection(destinationCollectionString, false)
+			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))

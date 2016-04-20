@@ -28,7 +28,6 @@ typedef struct {
 void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
-char* irods_env_str();
 
 int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
@@ -49,4 +48,5 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result);
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
-int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
+int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
+int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
