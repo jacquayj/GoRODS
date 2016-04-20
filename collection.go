@@ -15,10 +15,7 @@ import (
 	"unsafe"
 )
 
-// collection.DataObjs()     -> type: DataObjs
-// collection.Collections()  -> type: Collections
-// collection.All()          -> type: []interface{}
-// collection.Both()         -> (type: DataObjs, type: Collections)
+// Collection structs contain information about single collections in an iRods zone.
 type Collection struct {
 	Path        string
 	Name        string

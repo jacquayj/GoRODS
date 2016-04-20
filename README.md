@@ -7,6 +7,10 @@ GoLang wrapper of iRods C API
 $ go get github.com/jjacquay712/GoRods
 ```
 
+## Docs
+
+https://godoc.org/github.com/jjacquay712/GoRods
+
 ## Example Usage
 
 ```go
