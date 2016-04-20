@@ -50,3 +50,4 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
+int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);

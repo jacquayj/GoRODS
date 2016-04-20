@@ -42,7 +42,9 @@ func NewMetaCollection(metatype int, objName string, objPath string, ccon *C.rcC
 				panic(fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err)))
 			}
 		case CollectionType:
-			
+			if status := C.gorods_meta_collection(name, cwd, &metaResult, ccon, &err); status != 0 {
+				panic(fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err)))
+			}
 		case ResourceType:
 			
 		case ResourceGroupType:
