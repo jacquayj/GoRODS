@@ -390,7 +390,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 			destinationCollection.Init()
 		} else {
 			// Can't find, load collection into memory
-			destinationCollection = obj.Con.Collection(destinationCollectionString, false)
+			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
@@ -449,7 +449,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 			destinationCollection.Init()
 		} else {
 			// Can't find, load collection into memory
-			destinationCollection = obj.Con.Collection(destinationCollectionString, false)
+			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
