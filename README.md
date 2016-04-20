@@ -38,10 +38,10 @@ func main() {
 
 	buildFile := homeDir.Cd("gorods").Get("build.sh")
 
-	// Returns DataObjMetaCollection containing all metadata for buildFile DataObject
+	// Returns MetaCollection containing all metadata for buildFile DataObject
 	metas := buildFile.Meta()
 
-	// Returns pointer to DataObjMeta struct
+	// Returns pointer to Meta struct
 	metas.Get("MyAttribute")
 	
 	// Returns true/false if checksum matches
@@ -120,9 +120,9 @@ Send me a pull request!
 ## Todo
 
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement DataObj set metadata operations, chunked write support. API not planned yet
+* Implement DataObj set metadata operations, chunked write support
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
-* Add more robust error handling
+* Add more robust error handling, replace panic()'s by returning error interface
 * Add godoc compatible comments to all functions so documentation can be generated
 * Add unit tests
 

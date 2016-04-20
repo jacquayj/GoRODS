@@ -436,10 +436,11 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 }
 
 
-int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
+int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
 	int testMode = 0; /* some some particular internal tests */
 	int longMode = 0; /* more detailed listing */
 	char zoneArgument[MAX_NAME_LEN + 2] = "";
+	char *attrName = ""; // Get all attributes?
 	// End global vars
 	
 	genQueryInp_t genQueryInp;
@@ -547,7 +548,7 @@ int gorods_meta_dataobject(char *name, char *cwd, char *attrName, goRodsMetaResu
 		}
 
 		if ( status == CAT_NO_ROWS_FOUND ) {
-			*err = "DataObject does not exist.\n";
+			*err = "Object does not exist.\n";
 			return -1;
 		}
 	}

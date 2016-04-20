@@ -17,6 +17,12 @@ import (
 const (
 	System = iota
 	UserDefined
+
+	DataObjType
+	CollectionType
+	ResourceType
+	ResourceGroupType
+	UserType
 )
 
 type ConnectionOptions struct {

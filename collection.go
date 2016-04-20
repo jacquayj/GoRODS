@@ -23,6 +23,7 @@ type Collection struct {
 	Path        string
 	Name        string
 	DataObjects []interface{}
+	MetaCol MetaCollection
 	Con         *Connection
 	Col         *Collection
 	Recursive   bool
@@ -155,6 +156,23 @@ func (col *Collection) Init() *Collection {
 
 	return col
 }
+
+func (col *Collection) Attribute(attr string) *Meta {
+	col.Init()
+
+	return col.Meta().Get(attr)
+}
+
+func (col *Collection) Meta() MetaCollection {
+	col.Init()
+
+	if col.MetaCol == nil {
+		//col.MetaCol = NewMetaCollection(CollectionType, col.Name, filepath.Dir(col.Path), col.Con.ccon)
+	}
+	
+	return col.MetaCol
+}
+
 
 // Opens connection to collection, passes in flag options
 func (col *Collection) Open() *Collection {
