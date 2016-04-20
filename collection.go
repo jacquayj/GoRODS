@@ -30,7 +30,7 @@ type Collection struct {
 
 type Collections []*Collection
 
-// Exists checks to see if a collection exists in the slice
+// Exists checks to see if a collection exists in the slice 
 // and returns true or false
 func (colls Collections) Exists(path string) bool {
 	if c := colls.Find(path); c != nil {
@@ -40,7 +40,7 @@ func (colls Collections) Exists(path string) bool {
 	return false
 }
 
-// Find gets a collection from the slice and returns nil if one is not found.
+// Find gets a collection from the slice and returns nil if one is not found. 
 // Both the collection name and path can be used as input.
 func (colls Collections) Find(path string) *Collection {
 	if path[len(path)-1] == '/' {
@@ -56,7 +56,7 @@ func (colls Collections) Find(path string) *Collection {
 	return nil
 }
 
-// FindRecursive acts just like Find, but also searches sub collections recursively.
+// FindRecursive acts just like Find, but also searches sub collections recursively. 
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (colls Collections) FindRecursive(path string) *Collection {
 	if path[len(path)-1] == '/' {
@@ -92,7 +92,13 @@ func (colls Collections) FindRecursive(path string) *Collection {
 	return nil
 }
 
-// String shows the contents of the collection. D = DataObj, C = Collection. Sample output:
+// String shows the contents of the collection.
+//
+// D = DataObj
+//
+// C = Collection
+//
+// Sample output:
 //
 // 	Collection: /tempZone/home/admin/gorods
 // 		D: build.sh
@@ -188,7 +194,7 @@ func (col *Collection) Meta() MetaCollection {
 }
 
 
-// Open connects to iRods and sets the handle for Collection
+// Open connects to iRods and sets the handle for Collection. 
 // Usually called by Collection.Init()
 func (col *Collection) Open() *Collection {
 	var errMsg *C.char
@@ -218,7 +224,7 @@ func (col *Collection) Close() *Collection {
 	return col
 }
 
-// Reads data into col.DataObjects
+// ReadCollection reads data into col.DataObjects field
 func (col *Collection) ReadCollection() {
 
 	// Init C varaibles
@@ -273,6 +279,7 @@ func (col *Collection) ReadCollection() {
 	col.Close()
 }
 
+// DataObjs returns only the data objects contained within the collection
 func (col *Collection) DataObjs() DataObjs {
 	col.Init()
 
@@ -287,6 +294,7 @@ func (col *Collection) DataObjs() DataObjs {
 	return response
 }
 
+// Collections returns only the collections contained within the collection
 func (col *Collection) Collections() Collections {
 	col.Init()
 
@@ -301,6 +309,7 @@ func (col *Collection) Collections() Collections {
 	return response
 }
 
+// Put adds a local file to the remote iRods collection
 func (col *Collection) Put(localFile string) *DataObj {
 	col.Init()
 
