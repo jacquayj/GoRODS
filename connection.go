@@ -98,7 +98,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	return con, nil
 }
 
-// Disconnect closes connection to iRods
+// Disconnect closes connection to iRods iCAT server
 func (con *Connection) Disconnect() {
 	C.rcDisconnect(con.ccon)
 	con.Connected = false

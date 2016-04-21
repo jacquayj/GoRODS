@@ -195,7 +195,7 @@ func (col *Collection) Meta() MetaCollection {
 
 
 // Open connects to iRods and sets the handle for Collection. 
-// Usually called by Collection.Init()
+// Usually called by Collection.init()
 func (col *Collection) Open() *Collection {
 	var errMsg *C.char
 
@@ -224,7 +224,12 @@ func (col *Collection) Close() *Collection {
 	return col
 }
 
-// ReadCollection reads data into col.DataObjects field
+// Refresh is an alias of ReadCollection() 
+func (col *Collection) Refresh() {
+	col.ReadCollection()
+}
+
+// ReadCollection reads data into col.DataObjects field.
 func (col *Collection) ReadCollection() {
 
 	// Init C varaibles
@@ -256,7 +261,7 @@ func (col *Collection) ReadCollection() {
 		if isCollection {
 			col.DataObjects = append(col.DataObjects, initCollection(obj, col))
 		} else {
-			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
+			col.DataObjects = append(col.DataObjects, initDataObj(obj, col))
 
 			// Strings only in DataObj types
 			C.free(unsafe.Pointer(obj.dataName))
@@ -332,7 +337,11 @@ func (col *Collection) Put(localFile string) *DataObj {
 	return newFile
 }
 
-func (col *Collection) Add(dataObj interface{}) *Collection {
+func (col *Collection) CreateDataObj(opts DataObjOptions) *DataObj {
+	return CreateDataObj(opts, col)
+}
+
+func (col *Collection) add(dataObj interface{}) *Collection {
 	col.init()
 
 	col.DataObjects = append(col.DataObjects, dataObj)

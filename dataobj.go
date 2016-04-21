@@ -66,7 +66,7 @@ func (obj *DataObj) String() string {
 	return "DataObject: " + obj.Path
 }
 
-func NewDataObj(data *C.collEnt_t, col *Collection) *DataObj {
+func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 	dataObj := new(DataObj)
 
@@ -114,7 +114,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	dataObj.Size = opts.Size
 	dataObj.chandle = handle
 
-	coll.Add(dataObj)
+	coll.add(dataObj)
 
 	return dataObj
 
