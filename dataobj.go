@@ -41,9 +41,11 @@ type DataObjOptions struct {
 	Resource string
 }
 
-
+// DataObjs is a slice of DataObj structs
 type DataObjs []*DataObj
 
+// Exists checks to see if a data object exists in the slice 
+// and returns true or false
 func (dos DataObjs) Exists(path string) bool {
 	if d := dos.Find(path); d != nil {
 		return true
@@ -52,6 +54,8 @@ func (dos DataObjs) Exists(path string) bool {
 	return false
 }
 
+// Find gets a data object from the slice and returns nil if one is not found. 
+// Both the data object name or full path can be used as input.
 func (dos DataObjs) Find(path string) *DataObj {
 	for i, do := range dos {
 		if do.Path == path || do.Name == path {
@@ -62,6 +66,7 @@ func (dos DataObjs) Find(path string) *DataObj {
 	return nil
 }
 
+// String returns path of data object
 func (obj *DataObj) String() string {
 	return "DataObject: " + obj.Path
 }
@@ -80,6 +85,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	return dataObj
 }
 
+// CreateDataObj creates and adds a data object to the specified collection using provided options. Returns the newly created data object.
 func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 
 	var (
@@ -126,6 +132,7 @@ func (obj *DataObj) init() {
 	}
 }
 
+// Open opens a connection to iRods and sets the data object handle
 func (obj *DataObj) Open() {
 	var errMsg *C.char
 
@@ -138,6 +145,7 @@ func (obj *DataObj) Open() {
 	}
 }
 
+// Close closes the data object handler, returns the closed data object.
 func (obj *DataObj) Close() *DataObj {
 	var errMsg *C.char
 
@@ -150,6 +158,7 @@ func (obj *DataObj) Close() *DataObj {
 	return obj
 }
 
+// Read reads the entire data object into memory and returns a []byte slice. Don't use this for large files.
 func (obj *DataObj) Read() []byte {
 	obj.init()
 
@@ -174,6 +183,7 @@ func (obj *DataObj) Read() []byte {
 	return data
 }
 
+// ReadBytes reads bytes from a data object at the specified position and length, returns []byte slice.
 func (obj *DataObj) ReadBytes(pos int64, length int) []byte {
 	obj.init()
 
@@ -196,6 +206,7 @@ func (obj *DataObj) ReadBytes(pos int64, length int) []byte {
 	return data
 }
 
+// LSeek sets the read/write offset pointer of a data object, returns self (DataObj)
 func (obj *DataObj) LSeek(offset int64) *DataObj {
 	obj.init()
 
@@ -212,6 +223,7 @@ func (obj *DataObj) LSeek(offset int64) *DataObj {
 	return obj
 }
 
+// ReadChunk reads the entire data object in chunks (size of chunk specified by size parameter), passing the data into a callback function for each chunk. Use this to read/write large files.
 func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 	obj.init()
 
@@ -244,9 +256,9 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 	return obj
 }
 
+// DownloadTo downloads and writes the entire data object to the provided path. Don't use this with large files unless you have RAM to spare, use ReadChunk() instead. Returns self (DataObj).
 func (obj *DataObj) DownloadTo(localPath string) *DataObj {
 	obj.init()
-
 
 	if err := ioutil.WriteFile(localPath, obj.Read(), 0644); err != nil {
 		panic(fmt.Sprintf("iRods Download DataObject Failed: %v, %v", obj.Path, err))
@@ -255,6 +267,7 @@ func (obj *DataObj) DownloadTo(localPath string) *DataObj {
 	return obj
 }
 
+// Write writes the data to the data object, starting from the beginning. Returns self (DataObj).
 func (obj *DataObj) Write(data []byte) *DataObj {
 	obj.init()
 
@@ -276,6 +289,7 @@ func (obj *DataObj) Write(data []byte) *DataObj {
 	return obj
 }
 
+// WriteBytes writes to the data object wherever the object's offset pointer is currently set to. It advances the pointer to the end of the written data for supporting subsequent writes. Be sure to call obj.LSeek(0) before hand if you wish to write from the beginning. Returns self (DataObj).
 func (obj *DataObj) WriteBytes(data []byte) *DataObj {
 	obj.init()
 
@@ -295,6 +309,23 @@ func (obj *DataObj) WriteBytes(data []byte) *DataObj {
 	return obj
 }
 
+// Stat returns a map (key/value pairs) of the system meta information. The following keys can be used with the map:
+//
+// "objSize"
+//
+// "dataMode"
+//
+// "dataId"
+//
+// "chksum"
+//
+// "ownerName"
+//
+// "ownerZone"
+//
+// "createTime"
+//
+// "modifyTime"
 func (obj *DataObj) Stat() map[string]interface{} {
 	obj.init()
 
@@ -328,12 +359,14 @@ func (obj *DataObj) Stat() map[string]interface{} {
 	return result
 }
 
-func (obj *DataObj) Attribute(attr string) *Meta {
+// Attribute returns a single Meta triple struct found by the attributes name
+func (obj *DataObj) Attribute(attrName string) *Meta {
 	obj.init()
 
-	return obj.Meta().Get(attr)
+	return obj.Meta().Get(attrName)
 }
 
+// Meta returns collection of Meta AVU triple structs of the data object
 func (obj *DataObj) Meta() MetaCollection {
 	obj.init()
 
@@ -344,7 +377,7 @@ func (obj *DataObj) Meta() MetaCollection {
 	return obj.MetaCol
 }
 
-// Supports Collection struct and string
+// CopyTo copies the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the destination collection automatically to maintain correct state. Returns self (source DataObj).
 func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 
 	var (
@@ -387,20 +420,20 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
 		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
-			destinationCollection.init()
+			destinationCollection.Refresh()
 		} else {
 			// Can't find, load collection into memory
 			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
-		destinationCollection.init()
+		destinationCollection.Refresh()
 	}
 
 	return destinationCollection.DataObjs().Find(obj.Name)
 }
 
-// Supports Collection struct and string
+// MoveTo moves the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the source and destination collections automatically to maintain correct state. Returns self (DataObj).
 func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 
 	var (
@@ -440,20 +473,20 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	}
 
 	// Reload source collection, we are now detached
-	obj.Col.init()
+	obj.Col.Refresh()
 
 	// Find & reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
 		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
-			destinationCollection.init()
+			destinationCollection.Refresh()
 		} else {
 			// Can't find, load collection into memory
 			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
-		destinationCollection.init()
+		destinationCollection.Refresh()
 	}
 
 	// Reassign obj.Col to destination collection
@@ -465,16 +498,17 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	return obj
 }
 
-func (obj *DataObj) Rename(name string) *DataObj {
+// Rename is equivalent to the Linux mv command except that the data object must stay within the current collection (directory), returns self (DataObj).
+func (obj *DataObj) Rename(newFileName string) *DataObj {
 
-	if strings.Contains(name, "/") {
-		panic(fmt.Sprintf("Can't Rename DataObject, path detected in: %v", name))
+	if strings.Contains(newFileName, "/") {
+		panic(fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
 	}
 
 	var err *C.char
 
 	source := obj.Path
-	destination := obj.Col.Path + "/" + name
+	destination := obj.Col.Path + "/" + newFileName
 
 	s := C.CString(source)
 	d := C.CString(destination)
@@ -486,7 +520,7 @@ func (obj *DataObj) Rename(name string) *DataObj {
 		panic(fmt.Sprintf("iRods Rename DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
-	obj.Name = name
+	obj.Name = newFileName
 	obj.Path = destination
 
 	obj.chandle = C.int(0)
@@ -494,6 +528,7 @@ func (obj *DataObj) Rename(name string) *DataObj {
 	return obj
 }
 
+// Delete deletes the data object from the iRods server with a force flag
 func (obj *DataObj) Delete() {
 
 	var err *C.char
@@ -508,6 +543,7 @@ func (obj *DataObj) Delete() {
 
 }
 
+// Unlink deletes the data object from the iRods server, no force flag is used
 func (obj *DataObj) Unlink() {
 
 	var err *C.char
@@ -522,6 +558,7 @@ func (obj *DataObj) Unlink() {
 
 }
 
+// Chksum returns md5 hash string of data object
 func (obj *DataObj) Chksum() string {
 
 	var (
@@ -541,25 +578,26 @@ func (obj *DataObj) Chksum() string {
 	return C.GoString(chksumOut)
 }
 
-func (obj *DataObj) Verify(checksum string) bool {
+// Verify returns true or false depending on whether the checksum md5 string matches
+func (obj *DataObj) Verify(md5Checksum string) bool {
 	chksum := strings.Split(obj.Chksum(), ":")
 
-	return (checksum == chksum[1])
+	return (md5Checksum == chksum[1])
 }
 
-// IMPLEMENT ME
-func (obj *DataObj) MoveToResource(resource string) *DataObj {
+// NEED TO IMPLEMENT
+func (obj *DataObj) MoveToResource(destinationResource string) *DataObj {
 
 	return obj
 }
 
-// IMPLEMENT ME
-func (obj *DataObj) Replicate(resource string) *DataObj {
+// NEED TO IMPLEMENT
+func (obj *DataObj) Replicate(targetResource string) *DataObj {
 
 	return obj
 }
 
-// IMPLEMENT ME
+// NEED TO IMPLEMENT
 func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
 	//https://wiki.irods.org/doxygen_api/html/rc_data_obj_trim_8c_a7e4713d4b7617690e484fbada8560663.html
 

@@ -75,10 +75,21 @@ func initMetaCollection(metatype int, objName string, objPath string, ccon *C.rc
 	return result
 }
 
+// String shows the contents of the meta struct.
+//
+// Sample output:
+//
+// 	Attr1: Val (unit: foo)
 func (m *Meta) String() string {
 	return m.Attribute + ": " + m.Value + " (unit: " + m.Units + ")"
 }
 
+// String shows the contents of the meta collection.
+//
+// Sample output:
+//
+// 	Attr1: Val (unit: )
+// 	Attr2: Yes (unit: bool)
 func (metas MetaCollection) String() string {
 	var str string
 

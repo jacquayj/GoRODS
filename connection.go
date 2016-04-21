@@ -33,6 +33,7 @@ const (
 	UserType
 )
 
+// ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
 	Environment int
 
@@ -52,7 +53,11 @@ type Connection struct {
 	OpenedCollections Collections
 }
 
-
+// New creates a connection to an iRods iCAT server. System and UserDefined 
+// constants are used in ConnectionOptions{ Environment: ... }). 
+// When System is specified, the options stored in ~/.irods/.irodsEnv will be used. 
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password 
+// should be set regardless.
 func New(opts ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
 
@@ -104,13 +109,17 @@ func (con *Connection) Disconnect() {
 	con.Connected = false
 }
 
+// String provides connection status and options provided during initialization (gorods.New)
 func (obj *Connection) String() string {
+
+	// We only return options if they are specified by user. Due to the usage of deprecated getRodsEnv() function version (see bug above).
 	if obj.Options.Environment == UserDefined {
 		return fmt.Sprintf("Host: %v:%v/%v, Connected: %v\n", obj.Options.Host, obj.Options.Port, obj.Options.Zone, obj.Connected)
 	}
 	return fmt.Sprintf("Host: ?, Connected: %v\n", obj.Connected)
 }
 
+// Collection initializes and returns an existing iRods collection using the specified path
 func (con *Connection) Collection(startPath string, recursive bool) (collection *Collection, err error) {
 	defer func() {
 		if r := recover(); r != nil {

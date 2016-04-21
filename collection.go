@@ -28,6 +28,7 @@ type Collection struct {
 	chandle C.int
 }
 
+// Collections is a slice of Collection structs
 type Collections []*Collection
 
 // Exists checks to see if a collection exists in the slice 
@@ -231,6 +232,10 @@ func (col *Collection) Refresh() {
 
 // ReadCollection reads data (overwrites) into col.DataObjects field.
 func (col *Collection) ReadCollection() {
+
+	if int(col.chandle) == 0 {
+		col.Open()
+	}
 
 	// Init C varaibles
 	var (
