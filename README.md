@@ -1,5 +1,6 @@
 # GoRods
-GoLang wrapper of iRods C API
+
+GoLang wrapper of iRods C API. Requires go version >= 1.5 for cgo compile flags variable support.
 
 ### Installation
 
