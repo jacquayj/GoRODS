@@ -187,7 +187,7 @@ func (col *Collection) Meta() MetaCollection {
 	col.init()
 
 	if col.MetaCol == nil {
-		col.MetaCol = NewMetaCollection(CollectionType, col.Name, filepath.Dir(col.Path), col.Con.ccon)
+		col.MetaCol = initMetaCollection(CollectionType, col.Name, filepath.Dir(col.Path), col.Con.ccon)
 	}
 	
 	return col.MetaCol

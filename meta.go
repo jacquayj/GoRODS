@@ -22,7 +22,7 @@ type Meta struct {
 // MetaCollection is a collection of metadata AVU triples for a single data object
 type MetaCollection []*Meta
 
-func NewMetaCollection(metatype int, objName string, objPath string, ccon *C.rcComm_t) MetaCollection {
+func initMetaCollection(metatype int, objName string, objPath string, ccon *C.rcComm_t) MetaCollection {
 	var (
 		err        *C.char
 		metaResult C.goRodsMetaResult_t
@@ -89,7 +89,7 @@ func (metas MetaCollection) String() string {
 	return str
 }
 
-// Get finds a single Meta by it's Attribute field
+// Get finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
 func (metas MetaCollection) Get(attr string) *Meta {
 	for i, m := range metas {
 		if m.Attribute == attr {

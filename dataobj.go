@@ -338,7 +338,7 @@ func (obj *DataObj) Meta() MetaCollection {
 	obj.init()
 
 	if obj.MetaCol == nil {
-		obj.MetaCol = NewMetaCollection(DataObjType, obj.Name, obj.Col.Path, obj.Con.ccon)
+		obj.MetaCol = initMetaCollection(DataObjType, obj.Name, obj.Col.Path, obj.Con.ccon)
 	}
 	
 	return obj.MetaCol
