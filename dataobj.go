@@ -120,7 +120,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 
 }
 
-func (obj *DataObj) Init() {
+func (obj *DataObj) init() {
 	if int(obj.chandle) == 0 {
 		obj.Open()
 	}
@@ -151,7 +151,7 @@ func (obj *DataObj) Close() *DataObj {
 }
 
 func (obj *DataObj) Read() []byte {
-	obj.Init()
+	obj.init()
 
 	var (
 		buffer C.bytesBuf_t
@@ -175,7 +175,7 @@ func (obj *DataObj) Read() []byte {
 }
 
 func (obj *DataObj) ReadBytes(pos int64, length int) []byte {
-	obj.Init()
+	obj.init()
 
 	var (
 		buffer C.bytesBuf_t
@@ -197,7 +197,7 @@ func (obj *DataObj) ReadBytes(pos int64, length int) []byte {
 }
 
 func (obj *DataObj) LSeek(offset int64) *DataObj {
-	obj.Init()
+	obj.init()
 
 	var (
 		err *C.char
@@ -213,7 +213,7 @@ func (obj *DataObj) LSeek(offset int64) *DataObj {
 }
 
 func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
-	obj.Init()
+	obj.init()
 
 	var (
 		buffer C.bytesBuf_t
@@ -245,7 +245,7 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) *DataObj {
 }
 
 func (obj *DataObj) DownloadTo(localPath string) *DataObj {
-	obj.Init()
+	obj.init()
 
 
 	if err := ioutil.WriteFile(localPath, obj.Read(), 0644); err != nil {
@@ -256,7 +256,7 @@ func (obj *DataObj) DownloadTo(localPath string) *DataObj {
 }
 
 func (obj *DataObj) Write(data []byte) *DataObj {
-	obj.Init()
+	obj.init()
 
 	obj.LSeek(0)
 
@@ -277,7 +277,7 @@ func (obj *DataObj) Write(data []byte) *DataObj {
 }
 
 func (obj *DataObj) WriteBytes(data []byte) *DataObj {
-	obj.Init()
+	obj.init()
 
 	size := int64(len(data))
 
@@ -296,7 +296,7 @@ func (obj *DataObj) WriteBytes(data []byte) *DataObj {
 }
 
 func (obj *DataObj) Stat() map[string]interface{} {
-	obj.Init()
+	obj.init()
 
 	var (
 		err        *C.char
@@ -329,13 +329,13 @@ func (obj *DataObj) Stat() map[string]interface{} {
 }
 
 func (obj *DataObj) Attribute(attr string) *Meta {
-	obj.Init()
+	obj.init()
 
 	return obj.Meta().Get(attr)
 }
 
 func (obj *DataObj) Meta() MetaCollection {
-	obj.Init()
+	obj.init()
 
 	if obj.MetaCol == nil {
 		obj.MetaCol = NewMetaCollection(DataObjType, obj.Name, obj.Col.Path, obj.Con.ccon)
@@ -387,14 +387,14 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) *DataObj {
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
 		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
-			destinationCollection.Init()
+			destinationCollection.init()
 		} else {
 			// Can't find, load collection into memory
 			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
-		destinationCollection.Init()
+		destinationCollection.init()
 	}
 
 	return destinationCollection.DataObjs().Find(obj.Name)
@@ -440,20 +440,20 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	}
 
 	// Reload source collection, we are now detached
-	obj.Col.Init()
+	obj.Col.init()
 
 	// Find & reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
 		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
-			destinationCollection.Init()
+			destinationCollection.init()
 		} else {
 			// Can't find, load collection into memory
 			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
-		destinationCollection.Init()
+		destinationCollection.init()
 	}
 
 	// Reassign obj.Col to destination collection

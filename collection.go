@@ -120,8 +120,8 @@ func (obj *Collection) String() string {
 }
 
 
-// NewCollection initializes collection from *C.collEnt_t. This is used internally in the gorods package, maybe it should be lowercased?
-func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
+// initCollection initializes collection from *C.collEnt_t. This is used internally in the gorods package.
+func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	col := new(Collection)
 
@@ -135,15 +135,15 @@ func NewCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	if acol.Recursive {
 		col.Recursive = true
-		col.Init()
+		col.init()
 	}
 
 	return col
 }
 
-// GetCollection initializes specified collection located at startPath using gorods.Connection. 
+// getCollection initializes specified collection located at startPath using gorods.Connection. 
 // Could be considered alias of Connection.Collection()
-func GetCollection(startPath string, recursive bool, con *Connection) *Collection {
+func getCollection(startPath string, recursive bool, con *Connection) *Collection {
 	col := new(Collection)
 
 	col.Con = con
@@ -158,14 +158,14 @@ func GetCollection(startPath string, recursive bool, con *Connection) *Collectio
 	col.Name = pathSlice[len(pathSlice)-1]
 
 	if col.Recursive {
-		col.Init()
+		col.init()
 	}
 
 	return col
 }
 
-// Init opens and reads collection information from iRods if the handle isn't set
-func (col *Collection) Init() *Collection {
+// init opens and reads collection information from iRods if the handle isn't set
+func (col *Collection) init() *Collection {
 	// If connection hasn't been opened, do it!
 	if int(col.chandle) == 0 {
 		col.Open()
@@ -177,14 +177,14 @@ func (col *Collection) Init() *Collection {
 
 // Attribute gets specific metadata AVU triple for Collection
 func (col *Collection) Attribute(attr string) *Meta {
-	col.Init()
+	col.init()
 
 	return col.Meta().Get(attr)
 }
 
 // Meta returns collection of all metadata AVU triples for Collection
 func (col *Collection) Meta() MetaCollection {
-	col.Init()
+	col.init()
 
 	if col.MetaCol == nil {
 		col.MetaCol = NewMetaCollection(CollectionType, col.Name, filepath.Dir(col.Path), col.Con.ccon)
@@ -254,7 +254,7 @@ func (col *Collection) ReadCollection() {
 		isCollection := (obj.objType != C.DATA_OBJ_T)
 
 		if isCollection {
-			col.DataObjects = append(col.DataObjects, NewCollection(obj, col))
+			col.DataObjects = append(col.DataObjects, initCollection(obj, col))
 		} else {
 			col.DataObjects = append(col.DataObjects, NewDataObj(obj, col))
 
@@ -281,7 +281,7 @@ func (col *Collection) ReadCollection() {
 
 // DataObjs returns only the data objects contained within the collection
 func (col *Collection) DataObjs() DataObjs {
-	col.Init()
+	col.init()
 
 	var response DataObjs
 
@@ -296,7 +296,7 @@ func (col *Collection) DataObjs() DataObjs {
 
 // Collections returns only the collections contained within the collection
 func (col *Collection) Collections() Collections {
-	col.Init()
+	col.init()
 
 	var response Collections
 
@@ -311,7 +311,7 @@ func (col *Collection) Collections() Collections {
 
 // Put adds a local file to the remote iRods collection
 func (col *Collection) Put(localFile string) *DataObj {
-	col.Init()
+	col.init()
 
 	data, err := ioutil.ReadFile(localFile)
 	if err != nil {
@@ -333,7 +333,7 @@ func (col *Collection) Put(localFile string) *DataObj {
 }
 
 func (col *Collection) Add(dataObj interface{}) *Collection {
-	col.Init()
+	col.init()
 
 	col.DataObjects = append(col.DataObjects, dataObj)
 
@@ -341,7 +341,7 @@ func (col *Collection) Add(dataObj interface{}) *Collection {
 }
 
 func (col *Collection) All() []interface{} {
-	col.Init()
+	col.init()
 
 	return col.DataObjects
 }

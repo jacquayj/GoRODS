@@ -126,17 +126,26 @@ Send me a pull request!
 
 ## Todo
 
+### iRods API Coverage
+
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement DataObj set metadata operations
+* Implement Meta: set operations, imeta qu
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
-* Add more robust error handling, replace panic()'s by returning error interface
-* Add godoc compatible comments to all functions so documentation can be generated
+* Implement Connection: ilocate, interface to query meta (imeta qu)
+* Implement structs: User, Group, Resource, Zone?
+* Implement access control (rcModAccessControl) and tickets
+
+### Code Polish
+
+* Add more robust error handling: Add idiomatic return errors for public functions, custom error interface
+* Finish godoc compatible comments to all functions so documentation can be generated
+* Hide unneeded public functions
 * Add unit tests
 
 ## Known Issues
 
 * The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Will need to integrate iRods build from scratch.
-* Build script requires pre compiled .o files to generate libgorods.a (not included in this repo)
+* Build script requires pre compiled .o files (not included in this repo) to generate new libgorods.a
 * There might be memory leaks from C variables not being free()'d
 * Bug list: https://godoc.org/github.com/jjacquay712/GoRods#pkg-note-bug
 

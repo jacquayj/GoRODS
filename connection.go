@@ -85,7 +85,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
 		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
 	} else {
-		// BUG(jjacquay712): Implements getRodsEnv() which I believe reads the old ~/.irods/.irodsEnv file format
+		// BUG(jjacquay712): C.gorods_connect implements getRodsEnv() which I believe reads the old ~/.irods/.irodsEnv file format
 		status = C.gorods_connect(&con.ccon, password, &errMsg)
 	}
 
@@ -118,7 +118,7 @@ func (con *Connection) Collection(startPath string, recursive bool) (collection 
 		}
 	}()
 
-	collection = GetCollection(startPath, recursive, con)
+	collection = getCollection(startPath, recursive, con)
 	con.OpenedCollections = append(con.OpenedCollections, collection)
 
 	return
