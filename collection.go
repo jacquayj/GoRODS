@@ -41,7 +41,7 @@ func (colls Collections) Exists(path string) bool {
 }
 
 // Find gets a collection from the slice and returns nil if one is not found. 
-// Both the collection name and path can be used as input.
+// Both the collection name or full path can be used as input.
 func (colls Collections) Find(path string) *Collection {
 	if path[len(path)-1] == '/' {
 		path = path[:len(path)-1]
@@ -229,7 +229,7 @@ func (col *Collection) Refresh() {
 	col.ReadCollection()
 }
 
-// ReadCollection reads data into col.DataObjects field.
+// ReadCollection reads data (overwrites) into col.DataObjects field.
 func (col *Collection) ReadCollection() {
 
 	// Init C varaibles
@@ -337,6 +337,7 @@ func (col *Collection) Put(localFile string) *DataObj {
 	return newFile
 }
 
+// CreateDataObj creates a data object within the collection using the options specified
 func (col *Collection) CreateDataObj(opts DataObjOptions) *DataObj {
 	return CreateDataObj(opts, col)
 }
@@ -349,20 +350,24 @@ func (col *Collection) add(dataObj interface{}) *Collection {
 	return col
 }
 
+// Returns generic interface slice containing both data objects and collections combined
 func (col *Collection) All() []interface{} {
 	col.init()
 
 	return col.DataObjects
 }
 
+// Both returns two slices, the first for DataObjs and the second for Collections
 func (col *Collection) Both() (DataObjs, Collections) {
 	return col.DataObjs(), col.Collections()
 }
 
+// Exists returns true of false depending on whether the DataObj or Collection is found
 func (col *Collection) Exists(path string) bool {
 	return col.DataObjs().Exists(path) || col.Collections().Exists(path)
 }
 
+// Find returns either a DataObject or Collection using the collection-relative or absolute path specified.
 func (col *Collection) Find(path string) interface{} {
 	if d := col.DataObjs().Find(path); d != nil {
 		return d
@@ -375,10 +380,12 @@ func (col *Collection) Find(path string) interface{} {
 	return nil
 }
 
+// Cd is a shortcut for calling collection.Collections().Find(path). It effectively returns (or changes to) the sub collection you specify collection-relatively or absolutely.
 func (col *Collection) Cd(path string) *Collection {
 	return col.Collections().Find(path)
 }
 
+// Get is a shortcut for calling collection.DataObjs().Find(path). It effectively returns the DataObj you specify collection-relatively or absolutely.
 func (col *Collection) Get(path string) *DataObj {
 	return col.DataObjs().Find(path)
 }

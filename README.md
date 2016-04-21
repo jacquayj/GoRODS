@@ -131,7 +131,7 @@ Send me a pull request!
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
 * Implement Meta: set operations, imeta qu
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
-* Implement Connection: ilocate, interface to query meta (imeta qu)
+* Implement Connection: ilocate, interface to query meta (imeta qu), direct DataObj getter like Connection.Collection()?
 * Implement structs: User, Group, Resource, Zone?
 * Implement access control (rcModAccessControl) and tickets
 
