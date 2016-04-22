@@ -13,25 +13,30 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
-	"errors"
 )
 
 // System and UserDefined constants are used when calling
 // gorods.New(ConnectionOptions{ Environment: ... })
 // When System is specified, the options stored in ~/.irods/.irodsEnv will be used. 
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. 
-// Password should be set regardless. The five type constants are used internally for metadata
-// operations.
+// Password should be set regardless.
 const (
 	System = iota
 	UserDefined
+)
 
-	DataObjType
+// Used when calling Type() on different gorods objects
+const (
+	DataObjType = iota
 	CollectionType
 	ResourceType
 	ResourceGroupType
 	UserType
 )
+
+type iRodsObj interface {
+    Type() int
+}
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
@@ -97,7 +102,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	if status == 0 {
 		con.Connected = true
 	} else {
-		return nil, errors.New(fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
 	}
 
 	return con, nil
@@ -123,7 +128,7 @@ func (obj *Connection) String() string {
 func (con *Connection) Collection(startPath string, recursive bool) (collection *Collection, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(r.(string))
+			err = r.(*GoRodsError)
 		}
 	}()
 
