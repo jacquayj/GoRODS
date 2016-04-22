@@ -18,7 +18,7 @@ import (
 type Collection struct {
 	Path        string
 	Name        string
-	DataObjects []iRodsObj
+	DataObjects []IRodsObj
 	MetaCol 	MetaCollection
 	Con         *Connection
 	Col         *Collection
@@ -263,7 +263,7 @@ func (col *Collection) ReadCollection() {
 	// Convert C array to slice, backed by arr *C.collEnt_t
 	slice := (*[1 << 30]C.collEnt_t)(unsafeArr)[:arrLen:arrLen]
 
-	col.DataObjects = make([]iRodsObj, 0)
+	col.DataObjects = make([]IRodsObj, 0)
 
 	for i, _ := range slice {
 		obj := &slice[i]
@@ -354,7 +354,7 @@ func (col *Collection) CreateDataObj(opts DataObjOptions) *DataObj {
 	return CreateDataObj(opts, col)
 }
 
-func (col *Collection) add(dataObj iRodsObj) *Collection {
+func (col *Collection) add(dataObj IRodsObj) *Collection {
 	col.init()
 
 	col.DataObjects = append(col.DataObjects, dataObj)
@@ -363,7 +363,7 @@ func (col *Collection) add(dataObj iRodsObj) *Collection {
 }
 
 // Returns generic interface slice containing both data objects and collections combined
-func (col *Collection) All() []iRodsObj {
+func (col *Collection) All() []IRodsObj {
 	col.init()
 
 	return col.DataObjects
@@ -380,7 +380,7 @@ func (col *Collection) Exists(path string) bool {
 }
 
 // Find returns either a DataObject or Collection using the collection-relative or absolute path specified.
-func (col *Collection) Find(path string) iRodsObj {
+func (col *Collection) Find(path string) IRodsObj {
 	if d := col.DataObjs().Find(path); d != nil {
 		return d
 	}
