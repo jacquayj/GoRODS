@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"unsafe"
 )
@@ -19,11 +18,12 @@ import (
 type Collection struct {
 	Path        string
 	Name        string
-	DataObjects []interface{}
-	MetaCol MetaCollection
+	DataObjects []iRodsObj
+	MetaCol 	MetaCollection
 	Con         *Connection
 	Col         *Collection
 	Recursive   bool
+	ObjType 	int
 
 	chandle C.int
 }
@@ -79,7 +79,7 @@ func (colls Collections) FindRecursive(path string) *Collection {
 			var filtered Collections
 
 			for n, obj := range col.DataObjects {
-				if reflect.TypeOf(obj).String() == "*gorods.Collection" {
+				if obj.Type() == CollectionType {
 					filtered = append(filtered, col.DataObjects[n].(*Collection))
 				}
 			}
@@ -126,6 +126,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	col := new(Collection)
 
+	col.ObjType = CollectionType
 	col.Col = acol
 	col.Con = col.Col.Con
 	col.Path = C.GoString(data.collName)
@@ -147,6 +148,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 func getCollection(startPath string, recursive bool, con *Connection) *Collection {
 	col := new(Collection)
 
+	col.ObjType = CollectionType
 	col.Con = con
 	col.Path = startPath
 	col.Recursive = recursive
@@ -174,6 +176,11 @@ func (col *Collection) init() *Collection {
 	}
 
 	return col
+}
+
+// Type gets the type
+func (col *Collection) Type() int {
+	return col.ObjType
 }
 
 // Attribute gets specific metadata AVU triple for Collection
@@ -205,7 +212,7 @@ func (col *Collection) Open() *Collection {
 	defer C.free(unsafe.Pointer(path))
 
 	if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
-		panic(fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+		panic(newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
 	}
 
 	return col
@@ -217,7 +224,7 @@ func (col *Collection) Close() *Collection {
 	var errMsg *C.char
 
 	if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
-		panic(fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+		panic(newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
 	}
 
 	col.chandle = C.int(0)
@@ -256,7 +263,7 @@ func (col *Collection) ReadCollection() {
 	// Convert C array to slice, backed by arr *C.collEnt_t
 	slice := (*[1 << 30]C.collEnt_t)(unsafeArr)[:arrLen:arrLen]
 
-	col.DataObjects = make([]interface{}, 0)
+	col.DataObjects = make([]iRodsObj, 0)
 
 	for i, _ := range slice {
 		obj := &slice[i]
@@ -296,7 +303,7 @@ func (col *Collection) DataObjs() DataObjs {
 	var response DataObjs
 
 	for i, obj := range col.DataObjects {
-		if reflect.TypeOf(obj).String() == "*gorods.DataObj" {
+		if obj.Type() == DataObjType {
 			response = append(response, col.DataObjects[i].(*DataObj))
 		}
 	}
@@ -311,7 +318,7 @@ func (col *Collection) Collections() Collections {
 	var response Collections
 
 	for i, obj := range col.DataObjects {
-		if reflect.TypeOf(obj).String() == "*gorods.Collection" {
+		if obj.Type() == CollectionType {
 			response = append(response, col.DataObjects[i].(*Collection))
 		}
 	}
@@ -325,7 +332,7 @@ func (col *Collection) Put(localFile string) *DataObj {
 
 	data, err := ioutil.ReadFile(localFile)
 	if err != nil {
-		panic(fmt.Sprintf("Can't read file for Put(): %v", localFile))
+		panic(newError(Fatal, fmt.Sprintf("Can't read file for Put(): %v", localFile)))
 	}
 
 	fileName := filepath.Base(localFile)
@@ -347,7 +354,7 @@ func (col *Collection) CreateDataObj(opts DataObjOptions) *DataObj {
 	return CreateDataObj(opts, col)
 }
 
-func (col *Collection) add(dataObj interface{}) *Collection {
+func (col *Collection) add(dataObj iRodsObj) *Collection {
 	col.init()
 
 	col.DataObjects = append(col.DataObjects, dataObj)
@@ -356,7 +363,7 @@ func (col *Collection) add(dataObj interface{}) *Collection {
 }
 
 // Returns generic interface slice containing both data objects and collections combined
-func (col *Collection) All() []interface{} {
+func (col *Collection) All() []iRodsObj {
 	col.init()
 
 	return col.DataObjects
@@ -373,7 +380,7 @@ func (col *Collection) Exists(path string) bool {
 }
 
 // Find returns either a DataObject or Collection using the collection-relative or absolute path specified.
-func (col *Collection) Find(path string) interface{} {
+func (col *Collection) Find(path string) iRodsObj {
 	if d := col.DataObjs().Find(path); d != nil {
 		return d
 	}

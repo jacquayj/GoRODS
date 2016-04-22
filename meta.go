@@ -11,7 +11,6 @@ import (
 	"unsafe"
 )
 
-
 // Meta structs contain information about a single iRods metadata attribute-value-units (AVU) triple
 type Meta struct {
 	Attribute string
@@ -39,11 +38,11 @@ func initMetaCollection(metatype int, objName string, objPath string, ccon *C.rc
 	switch metatype {
 		case DataObjType:
 			if status := C.gorods_meta_dataobj(name, cwd, &metaResult, ccon, &err); status != 0 {
-				panic(fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err)))
+				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err))))
 			}
 		case CollectionType:
 			if status := C.gorods_meta_collection(name, cwd, &metaResult, ccon, &err); status != 0 {
-				panic(fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err)))
+				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err))))
 			}
 		case ResourceType:
 			
@@ -52,7 +51,7 @@ func initMetaCollection(metatype int, objName string, objPath string, ccon *C.rc
 		case UserType:
 			
 		default:
-			panic("unrecognized meta type constant")
+			panic(newError(Fatal, "unrecognized meta type constant"))
 	}
 
 	size := int(metaResult.size)

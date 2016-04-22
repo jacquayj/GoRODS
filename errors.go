@@ -7,22 +7,33 @@ package gorods
 
 import (
  	"fmt"
-	//"errors"
 	"time"
 )
 
+// Log level constants
 const (
 	Info = iota
 	Warn
 	Fatal
 )
 
+// GoRodsError stores information about errors
 type GoRodsError struct {
-	LogLevel int
-	Message string
-	Time time.Time
+	LogLevel 	int
+	Message 	string
+	Time 		time.Time
 }
 
+// Error returns error string, alias of String(). Sample output:
+//
+// 	2016-04-22 10:02:30.802355258 -0400 EDT: Fatal - iRods Connect Failed: rcConnect failed
+func (err *GoRodsError) Error() string {
+	return err.String()
+}
+
+// String returns error string. Sample output:
+//
+// 	2016-04-22 10:02:30.802355258 -0400 EDT: Fatal - iRods Connect Failed: rcConnect failed
 func (err *GoRodsError) String() string {
 	return fmt.Sprintf("%v: %v - %v", err.Time, err.lookupError(err.LogLevel), err.Message)
 }
