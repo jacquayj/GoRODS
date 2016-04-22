@@ -34,7 +34,8 @@ const (
 	UserType
 )
 
-type iRodsObj interface {
+// IRodsObj is a generic interface used to detect the object type
+type IRodsObj interface {
     Type() int
 }
 
