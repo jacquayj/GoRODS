@@ -1,6 +1,6 @@
 # GoRods
 
-GoLang wrapper of iRods C API. Requires go version >= 1.5 for cgo compile flags variable support.
+Golang binding for iRods C API. Requires go version >= 1.5 for cgo compile flags variable support.
 
 ### Installation
 
@@ -138,15 +138,13 @@ Send me a pull request!
 
 ### Code Polish
 
-* Add more robust error handling: Add idiomatic return errors for public functions, custom error interface
-* Finish godoc compatible comments to all functions so documentation can be generated
-* Hide unneeded public functions
+* Add more robust error handling: Add idiomatic return errors for public functions
 * Add unit tests
 
 ## Known Issues
 
-* The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Will need to integrate iRods build from scratch.
-* Build script requires pre compiled .o files (not included in this repo) to generate new libgorods.a
+* The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Will need to build with newer irods-dev system package.
+* Build script requires pre compiled .o files (not included in this repo) to generate new libgorods.a at the moment
 * There might be memory leaks from C variables not being free()'d
 * Bug list: https://godoc.org/github.com/jjacquay712/GoRods#pkg-note-bug
 

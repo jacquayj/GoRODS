@@ -1,8 +1,8 @@
 /*** Copyright (c) 2016, University of Florida Research Foundation, Inc. ***
  *** For more information please refer to the LICENSE.md file            ***/
 
-// Package gorods is a GoLang wrapper of the iRods C API (iRods client library). 
-// gorods uses cgo to call iRods client functions.
+// Package gorods is a Golang binding for the iRods C API (iRods client library). 
+// GoRods uses cgo to call iRods client functions.
 package gorods
 
 // #cgo CFLAGS: -I${SRCDIR}/lib/include -I${SRCDIR}/lib/irods/lib/core/include -I${SRCDIR}/lib/irods/lib/api/include -I${SRCDIR}/lib/irods/lib/md5/include -I${SRCDIR}/lib/irods/lib/sha1/include -I${SRCDIR}/lib/irods/server/core/include -I${SRCDIR}/lib/irods/server/icat/include -I${SRCDIR}/lib/irods/server/drivers/include -I${SRCDIR}/lib/irods/server/re/include
