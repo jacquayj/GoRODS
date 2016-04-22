@@ -2,7 +2,7 @@
 
 Golang binding for iRods C API. Requires go version >= 1.5 for cgo compile flags variable support.
 
-**Notice:** This package is incomplete and still under heavy development. API is subject to change without warning until a stable version is released. Please understand the risks before deploying this package in production systems.
+**Notice:** This package is incomplete and still under heavy development. API is subject to change without warning until a stable version is released.
 
 ### Installation
 
