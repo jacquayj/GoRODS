@@ -126,6 +126,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	col := new(Collection)
 
+	col.chandle = C.int(-1)
 	col.ObjType = CollectionType
 	col.Col = acol
 	col.Con = col.Col.Con
@@ -148,6 +149,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 func getCollection(startPath string, recursive bool, con *Connection) *Collection {
 	col := new(Collection)
 
+	col.chandle = C.int(-1)
 	col.ObjType = CollectionType
 	col.Con = con
 	col.Path = startPath
@@ -170,7 +172,7 @@ func getCollection(startPath string, recursive bool, con *Connection) *Collectio
 // init opens and reads collection information from iRods if the handle isn't set
 func (col *Collection) init() *Collection {
 	// If connection hasn't been opened, do it!
-	if int(col.chandle) == 0 {
+	if int(col.chandle) < 0 {
 		col.Open()
 		col.ReadCollection()
 	}
@@ -240,7 +242,7 @@ func (col *Collection) Refresh() {
 // ReadCollection reads data (overwrites) into col.DataObjects field.
 func (col *Collection) ReadCollection() {
 
-	if int(col.chandle) == 0 {
+	if int(col.chandle) < 0 {
 		col.Open()
 	}
 
@@ -279,9 +281,9 @@ func (col *Collection) ReadCollection() {
 			C.free(unsafe.Pointer(obj.dataName))
 			C.free(unsafe.Pointer(obj.dataId))
 			C.free(unsafe.Pointer(obj.chksum))
-			C.free(unsafe.Pointer(obj.dataType))
+			//C.free(unsafe.Pointer(obj.dataType))
 			C.free(unsafe.Pointer(obj.resource))
-			C.free(unsafe.Pointer(obj.rescGrp))
+			//C.free(unsafe.Pointer(obj.rescGrp))
 			C.free(unsafe.Pointer(obj.phyPath))
 		}
 

@@ -36,7 +36,7 @@ int gorods_connect(rcComm_t** conn, char* password, char** err) {
     if ( password != NULL ) {
     	status = clientLoginWithPassword(*conn, password);
     } else {
-    	status = clientLogin(*conn);
+    	status = clientLogin(*conn, 0, 0);
     }
     
     if ( status != 0 ) {
@@ -61,7 +61,7 @@ int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, ch
     if ( password != NULL ) {
     	status = clientLoginWithPassword(*conn, password);
     } else {
-    	status = clientLogin(*conn);
+    	status = clientLogin(*conn, 0, 0);
     }
     
     if ( status != 0 ) {
@@ -339,27 +339,26 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 	
 	collEnt_t* collEnt = NULL;
 	int status;
-	
+
 	while ( (status = rcReadCollection(conn, handleInx, &collEnt)) >= 0 ) { 
-		
+
 		// Expand array if needed
 		if ( *size >= collectionResponseCapacity ) {
 			collectionResponseCapacity *= 2;
+
 			*arr = realloc(*arr, sizeof(collEnt_t) * collectionResponseCapacity);
 		}
-
 		collEnt_t* elem = &((*arr)[*size]);
 
 		// Add element to array
 		memcpy(elem, collEnt, sizeof(collEnt_t));
-		
 		if ( collEnt->objType == DATA_OBJ_T ) { 
 			elem->dataName = strcpy(gorods_malloc(strlen(elem->dataName) + 1), elem->dataName);
 			elem->dataId = strcpy(gorods_malloc(strlen(elem->dataId) + 1), elem->dataId);
 			elem->chksum = strcpy(gorods_malloc(strlen(elem->chksum) + 1), elem->chksum);
-			elem->dataType = strcpy(gorods_malloc(strlen(elem->dataType) + 1), elem->dataType);
+			//elem->dataType = strcpy(gorods_malloc(strlen(elem->dataType) + 1), elem->dataType);
 			elem->resource = strcpy(gorods_malloc(strlen(elem->resource) + 1), elem->resource);
-			elem->rescGrp = strcpy(gorods_malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
+			//elem->rescGrp = strcpy(gorods_malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
 			elem->phyPath = strcpy(gorods_malloc(strlen(elem->phyPath) + 1), elem->phyPath);
 		}
 
@@ -370,10 +369,60 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 
 		(*size)++;
 		
-		freeCollEnt(collEnt); 
+		gorodsFreeCollEnt(collEnt); 
 	} 
 
 	return 0;
+}
+
+int gorodsFreeCollEnt( collEnt_t *collEnt ) {
+    if ( collEnt == NULL ) {
+        return 0;
+    }
+
+    gorodsclearCollEnt( collEnt );
+
+    free( collEnt );
+
+    return 0;
+}
+
+int gorodsclearCollEnt( collEnt_t *collEnt ) {
+    if ( collEnt == NULL ) {
+        return 0;
+    }
+
+    if ( collEnt->collName != NULL ) {
+        free( collEnt->collName );
+    }
+    if ( collEnt->dataName != NULL ) {
+        free( collEnt->dataName );
+    }
+    if ( collEnt->dataId != NULL ) {
+        free( collEnt->dataId );
+    }
+    if ( collEnt->createTime != NULL ) {
+        free( collEnt->createTime );
+    }
+    if ( collEnt->modifyTime != NULL ) {
+        free( collEnt->modifyTime );
+    }
+    if ( collEnt->chksum != NULL ) {
+        free( collEnt->chksum );
+    }
+    if ( collEnt->resource != NULL ) {
+        free( collEnt->resource );
+    }
+    if ( collEnt->phyPath != NULL ) {
+        free( collEnt->phyPath );
+    }
+    if ( collEnt->ownerName != NULL ) {
+        free( collEnt->ownerName );
+    }
+    if ( collEnt->dataType != NULL ) {
+       // free( collEnt->dataType );    // JMC - backport 4636
+    }
+    return 0;
 }
 
 
@@ -602,7 +651,7 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 		if ( *name == '/' ) {
 			strncpy(fullName, name, MAX_NAME_LEN);
 		}
-		status = splitPathByKey(fullName, myDirName, myFileName, '/');
+		status = splitPathByKey(fullName, myDirName, 255, myFileName, 255, '/');
 		
 		sprintf(v1, "='%s'", myDirName);
 		sprintf(v2, "='%s'", myFileName);
