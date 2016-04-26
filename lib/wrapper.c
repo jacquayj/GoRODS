@@ -708,3 +708,17 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 	return 0;
 }
 
+char* irods_env_str() {
+	rodsEnv myEnv;
+	int status = getRodsEnv(&myEnv);
+	if ( status != 0 ) {
+		return (char *)"error getting env";
+	}
+
+	char* str = gorods_malloc(sizeof(char) * 255);
+
+	sprintf(str, "\tHost: %s\n\tPort: %i\n\tUsername: %s\n\tZone: %s\n", myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone);
+
+
+	return str;
+ }

@@ -96,7 +96,6 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
 		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
 	} else {
-		// BUG(jjacquay712): C.gorods_connect implements getRodsEnv() which I believe reads the old ~/.irods/.irodsEnv file format
 		status = C.gorods_connect(&con.ccon, password, &errMsg)
 	}
 
@@ -118,11 +117,16 @@ func (con *Connection) Disconnect() {
 // String provides connection status and options provided during initialization (gorods.New)
 func (obj *Connection) String() string {
 
-	// We only return options if they are specified by user. Due to the usage of deprecated getRodsEnv() function version (see bug above).
 	if obj.Options.Environment == UserDefined {
 		return fmt.Sprintf("Host: %v:%v/%v, Connected: %v\n", obj.Options.Host, obj.Options.Port, obj.Options.Zone, obj.Connected)
 	}
-	return fmt.Sprintf("Host: ?, Connected: %v\n", obj.Connected)
+
+	cEnvString := C.irods_env_str()
+	defer C.free(unsafe.Pointer(cEnvString))
+	
+	envString := C.GoString(cEnvString)
+
+	return fmt.Sprintf("Connected: %v\n%v\n", obj.Connected, envString)
 }
 
 // Collection initializes and returns an existing iRods collection using the specified path
