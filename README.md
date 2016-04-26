@@ -150,9 +150,8 @@ Send me a pull request!
 
 ## Known Issues
 
-* The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Will need to build with newer irods-dev system package.
-* Build script requires pre compiled .o files (not included in this repo) to generate new libgorods.a at the moment
-* There might be memory leaks from C variables not being free()'d
+* The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Install irods-dev system package, and run the build.sh script to compile binaries for your system.
+* Hardcoded paths for linking iRods static libraries in connection.go, are these paths consistent across distros? Only tested on CentOS 7.
 * Bug list: https://godoc.org/github.com/jjacquay712/GoRods#pkg-note-bug
 
 ## License & Copyright
