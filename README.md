@@ -9,7 +9,6 @@ Golang binding for iRods C API. Requires go version >= 1.5 for cgo compile flags
 Dependencies (http://irods.org/download/):
 
 * irods-dev-4.1.8
-* irods-runtime-4.1.8
 
 ```
 $ go get github.com/jjacquay712/GoRods
@@ -151,7 +150,6 @@ Send me a pull request!
 ## Known Issues
 
 * The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Install irods-dev system package, and run the build.sh script to compile binaries for your system.
-* Hardcoded paths for linking iRods static libraries in connection.go, are these paths consistent across distros? Only tested on CentOS 7.
 * Bug list: https://godoc.org/github.com/jjacquay712/GoRods#pkg-note-bug
 
 ## License & Copyright
