@@ -6,9 +6,7 @@ Golang binding for iRods C API. Requires go version >= 1.5 for cgo compile flags
 
 ### Installation
 
-Dependencies (http://irods.org/download/):
-
-* irods-dev-4.1.8
+Dependencies (http://irods.org/download/): irods-dev-4.1.8
 
 ```
 $ go get github.com/jjacquay712/GoRods
