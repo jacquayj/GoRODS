@@ -3,11 +3,38 @@
 ### Copyright (c) 2016, University of Florida Research Foundation, Inc. ###
 ### For more information please refer to the LICENSE.md file            ###
 
+# Replace 'tester' with your application's own package name
+YOUR_APP_PACKAGE=tester
+
 # Get directory where build.sh is located (this file)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Compile gorods.o, build libgorods.a with iRods C API
-(cd $DIR/src/github.com/jjacquay712/GoRods/lib; rm -f build/libgorods.a; rm -f build/gorods.o; gcc -ggdb -o build/gorods.o -c wrapper.c -I/usr/include/irods -Iinclude; ar rcs build/libgorods.a build/gorods.o)
+# Get GoRods lib directory path
+if [ -f $DIR/src/github.com/jjacquay712/GoRods/lib/wrapper.c ]; then
+	GORODS_LIB_PATH=$DIR/src/github.com/jjacquay712/GoRods/lib
+else
+	GORODS_LIB_PATH=./lib
+fi
 
-# Replace 'tester' with your application's own package name
-go install github.com/jjacquay712/GoRods && go install tester && bin/tester
+# Make sure it contains a required file
+if [ ! -f $GORODS_LIB_PATH/wrapper.c ]; then
+	echo "Couldn't find GoRods project directory"
+	exit
+fi
+
+# Compile gorods.o, build libgorods.a with iRods C API
+(cd $GORODS_LIB_PATH; rm -f build/libgorods.a; rm -f build/gorods.o; gcc -ggdb -o build/gorods.o -c wrapper.c -I/usr/include/irods -Iinclude; ar rcs build/libgorods.a build/gorods.o)
+
+# Compile and install GoRods, and your app
+go install github.com/jjacquay712/GoRods && go install $YOUR_APP_PACKAGE
+
+# Run binary
+if [ -f $DIR/../../../../bin/$YOUR_APP_PACKAGE ]; then
+	echo "- Running from GoRods package dir -"
+	echo
+	$DIR/../../../../bin/$YOUR_APP_PACKAGE
+elif [ -f $DIR/bin/$YOUR_APP_PACKAGE ]; then
+	echo "- Running from \$GOPATH dir -"
+	echo
+	$DIR/bin/$YOUR_APP_PACKAGE
+fi
