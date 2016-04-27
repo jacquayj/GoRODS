@@ -83,6 +83,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.Name = C.GoString(data.dataName)
 	dataObj.Path = C.GoString(data.collName) + "/" + dataObj.Name
 	dataObj.Size = int64(data.dataSize)
+	dataObj.chandle = C.int(-1)
 
 	return dataObj
 }
@@ -130,7 +131,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 }
 
 func (obj *DataObj) init() {
-	if int(obj.chandle) == 0 {
+	if int(obj.chandle) < 0 {
 		obj.Open()
 	}
 }
@@ -157,11 +158,14 @@ func (obj *DataObj) Open() {
 func (obj *DataObj) Close() *DataObj {
 	var errMsg *C.char
 
-	if status := C.gorods_close_dataobject(obj.chandle, obj.Con.ccon, &errMsg); status != 0 {
-		panic(newError(Fatal, fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg))))
-	}
+	if int(obj.chandle) > -1 {
+		if status := C.gorods_close_dataobject(obj.chandle, obj.Con.ccon, &errMsg); status != 0 {
+			panic(newError(Fatal, fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg))))
+		}
 
-	obj.chandle = C.int(0)
+		obj.chandle = C.int(-1)
+	} 
+
 
 	return obj
 }
@@ -501,7 +505,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) *DataObj {
 	obj.Col = destinationCollection
 	obj.Path = destinationCollection.Path + "/" + obj.Name
 
-	obj.chandle = C.int(0)
+	obj.chandle = C.int(-1)
 
 	return obj
 }
@@ -531,7 +535,7 @@ func (obj *DataObj) Rename(newFileName string) *DataObj {
 	obj.Name = newFileName
 	obj.Path = destination
 
-	obj.chandle = C.int(0)
+	obj.chandle = C.int(-1)
 
 	return obj
 }

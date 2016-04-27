@@ -15,13 +15,13 @@ import (
 	"unsafe"
 )
 
-// System and UserDefined constants are used when calling
-// gorods.New(ConnectionOptions{ Environment: ... })
-// When System is specified, the options stored in ~/.irods/.irodsEnv will be used. 
+// EnvironmentDefined and UserDefined constants are used when calling
+// gorods.New(ConnectionOptions{ Type: ... })
+// When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used. 
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. 
 // Password should be set regardless.
 const (
-	System = iota
+	EnvironmentDefined = iota
 	UserDefined
 )
 
@@ -41,7 +41,7 @@ type IRodsObj interface {
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
-	Environment int
+	Type int
 
 	Host string
 	Port int
@@ -59,9 +59,9 @@ type Connection struct {
 	OpenedCollections Collections
 }
 
-// New creates a connection to an iRods iCAT server. System and UserDefined 
-// constants are used in ConnectionOptions{ Environment: ... }). 
-// When System is specified, the options stored in ~/.irods/.irodsEnv will be used. 
+// New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined 
+// constants are used in ConnectionOptions{ Type: ... }). 
+// When EnvironmentDefined is specified, the options stored in ~/.irods/.irodsEnv will be used. 
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password 
 // should be set regardless.
 func New(opts ConnectionOptions) (*Connection, error) {
@@ -82,7 +82,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	}
 
 	// Are we passing env values?
-	if con.Options.Environment == UserDefined {
+	if con.Options.Type == UserDefined {
 		host := C.CString(con.Options.Host)
 		port := C.int(con.Options.Port)
 		username := C.CString(con.Options.Username)
@@ -117,7 +117,7 @@ func (con *Connection) Disconnect() {
 // String provides connection status and options provided during initialization (gorods.New)
 func (obj *Connection) String() string {
 
-	if obj.Options.Environment == UserDefined {
+	if obj.Options.Type == UserDefined {
 		return fmt.Sprintf("Host: %v:%v/%v, Connected: %v\n", obj.Options.Host, obj.Options.Port, obj.Options.Zone, obj.Connected)
 	}
 
@@ -142,4 +142,5 @@ func (con *Connection) Collection(startPath string, recursive bool) (collection 
 
 	return
 }
+
 

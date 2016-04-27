@@ -34,8 +34,8 @@ func main() {
 	// Connect to server, error provided by second parameter
 	irods, _ := gorods.New(gorods.ConnectionOptions {
 
-		// Or gorods.System to use the systems preconfigured environment
-		Environment: gorods.UserDefined, 
+		// Or gorods.EnvironmentDefined to use the systems preconfigured environment
+		Type: gorods.UserDefined, 
 
 		Host: "localhost",
 		Port: 1247,

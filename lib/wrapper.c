@@ -182,7 +182,7 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	int status = rcCloseCollection(conn, handleInx);
 
 	if ( status < 0 ) { 
-		*err = "rcDataObjOpen failed";
+		*err = "rcCloseCollection failed";
 		return -1;
 	}
 

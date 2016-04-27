@@ -224,12 +224,22 @@ func (col *Collection) Open() *Collection {
 // Close closes the Collection connection and resets the handle
 func (col *Collection) Close() *Collection {
 	var errMsg *C.char
-
-	if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
-		panic(newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
+	
+	for _, c := range col.DataObjects {
+		if c.Type() == CollectionType {
+			(c.(*Collection)).Close()
+		} else if c.Type() == DataObjType {
+			(c.(*DataObj)).Close()
+		}
 	}
+	
+	if int(col.chandle) > -1 {
+		if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
+			panic(newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
+		}
 
-	col.chandle = C.int(0)
+		col.chandle = C.int(-1)
+	}
 
 	return col
 }
