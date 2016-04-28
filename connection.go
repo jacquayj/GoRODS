@@ -61,7 +61,7 @@ type Connection struct {
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined 
 // constants are used in ConnectionOptions{ Type: ... }). 
-// When EnvironmentDefined is specified, the options stored in ~/.irods/.irodsEnv will be used. 
+// When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used. 
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password 
 // should be set regardless.
 func New(opts ConnectionOptions) (*Connection, error) {
@@ -142,5 +142,3 @@ func (con *Connection) Collection(startPath string, recursive bool) (collection 
 
 	return
 }
-
-

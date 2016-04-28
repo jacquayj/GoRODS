@@ -36,41 +36,4 @@ func TestUserDefinedConnection(t *testing.T) {
 	irods.Disconnect()
 }
 
-func TestHomeCollection(t *testing.T) {
-	irods, err := New(ConnectionOptions {
-		Type: EnvironmentDefined,
-	})
-
-	if err != nil {
-		t.Fatalf("%v\n", err)
-	}
-
-	homeDir, e := irods.Collection("/tempZone/home", false)
-	if e != nil {
-		t.Fatalf("%v\n", e)
-	}
-
-	homeDir.Close()
-	irods.Disconnect()
-
-}
-
-func TestHomeCollectionRecursive(t *testing.T) {
-	irods, err := New(ConnectionOptions {
-		Type: EnvironmentDefined,
-	})
-
-	if err != nil {
-		t.Fatalf("%v\n", err)
-	}
-
-	homeDir, e := irods.Collection("/tempZone/home", true)
-	if e != nil {
-		t.Fatalf("%v\n", e)
-	}
-
-	homeDir.Close()
-	irods.Disconnect()
-
-}
 

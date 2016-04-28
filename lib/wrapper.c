@@ -579,8 +579,6 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 
 
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
-	int testMode = 0; /* some some particular internal tests */
-	int longMode = 0; /* more detailed listing */
 	char zoneArgument[MAX_NAME_LEN + 2] = "";
 	char *attrName = ""; // Get all attributes?
 	// End global vars
@@ -612,26 +610,11 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 	i1a[2] = COL_META_DATA_ATTR_UNITS;
 	i1b[2] = 0;
 
-	if ( testMode ) {
-		i1a[3] = COL_META_DATA_ATTR_ID;
-		i1b[3] = 0;
-	}
-	if ( longMode ) {
-		i1a[3] = COL_META_DATA_MODIFY_TIME;
-		i1b[3] = 0;
-		columnNames[3] = "time set";
-	}
 
 	genQueryInp.selectInp.inx = i1a;
 	genQueryInp.selectInp.value = i1b;
 	genQueryInp.selectInp.len = 3;
 
-	if ( testMode ) {
-		genQueryInp.selectInp.len = 4;
-	}
-	if ( longMode ) {
-		genQueryInp.selectInp.len = 4;
-	}
 
 	i2a[0] = COL_COLL_NAME;
 	sprintf(v1, "='%s'", cwd);
