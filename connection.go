@@ -118,15 +118,25 @@ func (con *Connection) Disconnect() {
 func (obj *Connection) String() string {
 
 	if obj.Options.Type == UserDefined {
-		return fmt.Sprintf("Host: %v:%v/%v, Connected: %v\n", obj.Options.Host, obj.Options.Port, obj.Options.Zone, obj.Connected)
+		return fmt.Sprintf("Host: %v@%v:%v/%v, Connected: %v\n", obj.Options.Username, obj.Options.Host, obj.Options.Port, obj.Options.Zone, obj.Connected)
 	}
 
-	cEnvString := C.irods_env_str()
-	defer C.free(unsafe.Pointer(cEnvString))
-	
-	envString := C.GoString(cEnvString)
+	var (
+		username  *C.char
+		host 	  *C.char
+		port      C.int
+		zone 	  *C.char
+	)
 
-	return fmt.Sprintf("Connected: %v\n%v\n", obj.Connected, envString)
+	defer C.free(unsafe.Pointer(username))
+	defer C.free(unsafe.Pointer(host))
+	defer C.free(unsafe.Pointer(zone))
+	
+	if status := C.irods_env(&username, &host, &port, &zone); status != 0 {
+		panic(newError(Fatal, fmt.Sprintf("iRods getEnv Failed")))
+	}
+
+	return fmt.Sprintf("Host: %v@%v:%v/%v, Connected: %v\n", C.GoString(username), C.GoString(host), int(port), C.GoString(zone), obj.Connected)
 }
 
 // Collection initializes and returns an existing iRods collection using the specified path

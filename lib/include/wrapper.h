@@ -54,3 +54,4 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 int gorodsclearCollEnt( collEnt_t *collEnt );
 int gorodsFreeCollEnt( collEnt_t *collEnt );
 char* irods_env_str();
+int irods_env(char** username, char** host, int* port, char** zone);

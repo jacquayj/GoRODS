@@ -705,3 +705,20 @@ char* irods_env_str() {
 
 	return str;
  }
+
+ int irods_env(char** username, char** host, int* port, char** zone) {
+ 	rodsEnv myEnv;
+	
+	int status = getRodsEnv(&myEnv);
+	if ( status != 0 ) {
+		return -1;
+	}
+
+	*username = myEnv.rodsUserName;
+	*host = myEnv.rodsHost;
+	*port = myEnv.rodsPort;
+	*zone = myEnv.rodsZone;
+
+	return 0;
+ }
+
