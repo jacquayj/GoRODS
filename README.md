@@ -54,7 +54,15 @@ func main() {
 	metas.Get("MyAttribute")
 
 	// Or use a shortcut
-	buildFile.Attribute("MyAttribute")
+	myAttr := buildFile.Attribute("MyAttribute")
+
+	myAttr.SetValue("New Value")
+
+	myAttr.SetUnits("myUnit")
+
+	myAttr.Set("New Value", "myUnit")
+
+	myAttr.Rename("AnotherAttribute")
 	
 	// Returns true/false if checksum matches
 	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")
