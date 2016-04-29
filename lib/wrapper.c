@@ -577,6 +577,54 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 	return 0;
 }
 
+int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* na, char* nv, char* nu, rcComm_t* conn, char** err) {
+
+	if ( strlen(na) >= 252 || strlen(nv) >= 252 || strlen(nu) >= 252 ) {
+		*err = "Attribute, Value, or Unit string length too long";
+		return -1;
+	}
+
+	modAVUMetadataInp_t modAVUMetadataInp;
+
+	char typeArg[255] = "-";
+	modAVUMetadataInp.arg1 = strcat(typeArg, type);
+    modAVUMetadataInp.arg0 = "mod";
+    modAVUMetadataInp.arg2 = path;
+    modAVUMetadataInp.arg3 = oa;
+    modAVUMetadataInp.arg4 = ov;
+
+
+    if ( ou[0] == '\0' || ou == NULL ) {
+	    char nameArg[255] = "n:";
+	    char valueArg[255] = "v:";
+	    char unitArg[255] = "u:";
+
+	    modAVUMetadataInp.arg5 = strcat(nameArg, na);
+	    modAVUMetadataInp.arg6 = strcat(valueArg, nv);
+	    modAVUMetadataInp.arg7 = strcat(unitArg, nu);
+	    modAVUMetadataInp.arg8 = "";
+	    modAVUMetadataInp.arg9 = "";
+    } else {
+    	modAVUMetadataInp.arg5 = ou;
+
+	    char nameArg[255] = "n:";
+	    char valueArg[255] = "v:";
+	    char unitArg[255] = "u:";
+
+	    modAVUMetadataInp.arg6 = strcat(nameArg, na);
+	    modAVUMetadataInp.arg7 = strcat(valueArg, nv);
+	    modAVUMetadataInp.arg8 = strcat(unitArg, nu);
+	    modAVUMetadataInp.arg9 = "";
+    }
+
+    int status = rcModAVUMetadata(conn, &modAVUMetadataInp);
+    if ( status != 0 ) {
+		*err = "Unable to mod metadata";
+		return -1;
+	}
+
+	return 0;
+}
 
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
 	char zoneArgument[MAX_NAME_LEN + 2] = "";

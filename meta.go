@@ -9,6 +9,7 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+	"path/filepath"
 )
 
 // Meta structs contain information about a single iRods metadata attribute-value-units (AVU) triple
@@ -16,33 +17,141 @@ type Meta struct {
 	Attribute string
 	Value	  string
 	Units 	  string
+	Parent    *MetaCollection
 }
 
 // MetaCollection is a collection of metadata AVU triples for a single data object
-type MetaCollection []*Meta
+type MetaCollection struct {
+	Metas []*Meta
+	Obj   IRodsObj
+	Con   *Connection
+}
 
-func initMetaCollection(metatype int, objName string, objPath string, ccon *C.rcComm_t) MetaCollection {
+func newMetaCollection(obj IRodsObj) *MetaCollection {
+	
+	result := new(MetaCollection)
+	result.Obj = obj
+	result.Con = obj.Connection()
+
+	return result
+}
+
+func (m *Meta) getTypeRodsString() string {
+	switch m.Parent.Obj.GetType() {
+		case DataObjType:
+			return "d"
+		case CollectionType:
+			return "C"
+		case ResourceType:
+			return "R"
+		case UserType:
+			return "u"
+		default:
+			panic(newError(Fatal, "unrecognized meta type constant"))
+	}
+}
+
+// SetValue will modify metadata AVU value only
+func (m *Meta) SetValue(value string) *Meta {
+	return m.Set(value, m.Units)
+}
+
+// SetUnits will modify metadata AVU units only
+func (m *Meta) SetUnits(units string) *Meta {
+	return m.Set(m.Value, units)
+}
+
+// Set will modify metadata AVU value & units
+func (m *Meta) Set(value string, units string) *Meta {
+	return m.SetAll(m.Attribute, value, units)
+}
+
+// Rename will modify metadata AVU attribute name only
+func (m *Meta) Rename(attributeName string) *Meta {
+	return m.SetAll(attributeName, m.Value, m.Units)
+}
+
+// SetAll will modify metadata AVU with all three paramaters (Attribute, Value, Unit)
+func (m *Meta) SetAll(attributeName string, value string, units string) *Meta {
+
+	if attributeName != m.Attribute || value != m.Value || units != m.Units {
+		mT := C.CString(m.getTypeRodsString())
+		path := C.CString(m.Parent.Obj.GetPath())
+		oa := C.CString(m.Attribute)
+		ov := C.CString(m.Value)
+		ou := C.CString(m.Units)
+		na := C.CString(attributeName)
+		nv := C.CString(value)
+		nu := C.CString(units)
+
+		defer C.free(unsafe.Pointer(mT))
+		defer C.free(unsafe.Pointer(path))
+		defer C.free(unsafe.Pointer(oa))
+		defer C.free(unsafe.Pointer(ov))
+		defer C.free(unsafe.Pointer(ou))
+		defer C.free(unsafe.Pointer(na))
+		defer C.free(unsafe.Pointer(nv))
+		defer C.free(unsafe.Pointer(nu))
+
+		var err *C.char
+
+		if status := C.gorods_mod_meta(mT, path, oa, ov, ou, na, nv, nu, m.Parent.Con.ccon, &err); status < 0 {
+			fmt.Printf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err))
+			panic(newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err))))
+		}
+
+		m.Parent.Refresh()
+
+		m.Attribute = attributeName
+		m.Value = value
+		m.Units = units
+	}
+
+	return m
+}
+
+func (mc *MetaCollection) init() *MetaCollection {
+	// If MetaCollection hasn't been opened, do it!
+	if len(mc.Metas) < 1 {
+		mc.ReadMeta()
+	}
+
+	return mc
+}
+
+// Refresh clears existing metadata triples and grabs updated copy from iCAT server. 
+// It's an alias of ReadMeta()
+func (mc *MetaCollection) Refresh() {
+	mc.ReadMeta()
+}
+
+// ReadMeta clears existing metadata triples and grabs updated copy from iCAT server. 
+func (mc *MetaCollection) ReadMeta() {
 	var (
 		err        *C.char
 		metaResult C.goRodsMetaResult_t
 	)
 
-	result := make(MetaCollection, 0)
+	mc.Metas = make([]*Meta, 0)
 
-	name := C.CString(objName)
-	cwd := C.CString(objPath)
+	name := C.CString(mc.Obj.GetName())
 
 	defer C.free(unsafe.Pointer(name))
-	defer C.free(unsafe.Pointer(cwd))
 
-	switch metatype {
+	switch mc.Obj.GetType() {
 		case DataObjType:
-			if status := C.gorods_meta_dataobj(name, cwd, &metaResult, ccon, &err); status != 0 {
-				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err))))
+			cwd := C.CString(mc.Obj.GetCol().Path)
+			defer C.free(unsafe.Pointer(cwd))
+
+			if status := C.gorods_meta_dataobj(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
+				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err))))
 			}
 		case CollectionType:
-			if status := C.gorods_meta_collection(name, cwd, &metaResult, ccon, &err); status != 0 {
-				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", objPath, C.GoString(err))))
+			cwd := C.CString(filepath.Dir(mc.Obj.GetPath()))
+			defer C.free(unsafe.Pointer(cwd))
+
+			if status := C.gorods_meta_collection(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
+				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err))))
 			}
 		case ResourceType:
 			
@@ -65,13 +174,12 @@ func initMetaCollection(metatype int, objName string, objPath string, ccon *C.rc
 		m.Attribute = C.GoString(meta.name)
 		m.Value = C.GoString(meta.value)
 		m.Units = C.GoString(meta.units)
+		m.Parent = mc
 
-		result = append(result, m)
+		mc.Metas = append(mc.Metas, m)
 	}
 
 	C.freeGoRodsMetaResult(&metaResult)
-
-	return result
 }
 
 // String shows the contents of the meta struct.
@@ -89,10 +197,12 @@ func (m *Meta) String() string {
 //
 // 	Attr1: Val (unit: )
 // 	Attr2: Yes (unit: bool)
-func (metas MetaCollection) String() string {
+func (mc *MetaCollection) String() string {
 	var str string
 
-	for _, m := range metas {
+	mc.init()
+
+	for _, m := range mc.Metas {
 		str += m.String() + "\n"
 	}
 
@@ -100,10 +210,12 @@ func (metas MetaCollection) String() string {
 }
 
 // Get finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
-func (metas MetaCollection) Get(attr string) *Meta {
-	for i, m := range metas {
+func (mc *MetaCollection) Get(attr string) *Meta {
+	mc.init()
+
+	for i, m := range mc.Metas {
 		if m.Attribute == attr {
-			return metas[i]
+			return mc.Metas[i]
 		}
 	}
 

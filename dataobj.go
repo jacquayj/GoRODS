@@ -20,9 +20,9 @@ type DataObj struct {
 	Name   string
 	Size   int64
 	Offset int64
-	ObjType int
+	Type   int
 
-	MetaCol MetaCollection
+	MetaCol *MetaCollection
 
 	// Con field is a pointer to the Connection used to fetch the data object
 	Con *Connection
@@ -76,7 +76,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 	dataObj := new(DataObj)
 
-	dataObj.ObjType = DataObjType
+	dataObj.Type = DataObjType
 	dataObj.Col = col
 	dataObj.Con = dataObj.Col.Con
 	dataObj.Offset = 0
@@ -115,7 +115,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 
 	dataObj := new(DataObj)
 
-	dataObj.ObjType = DataObjType
+	dataObj.Type = DataObjType
 	dataObj.Col = coll
 	dataObj.Con = dataObj.Col.Con
 	dataObj.Offset = 0
@@ -137,8 +137,28 @@ func (obj *DataObj) init() {
 }
 
 // Type gets the type
-func (obj *DataObj) Type() int {
-	return obj.ObjType
+func (obj *DataObj) GetType() int {
+	return obj.Type
+}
+
+// Connection returns the *Connection used to get data object
+func (obj *DataObj) Connection() *Connection {
+	return obj.Con
+}
+
+// GetName returns the Name of the data object
+func (obj *DataObj) GetName() string {
+	return obj.Name
+}
+
+// GetName returns the Path of the data object
+func (obj *DataObj) GetPath() string {
+	return obj.Path
+}
+
+// GetName returns the *Collection of the data object
+func (obj *DataObj) GetCol() *Collection {
+	return obj.Col
 }
 
 // Open opens a connection to iRods and sets the data object handle
@@ -379,11 +399,11 @@ func (obj *DataObj) Attribute(attrName string) *Meta {
 }
 
 // Meta returns collection of Meta AVU triple structs of the data object
-func (obj *DataObj) Meta() MetaCollection {
+func (obj *DataObj) Meta() *MetaCollection {
 	obj.init()
 
 	if obj.MetaCol == nil {
-		obj.MetaCol = initMetaCollection(DataObjType, obj.Name, obj.Col.Path, obj.Con.ccon)
+		obj.MetaCol = newMetaCollection(obj)
 	}
 	
 	return obj.MetaCol

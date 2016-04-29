@@ -50,6 +50,7 @@ void freeGoRodsMetaResult(goRodsMetaResult_t* result);
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
 int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
+int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* na, char* nv, char* nu, rcComm_t* conn, char** err);
 
 int gorodsclearCollEnt( collEnt_t *collEnt );
 int gorodsFreeCollEnt( collEnt_t *collEnt );

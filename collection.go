@@ -19,11 +19,11 @@ type Collection struct {
 	Path        string
 	Name        string
 	DataObjects []IRodsObj
-	MetaCol 	MetaCollection
+	MetaCol 	*MetaCollection
 	Con         *Connection
 	Col         *Collection
 	Recursive   bool
-	ObjType 	int
+	Type 	    int
 
 	chandle C.int
 }
@@ -79,7 +79,7 @@ func (colls Collections) FindRecursive(path string) *Collection {
 			var filtered Collections
 
 			for n, obj := range col.DataObjects {
-				if obj.Type() == CollectionType {
+				if obj.GetType() == CollectionType {
 					filtered = append(filtered, col.DataObjects[n].(*Collection))
 				}
 			}
@@ -127,7 +127,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 	col := new(Collection)
 
 	col.chandle = C.int(-1)
-	col.ObjType = CollectionType
+	col.Type = CollectionType
 	col.Col = acol
 	col.Con = col.Col.Con
 	col.Path = C.GoString(data.collName)
@@ -150,7 +150,7 @@ func getCollection(startPath string, recursive bool, con *Connection) *Collectio
 	col := new(Collection)
 
 	col.chandle = C.int(-1)
-	col.ObjType = CollectionType
+	col.Type = CollectionType
 	col.Con = con
 	col.Path = startPath
 	col.Recursive = recursive
@@ -181,8 +181,28 @@ func (col *Collection) init() *Collection {
 }
 
 // Type gets the type
-func (col *Collection) Type() int {
-	return col.ObjType
+func (col *Collection) GetType() int {
+	return col.Type
+}
+
+// Connection returns the *Connection used to get collection
+func (col *Collection) Connection() *Connection {
+	return col.Con
+}
+
+// GetName returns the Name of the collection
+func (col *Collection) GetName() string {
+	return col.Name
+}
+
+// GetPath returns the Path of the collection
+func (col *Collection) GetPath() string {
+	return col.Path
+}
+
+// GetCol returns the *Collection of the collection
+func (col *Collection) GetCol() *Collection {
+	return col.Col
 }
 
 // Attribute gets specific metadata AVU triple for Collection
@@ -193,11 +213,11 @@ func (col *Collection) Attribute(attr string) *Meta {
 }
 
 // Meta returns collection of all metadata AVU triples for Collection
-func (col *Collection) Meta() MetaCollection {
+func (col *Collection) Meta() *MetaCollection {
 	col.init()
 
 	if col.MetaCol == nil {
-		col.MetaCol = initMetaCollection(CollectionType, col.Name, filepath.Dir(col.Path), col.Con.ccon)
+		col.MetaCol = newMetaCollection(col)
 	}
 	
 	return col.MetaCol
@@ -226,9 +246,9 @@ func (col *Collection) Close() *Collection {
 	var errMsg *C.char
 	
 	for _, c := range col.DataObjects {
-		if c.Type() == CollectionType {
+		if c.GetType() == CollectionType {
 			(c.(*Collection)).Close()
-		} else if c.Type() == DataObjType {
+		} else if c.GetType() == DataObjType {
 			(c.(*DataObj)).Close()
 		}
 	}
@@ -315,7 +335,7 @@ func (col *Collection) DataObjs() DataObjs {
 	var response DataObjs
 
 	for i, obj := range col.DataObjects {
-		if obj.Type() == DataObjType {
+		if obj.GetType() == DataObjType {
 			response = append(response, col.DataObjects[i].(*DataObj))
 		}
 	}
@@ -330,7 +350,7 @@ func (col *Collection) Collections() Collections {
 	var response Collections
 
 	for i, obj := range col.DataObjects {
-		if obj.Type() == CollectionType {
+		if obj.GetType() == CollectionType {
 			response = append(response, col.DataObjects[i].(*Collection))
 		}
 	}
