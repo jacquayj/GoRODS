@@ -398,6 +398,16 @@ func (obj *DataObj) Attribute(attrName string) *Meta {
 	return obj.Meta().Get(attrName)
 }
 
+// AddMeta adds a single Meta triple struct
+func (obj *DataObj) AddMeta(m Meta) *Meta {
+	return obj.Meta().Add(m)
+}
+
+// DeleteMeta deletes a single Meta triple struct, identified by Attribute field
+func (obj *DataObj) DeleteMeta(attr string) *MetaCollection {
+	return obj.Meta().Delete(attr)
+}
+
 // Meta returns collection of Meta AVU triple structs of the data object
 func (obj *DataObj) Meta() *MetaCollection {
 	obj.init()

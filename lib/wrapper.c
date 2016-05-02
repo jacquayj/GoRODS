@@ -626,6 +626,73 @@ int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* 
 	return 0;
 }
 
+int gorods_add_meta(char* type, char* path, char* na, char* nv, char* nu, rcComm_t* conn, char** err) {
+
+	if ( strlen(na) >= 252 || strlen(nv) >= 252 || strlen(nu) >= 252 ) {
+		*err = "Attribute, Value, or Unit string length too long";
+		return -1;
+	}
+
+	modAVUMetadataInp_t modAVUMetadataInp;
+
+	char typeArg[255] = "-";
+	modAVUMetadataInp.arg1 = strcat(typeArg, type);
+    modAVUMetadataInp.arg0 = "add";
+    modAVUMetadataInp.arg2 = path;
+    modAVUMetadataInp.arg3 = na;
+    modAVUMetadataInp.arg4 = nv;
+	modAVUMetadataInp.arg5 = nu;
+	modAVUMetadataInp.arg6 = "";
+	modAVUMetadataInp.arg7 = "";
+	modAVUMetadataInp.arg8 = "";
+	modAVUMetadataInp.arg9 = "";
+
+
+    int status = rcModAVUMetadata(conn, &modAVUMetadataInp);
+    if ( status != 0 ) {
+		*err = "Unable to add metadata";
+		return -1;
+	}
+
+	return 0;
+}
+
+int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_t* conn, char** err) {
+
+	if ( strlen(oa) >= 252 || strlen(ov) >= 252 || strlen(ou) >= 252 ) {
+		*err = "Attribute, Value, or Unit string length too long";
+		return -1;
+	}
+
+	modAVUMetadataInp_t modAVUMetadataInp;
+
+	char typeArg[255] = "-";
+	modAVUMetadataInp.arg1 = strcat(typeArg, type);
+    modAVUMetadataInp.arg0 = "rm";
+    modAVUMetadataInp.arg2 = path;
+    modAVUMetadataInp.arg3 = oa;
+    modAVUMetadataInp.arg4 = ov;
+    if ( ou[0] == '\0' || ou == NULL ) {
+		modAVUMetadataInp.arg5 = "";
+	} else {
+		modAVUMetadataInp.arg5 = ou;
+	}
+	modAVUMetadataInp.arg6 = "";
+	modAVUMetadataInp.arg7 = "";
+	modAVUMetadataInp.arg8 = "";
+	modAVUMetadataInp.arg9 = "";
+
+
+    int status = rcModAVUMetadata(conn, &modAVUMetadataInp);
+    if ( status != 0 ) {
+		*err = "Unable to rm metadata";
+		return -1;
+	}
+
+	return 0;
+}
+
+
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
 	char zoneArgument[MAX_NAME_LEN + 2] = "";
 	char *attrName = ""; // Get all attributes?

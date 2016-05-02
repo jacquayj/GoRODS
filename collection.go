@@ -223,6 +223,15 @@ func (col *Collection) Meta() *MetaCollection {
 	return col.MetaCol
 }
 
+// AddMeta adds a single Meta triple struct
+func (col *Collection) AddMeta(m Meta) *Meta {
+	return col.Meta().Add(m)
+}
+
+// DeleteMeta deletes a single Meta triple struct, identified by Attribute field
+func (col *Collection) DeleteMeta(attr string) *MetaCollection {
+	return col.Meta().Delete(attr)
+}
 
 // Open connects to iRods and sets the handle for Collection. 
 // Usually called by Collection.init()

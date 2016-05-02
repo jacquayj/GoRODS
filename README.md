@@ -53,6 +53,13 @@ func main() {
 	// Returns pointer to Meta struct
 	metas.Get("MyAttribute")
 
+	// Add a meta AVU triple
+	metas.Add(gorods.Meta {
+		Attribute: "add-test",
+		Value: "test",
+		Units: "string",
+	})
+
 	// Or use a shortcut
 	myAttr := buildFile.Attribute("MyAttribute")
 
@@ -63,6 +70,9 @@ func main() {
 	myAttr.Set("New Value", "myUnit")
 
 	myAttr.Rename("AnotherAttribute")
+
+	// Delete the metadata AVU triple
+	myAttr.Delete()
 	
 	// Returns true/false if checksum matches
 	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")
