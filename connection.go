@@ -1,7 +1,7 @@
 /*** Copyright (c) 2016, University of Florida Research Foundation, Inc. ***
  *** For more information please refer to the LICENSE.md file            ***/
 
-// Package gorods is a Golang binding for the iRods C API (iRods client library). 
+// Package gorods is a Golang binding for the iRods C API (iRods client library).
 // GoRods uses cgo to call iRods client functions.
 package gorods
 
@@ -17,8 +17,8 @@ import (
 
 // EnvironmentDefined and UserDefined constants are used when calling
 // gorods.New(ConnectionOptions{ Type: ... })
-// When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used. 
-// When UserDefined is specified you must also pass Host, Port, Username, and Zone. 
+// When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone.
 // Password should be set regardless.
 const (
 	EnvironmentDefined = iota
@@ -36,11 +36,11 @@ const (
 
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
-    GetType() int
-    Connection() *Connection
-    GetName()	string
-    GetPath()	string
-    GetCol()	*Collection
+	GetType() int
+	Connection() *Connection
+	GetName() string
+	GetPath() string
+	GetCol() *Collection
 }
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
@@ -63,10 +63,10 @@ type Connection struct {
 	OpenedCollections Collections
 }
 
-// New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined 
-// constants are used in ConnectionOptions{ Type: ... }). 
-// When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used. 
-// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password 
+// New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
+// constants are used in ConnectionOptions{ Type: ... }).
+// When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password
 // should be set regardless.
 func New(opts ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
@@ -126,16 +126,16 @@ func (obj *Connection) String() string {
 	}
 
 	var (
-		username  *C.char
-		host 	  *C.char
-		port      C.int
-		zone 	  *C.char
+		username *C.char
+		host     *C.char
+		port     C.int
+		zone     *C.char
 	)
 
 	defer C.free(unsafe.Pointer(username))
 	defer C.free(unsafe.Pointer(host))
 	defer C.free(unsafe.Pointer(zone))
-	
+
 	if status := C.irods_env(&username, &host, &port, &zone); status != 0 {
 		panic(newError(Fatal, fmt.Sprintf("iRods getEnv Failed")))
 	}
@@ -158,3 +158,12 @@ func (con *Connection) Collection(startPath string, recursive bool) (collection 
 
 	return
 }
+
+// Data object direct find
+// func (con *Connection) DataObject(query string) (dataobj *DataObj, err error) {
+// Init parent collection
+// }
+
+// func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
+
+// }

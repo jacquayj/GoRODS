@@ -5,9 +5,8 @@ package gorods
 
 import "testing"
 
-
 func TestHomeCollection(t *testing.T) {
-	irods, err := New(ConnectionOptions {
+	irods, err := New(ConnectionOptions{
 		Type: EnvironmentDefined,
 	})
 
@@ -26,7 +25,7 @@ func TestHomeCollection(t *testing.T) {
 }
 
 func TestHomeCollectionRecursive(t *testing.T) {
-	irods, err := New(ConnectionOptions {
+	irods, err := New(ConnectionOptions{
 		Type: EnvironmentDefined,
 	})
 
@@ -45,7 +44,7 @@ func TestHomeCollectionRecursive(t *testing.T) {
 }
 
 func TestHomeCollectionGetMeta(t *testing.T) {
-	irods, err := New(ConnectionOptions {
+	irods, err := New(ConnectionOptions{
 		Type: EnvironmentDefined,
 	})
 

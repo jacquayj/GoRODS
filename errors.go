@@ -4,7 +4,7 @@
 package gorods
 
 import (
- 	"fmt"
+	"fmt"
 	"time"
 )
 
@@ -17,9 +17,9 @@ const (
 
 // GoRodsError stores information about errors
 type GoRodsError struct {
-	LogLevel 	int
-	Message 	string
-	Time 		time.Time
+	LogLevel int
+	Message  string
+	Time     time.Time
 }
 
 // Error returns error string, alias of String(). Sample output:
@@ -37,9 +37,9 @@ func (err *GoRodsError) String() string {
 }
 
 func (err *GoRodsError) lookupError(code int) string {
-	var constLookup = map[int]string {
-		Info: "Info",
-		Warn: "Warn",
+	var constLookup = map[int]string{
+		Info:  "Info",
+		Warn:  "Warn",
 		Fatal: "Fatal",
 	}
 

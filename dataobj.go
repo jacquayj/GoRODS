@@ -45,7 +45,7 @@ type DataObjOptions struct {
 // DataObjs is a slice of DataObj structs
 type DataObjs []*DataObj
 
-// Exists checks to see if a data object exists in the slice 
+// Exists checks to see if a data object exists in the slice
 // and returns true or false
 func (dos DataObjs) Exists(path string) bool {
 	if d := dos.Find(path); d != nil {
@@ -55,7 +55,7 @@ func (dos DataObjs) Exists(path string) bool {
 	return false
 }
 
-// Find gets a data object from the slice and returns nil if one is not found. 
+// Find gets a data object from the slice and returns nil if one is not found.
 // Both the data object name or full path can be used as input.
 func (dos DataObjs) Find(path string) *DataObj {
 	for i, do := range dos {
@@ -184,8 +184,7 @@ func (obj *DataObj) Close() *DataObj {
 		}
 
 		obj.chandle = C.int(-1)
-	} 
-
+	}
 
 	return obj
 }
@@ -415,7 +414,7 @@ func (obj *DataObj) Meta() *MetaCollection {
 	if obj.MetaCol == nil {
 		obj.MetaCol = newMetaCollection(obj)
 	}
-	
+
 	return obj.MetaCol
 }
 

@@ -19,11 +19,11 @@ type Collection struct {
 	Path        string
 	Name        string
 	DataObjects []IRodsObj
-	MetaCol 	*MetaCollection
+	MetaCol     *MetaCollection
 	Con         *Connection
 	Col         *Collection
 	Recursive   bool
-	Type 	    int
+	Type        int
 
 	chandle C.int
 }
@@ -31,7 +31,7 @@ type Collection struct {
 // Collections is a slice of Collection structs
 type Collections []*Collection
 
-// Exists checks to see if a collection exists in the slice 
+// Exists checks to see if a collection exists in the slice
 // and returns true or false
 func (colls Collections) Exists(path string) bool {
 	if c := colls.Find(path); c != nil {
@@ -41,7 +41,7 @@ func (colls Collections) Exists(path string) bool {
 	return false
 }
 
-// Find gets a collection from the slice and returns nil if one is not found. 
+// Find gets a collection from the slice and returns nil if one is not found.
 // Both the collection name or full path can be used as input.
 func (colls Collections) Find(path string) *Collection {
 	if path[len(path)-1] == '/' {
@@ -57,7 +57,7 @@ func (colls Collections) Find(path string) *Collection {
 	return nil
 }
 
-// FindRecursive acts just like Find, but also searches sub collections recursively. 
+// FindRecursive acts just like Find, but also searches sub collections recursively.
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (colls Collections) FindRecursive(path string) *Collection {
 	if path[len(path)-1] == '/' {
@@ -120,7 +120,6 @@ func (obj *Collection) String() string {
 	return str
 }
 
-
 // initCollection initializes collection from *C.collEnt_t. This is used internally in the gorods package.
 func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
@@ -144,7 +143,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 	return col
 }
 
-// getCollection initializes specified collection located at startPath using gorods.Connection. 
+// getCollection initializes specified collection located at startPath using gorods.Connection.
 // Could be considered alias of Connection.Collection()
 func getCollection(startPath string, recursive bool, con *Connection) *Collection {
 	col := new(Collection)
@@ -219,7 +218,7 @@ func (col *Collection) Meta() *MetaCollection {
 	if col.MetaCol == nil {
 		col.MetaCol = newMetaCollection(col)
 	}
-	
+
 	return col.MetaCol
 }
 
@@ -235,7 +234,7 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 	return col.Meta().Delete(attr)
 }
 
-// Open connects to iRods and sets the handle for Collection. 
+// Open connects to iRods and sets the handle for Collection.
 // Usually called by Collection.init()
 func (col *Collection) Open() *Collection {
 	var errMsg *C.char
@@ -251,11 +250,10 @@ func (col *Collection) Open() *Collection {
 	return col
 }
 
-
 // Close closes the Collection connection and resets the handle
 func (col *Collection) Close() *Collection {
 	var errMsg *C.char
-	
+
 	for _, c := range col.DataObjects {
 		if c.GetType() == CollectionType {
 			(c.(*Collection)).Close()
@@ -263,7 +261,7 @@ func (col *Collection) Close() *Collection {
 			(c.(*DataObj)).Close()
 		}
 	}
-	
+
 	if int(col.chandle) > -1 {
 		if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
 			panic(newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
@@ -275,7 +273,7 @@ func (col *Collection) Close() *Collection {
 	return col
 }
 
-// Refresh is an alias of ReadCollection() 
+// Refresh is an alias of ReadCollection()
 func (col *Collection) Refresh() {
 	col.ReadCollection()
 }

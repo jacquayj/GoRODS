@@ -6,7 +6,7 @@ package gorods
 import "testing"
 
 func TestEnvironmentDefinedConnection(t *testing.T) {
-	irods, err := New(ConnectionOptions {
+	irods, err := New(ConnectionOptions{
 		Type: EnvironmentDefined,
 	})
 
@@ -18,7 +18,7 @@ func TestEnvironmentDefinedConnection(t *testing.T) {
 }
 
 func TestUserDefinedConnection(t *testing.T) {
-	irods, err := New(ConnectionOptions {
+	irods, err := New(ConnectionOptions{
 		Type: UserDefined,
 
 		Host: "localhost",
@@ -35,5 +35,3 @@ func TestUserDefinedConnection(t *testing.T) {
 
 	irods.Disconnect()
 }
-
-

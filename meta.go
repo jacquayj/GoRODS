@@ -8,15 +8,15 @@ import "C"
 
 import (
 	"fmt"
-	"unsafe"
 	"path/filepath"
+	"unsafe"
 )
 
 // Meta structs contain information about a single iRods metadata attribute-value-units (AVU) triple
 type Meta struct {
 	Attribute string
-	Value	  string
-	Units 	  string
+	Value     string
+	Units     string
 	Parent    *MetaCollection
 }
 
@@ -28,7 +28,7 @@ type MetaCollection struct {
 }
 
 func newMetaCollection(obj IRodsObj) *MetaCollection {
-	
+
 	result := new(MetaCollection)
 	result.Obj = obj
 	result.Con = obj.Connection()
@@ -38,16 +38,16 @@ func newMetaCollection(obj IRodsObj) *MetaCollection {
 
 func (m *Meta) getTypeRodsString() string {
 	switch m.Parent.Obj.GetType() {
-		case DataObjType:
-			return "d"
-		case CollectionType:
-			return "C"
-		case ResourceType:
-			return "R"
-		case UserType:
-			return "u"
-		default:
-			panic(newError(Fatal, "unrecognized meta type constant"))
+	case DataObjType:
+		return "d"
+	case CollectionType:
+		return "C"
+	case ResourceType:
+		return "R"
+	case UserType:
+		return "u"
+	default:
+		panic(newError(Fatal, "unrecognized meta type constant"))
 	}
 }
 
@@ -144,13 +144,13 @@ func (mc *MetaCollection) init() error {
 	return nil
 }
 
-// Refresh clears existing metadata triples and grabs updated copy from iCAT server. 
+// Refresh clears existing metadata triples and grabs updated copy from iCAT server.
 // It's an alias of ReadMeta()
 func (mc *MetaCollection) Refresh() error {
 	return mc.ReadMeta()
 }
 
-// ReadMeta clears existing metadata triples and grabs updated copy from iCAT server. 
+// ReadMeta clears existing metadata triples and grabs updated copy from iCAT server.
 func (mc *MetaCollection) ReadMeta() error {
 	var (
 		err        *C.char
@@ -164,28 +164,28 @@ func (mc *MetaCollection) ReadMeta() error {
 	defer C.free(unsafe.Pointer(name))
 
 	switch mc.Obj.GetType() {
-		case DataObjType:
-			cwd := C.CString(mc.Obj.GetCol().Path)
-			defer C.free(unsafe.Pointer(cwd))
+	case DataObjType:
+		cwd := C.CString(mc.Obj.GetCol().Path)
+		defer C.free(unsafe.Pointer(cwd))
 
-			if status := C.gorods_meta_dataobj(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
-				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
-			}
-		case CollectionType:
-			cwd := C.CString(filepath.Dir(mc.Obj.GetPath()))
-			defer C.free(unsafe.Pointer(cwd))
+		if status := C.gorods_meta_dataobj(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
+			return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
+		}
+	case CollectionType:
+		cwd := C.CString(filepath.Dir(mc.Obj.GetPath()))
+		defer C.free(unsafe.Pointer(cwd))
 
-			if status := C.gorods_meta_collection(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
-				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
-			}
-		case ResourceType:
-			
-		case ResourceGroupType:
-			
-		case UserType:
-			
-		default:
-			return newError(Fatal, "unrecognized meta type constant")
+		if status := C.gorods_meta_collection(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
+			return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
+		}
+	case ResourceType:
+
+	case ResourceGroupType:
+
+	case UserType:
+
+	default:
+		return newError(Fatal, "unrecognized meta type constant")
 	}
 
 	size := int(metaResult.size)
