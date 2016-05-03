@@ -224,12 +224,14 @@ func (col *Collection) Meta() *MetaCollection {
 }
 
 // AddMeta adds a single Meta triple struct
-func (col *Collection) AddMeta(m Meta) *Meta {
-	return col.Meta().Add(m)
+func (col *Collection) AddMeta(m Meta) (newMeta *Meta, err error) {
+	newMeta, err = col.Meta().Add(m)
+
+	return
 }
 
 // DeleteMeta deletes a single Meta triple struct, identified by Attribute field
-func (col *Collection) DeleteMeta(attr string) *MetaCollection {
+func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 	return col.Meta().Delete(attr)
 }
 
@@ -312,9 +314,9 @@ func (col *Collection) ReadCollection() {
 		isCollection := (obj.objType != C.DATA_OBJ_T)
 
 		if isCollection {
-			col.DataObjects = append(col.DataObjects, initCollection(obj, col))
+			col.add(initCollection(obj, col))
 		} else {
-			col.DataObjects = append(col.DataObjects, initDataObj(obj, col))
+			col.add(initDataObj(obj, col))
 
 			// Strings only in DataObj types
 			C.free(unsafe.Pointer(obj.dataName))

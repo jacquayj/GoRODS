@@ -399,12 +399,12 @@ func (obj *DataObj) Attribute(attrName string) *Meta {
 }
 
 // AddMeta adds a single Meta triple struct
-func (obj *DataObj) AddMeta(m Meta) *Meta {
+func (obj *DataObj) AddMeta(m Meta) (*Meta, error) {
 	return obj.Meta().Add(m)
 }
 
 // DeleteMeta deletes a single Meta triple struct, identified by Attribute field
-func (obj *DataObj) DeleteMeta(attr string) *MetaCollection {
+func (obj *DataObj) DeleteMeta(attr string) (*MetaCollection, error) {
 	return obj.Meta().Delete(attr)
 }
 

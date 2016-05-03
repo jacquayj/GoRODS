@@ -52,27 +52,27 @@ func (m *Meta) getTypeRodsString() string {
 }
 
 // SetValue will modify metadata AVU value only
-func (m *Meta) SetValue(value string) *Meta {
+func (m *Meta) SetValue(value string) (*Meta, error) {
 	return m.Set(value, m.Units)
 }
 
 // SetUnits will modify metadata AVU units only
-func (m *Meta) SetUnits(units string) *Meta {
+func (m *Meta) SetUnits(units string) (*Meta, error) {
 	return m.Set(m.Value, units)
 }
 
 // Set will modify metadata AVU value & units
-func (m *Meta) Set(value string, units string) *Meta {
+func (m *Meta) Set(value string, units string) (*Meta, error) {
 	return m.SetAll(m.Attribute, value, units)
 }
 
 // Rename will modify metadata AVU attribute name only
-func (m *Meta) Rename(attributeName string) *Meta {
+func (m *Meta) Rename(attributeName string) (*Meta, error) {
 	return m.SetAll(attributeName, m.Value, m.Units)
 }
 
 // Delete deletes the current Meta struct from iRods object
-func (m *Meta) Delete() *MetaCollection {
+func (m *Meta) Delete() (*MetaCollection, error) {
 
 	mT := C.CString(m.getTypeRodsString())
 	path := C.CString(m.Parent.Obj.GetPath())
@@ -89,16 +89,16 @@ func (m *Meta) Delete() *MetaCollection {
 	var err *C.char
 
 	if status := C.gorods_rm_meta(mT, path, oa, ov, ou, m.Parent.Con.ccon, &err); status < 0 {
-		panic(newError(Fatal, fmt.Sprintf("iRods rm Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err))))
+		return m.Parent, newError(Fatal, fmt.Sprintf("iRods rm Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
 	}
 
 	m.Parent.Refresh()
 
-	return m.Parent
+	return m.Parent, nil
 }
 
 // SetAll will modify metadata AVU with all three paramaters (Attribute, Value, Unit)
-func (m *Meta) SetAll(attributeName string, value string, units string) *Meta {
+func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta *Meta, e error) {
 
 	if attributeName != m.Attribute || value != m.Value || units != m.Units {
 		mT := C.CString(m.getTypeRodsString())
@@ -122,34 +122,36 @@ func (m *Meta) SetAll(attributeName string, value string, units string) *Meta {
 		var err *C.char
 
 		if status := C.gorods_mod_meta(mT, path, oa, ov, ou, na, nv, nu, m.Parent.Con.ccon, &err); status < 0 {
-			fmt.Printf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err))
-			panic(newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err))))
+			e = newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
+			return
 		}
 
 		m.Parent.Refresh()
-
 	}
 
-	return m.Parent.Get(attributeName)
+	newMeta = m.Parent.Get(attributeName)
+	return
 }
 
-func (mc *MetaCollection) init() *MetaCollection {
+func (mc *MetaCollection) init() error {
 	// If MetaCollection hasn't been opened, do it!
 	if len(mc.Metas) < 1 {
-		mc.ReadMeta()
+		if err := mc.ReadMeta(); err != nil {
+			return err
+		}
 	}
 
-	return mc
+	return nil
 }
 
 // Refresh clears existing metadata triples and grabs updated copy from iCAT server. 
 // It's an alias of ReadMeta()
-func (mc *MetaCollection) Refresh() {
-	mc.ReadMeta()
+func (mc *MetaCollection) Refresh() error {
+	return mc.ReadMeta()
 }
 
 // ReadMeta clears existing metadata triples and grabs updated copy from iCAT server. 
-func (mc *MetaCollection) ReadMeta() {
+func (mc *MetaCollection) ReadMeta() error {
 	var (
 		err        *C.char
 		metaResult C.goRodsMetaResult_t
@@ -167,14 +169,14 @@ func (mc *MetaCollection) ReadMeta() {
 			defer C.free(unsafe.Pointer(cwd))
 
 			if status := C.gorods_meta_dataobj(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
-				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err))))
+				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
 			}
 		case CollectionType:
 			cwd := C.CString(filepath.Dir(mc.Obj.GetPath()))
 			defer C.free(unsafe.Pointer(cwd))
 
 			if status := C.gorods_meta_collection(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
-				panic(newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err))))
+				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
 			}
 		case ResourceType:
 			
@@ -183,7 +185,7 @@ func (mc *MetaCollection) ReadMeta() {
 		case UserType:
 			
 		default:
-			panic(newError(Fatal, "unrecognized meta type constant"))
+			return newError(Fatal, "unrecognized meta type constant")
 	}
 
 	size := int(metaResult.size)
@@ -203,6 +205,8 @@ func (mc *MetaCollection) ReadMeta() {
 	}
 
 	C.freeGoRodsMetaResult(&metaResult)
+
+	return nil
 }
 
 // String shows the contents of the meta struct.
@@ -246,19 +250,19 @@ func (mc *MetaCollection) Get(attr string) *Meta {
 }
 
 // Delete deletes the meta AVU triple from the data object, identified by it's Attribute field
-func (mc *MetaCollection) Delete(attr string) *MetaCollection {
+func (mc *MetaCollection) Delete(attr string) (*MetaCollection, error) {
 	mc.init()
 
 	m := mc.Get(attr)
 	if m != nil {
-		m.Delete()
+		return m.Delete()
+	} else {
+		return mc, newError(Fatal, fmt.Sprintf("iRods Delete Meta Failed"))
 	}
-
-	return mc
 }
 
 // Add creates a new meta AVU triple, returns pointer to the created Meta struct
-func (mc *MetaCollection) Add(m Meta) *Meta {
+func (mc *MetaCollection) Add(m Meta) (newMeta *Meta, e error) {
 	mc.init()
 
 	if m.Attribute != "" && m.Value != "" && mc.Get(m.Attribute) == nil {
@@ -279,14 +283,17 @@ func (mc *MetaCollection) Add(m Meta) *Meta {
 		var err *C.char
 
 		if status := C.gorods_add_meta(mT, path, na, nv, nu, m.Parent.Con.ccon, &err); status < 0 {
-			panic(newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err))))
+			e = newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
+			return
 		}
 
 		m.Parent.Refresh()
 
 	} else {
-		panic(newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields or the attribute already exists")))
+		e = newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields or the attribute already exists"))
+		return
 	}
 
-	return m.Parent.Get(m.Attribute)
+	newMeta = m.Parent.Get(m.Attribute)
+	return
 }

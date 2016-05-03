@@ -25,16 +25,24 @@ fi
 # Compile gorods.o, build libgorods.a with iRods C API
 (cd $GORODS_LIB_PATH; rm -f build/libgorods.a; rm -f build/gorods.o; gcc -ggdb -o build/gorods.o -c wrapper.c -I/usr/include/irods -Iinclude; ar rcs build/libgorods.a build/gorods.o)
 
+C_BUILD_SUCCESS=$?
+
 # Compile and install GoRods, and your app
 go install github.com/jjacquay712/GoRods && go install $YOUR_APP_PACKAGE
 
-# Run binary
-if [ -f $DIR/../../../../bin/$YOUR_APP_PACKAGE ]; then
-	echo "- Running from GoRods package dir -"
-	echo
-	$DIR/../../../../bin/$YOUR_APP_PACKAGE
-elif [ -f $DIR/bin/$YOUR_APP_PACKAGE ]; then
-	echo "- Running from \$GOPATH dir -"
-	echo
-	$DIR/bin/$YOUR_APP_PACKAGE
+GO_BUILD_SUCCESS=$?
+
+if [ $GO_BUILD_SUCCESS == 0 ] && [ $C_BUILD_SUCCESS == 0 ]; then
+	# Run binary
+	if [ -f $DIR/../../../../bin/$YOUR_APP_PACKAGE ]; then
+		echo "- Running from GoRods package dir -"
+		echo
+		$DIR/../../../../bin/$YOUR_APP_PACKAGE
+	elif [ -f $DIR/bin/$YOUR_APP_PACKAGE ]; then
+		echo "- Running from \$GOPATH dir -"
+		echo
+		$DIR/bin/$YOUR_APP_PACKAGE
+	fi
+else
+	echo "Build failed"
 fi
