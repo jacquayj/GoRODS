@@ -145,7 +145,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 // getCollection initializes specified collection located at startPath using gorods.Connection.
 // Could be considered alias of Connection.Collection()
-func getCollection(startPath string, recursive bool, con *Connection) *Collection {
+func getCollection(startPath string, recursive bool, con *Connection) (*Collection, error) {
 	col := new(Collection)
 
 	col.chandle = C.int(-1)
@@ -162,21 +162,27 @@ func getCollection(startPath string, recursive bool, con *Connection) *Collectio
 	col.Name = pathSlice[len(pathSlice)-1]
 
 	if col.Recursive {
-		col.init()
+		if er := col.init(); er != nil {
+			return nil, er
+		}
 	}
 
-	return col
+	return col, nil
 }
 
 // init opens and reads collection information from iRods if the handle isn't set
-func (col *Collection) init() *Collection {
+func (col *Collection) init() error {
 	// If connection hasn't been opened, do it!
 	if int(col.chandle) < 0 {
-		col.Open()
-		col.ReadCollection()
+		if _, err := col.Open(); err != nil {
+			return err
+		}
+		if err := col.ReadCollection(); err != nil {
+			return err
+		}
 	}
 
-	return col
+	return nil
 }
 
 // Type gets the type
@@ -236,7 +242,7 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 
 // Open connects to iRods and sets the handle for Collection.
 // Usually called by Collection.init()
-func (col *Collection) Open() *Collection {
+func (col *Collection) Open() (*Collection, error) {
 	var errMsg *C.char
 
 	path := C.CString(col.Path)
@@ -244,10 +250,10 @@ func (col *Collection) Open() *Collection {
 	defer C.free(unsafe.Pointer(path))
 
 	if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
-		panic(newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
+		return col, newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 	}
 
-	return col
+	return col, nil
 }
 
 // Close closes the Collection connection and resets the handle
@@ -272,15 +278,17 @@ func (col *Collection) Close() error {
 }
 
 // Refresh is an alias of ReadCollection()
-func (col *Collection) Refresh() {
-	col.ReadCollection()
+func (col *Collection) Refresh() error {
+	return col.ReadCollection()
 }
 
 // ReadCollection reads data (overwrites) into col.DataObjects field.
-func (col *Collection) ReadCollection() {
+func (col *Collection) ReadCollection() error {
 
 	if int(col.chandle) < 0 {
-		col.Open()
+		if _, er := col.Open(); er != nil {
+			return er
+		}
 	}
 
 	// Init C varaibles
@@ -332,7 +340,7 @@ func (col *Collection) ReadCollection() {
 
 	}
 
-	col.Close()
+	return col.Close()
 }
 
 // DataObjs returns only the data objects contained within the collection

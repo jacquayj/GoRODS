@@ -146,15 +146,11 @@ func (obj *Connection) String() string {
 
 // Collection initializes and returns an existing iRods collection using the specified path
 func (con *Connection) Collection(startPath string, recursive bool) (collection *Collection, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(*GoRodsError)
-		}
-	}()
 
 	if collection = con.OpenedCollections.Find(startPath); collection == nil {
-		collection = getCollection(startPath, recursive, con)
-		con.OpenedCollections = append(con.OpenedCollections, collection)
+		if collection, err = getCollection(startPath, recursive, con); err == nil {
+			con.OpenedCollections = append(con.OpenedCollections, collection)
+		}
 	}
 
 	return
