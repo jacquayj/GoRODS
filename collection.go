@@ -251,26 +251,24 @@ func (col *Collection) Open() *Collection {
 }
 
 // Close closes the Collection connection and resets the handle
-func (col *Collection) Close() *Collection {
+func (col *Collection) Close() error {
 	var errMsg *C.char
 
 	for _, c := range col.DataObjects {
-		if c.GetType() == CollectionType {
-			(c.(*Collection)).Close()
-		} else if c.GetType() == DataObjType {
-			(c.(*DataObj)).Close()
+		if err := c.Close(); err != nil {
+			return err
 		}
 	}
 
 	if int(col.chandle) > -1 {
 		if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
-			panic(newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg))))
+			return newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 		}
 
 		col.chandle = C.int(-1)
 	}
 
-	return col
+	return nil
 }
 
 // Refresh is an alias of ReadCollection()
@@ -368,30 +366,32 @@ func (col *Collection) Collections() Collections {
 }
 
 // Put adds a local file to the remote iRods collection
-func (col *Collection) Put(localFile string) *DataObj {
+func (col *Collection) Put(localFile string) (*DataObj, error) {
 	col.init()
 
 	data, err := ioutil.ReadFile(localFile)
 	if err != nil {
-		panic(newError(Fatal, fmt.Sprintf("Can't read file for Put(): %v", localFile)))
+		return nil, newError(Fatal, fmt.Sprintf("Can't read file for Put(): %v", localFile))
 	}
 
 	fileName := filepath.Base(localFile)
 
-	newFile := CreateDataObj(DataObjOptions{
+	if newFile, er := col.CreateDataObj(DataObjOptions{
 		Name:  fileName,
 		Size:  int64(len(data)),
 		Mode:  0750,
 		Force: true,
-	}, col)
-
-	newFile.Write(data)
-
-	return newFile
+	}); er == nil {
+		newFile.Write(data)
+		return newFile, nil
+	} else {
+		return nil, er
+	}
+	
 }
 
 // CreateDataObj creates a data object within the collection using the options specified
-func (col *Collection) CreateDataObj(opts DataObjOptions) *DataObj {
+func (col *Collection) CreateDataObj(opts DataObjOptions) (*DataObj, error) {
 	return CreateDataObj(opts, col)
 }
 

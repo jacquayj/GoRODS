@@ -89,7 +89,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 }
 
 // CreateDataObj creates and adds a data object to the specified collection using provided options. Returns the newly created data object.
-func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
+func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 
 	var (
 		errMsg *C.char
@@ -110,7 +110,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 	defer C.free(unsafe.Pointer(resource))
 
 	if status := C.gorods_create_dataobject(path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, &handle, coll.Con.ccon, &errMsg); status != 0 {
-		panic(newError(Fatal, fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg))))
+		return nil, newError(Fatal, fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
 
 	dataObj := new(DataObj)
@@ -126,7 +126,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) *DataObj {
 
 	coll.add(dataObj)
 
-	return dataObj
+	return dataObj, nil
 
 }
 
@@ -174,19 +174,19 @@ func (obj *DataObj) Open() {
 	}
 }
 
-// Close closes the data object handler, returns the closed data object.
-func (obj *DataObj) Close() *DataObj {
+// Close closes the data object, resets handler
+func (obj *DataObj) Close() error {
 	var errMsg *C.char
 
 	if int(obj.chandle) > -1 {
 		if status := C.gorods_close_dataobject(obj.chandle, obj.Con.ccon, &errMsg); status != 0 {
-			panic(newError(Fatal, fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg))))
+			return newError(Fatal, fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 		}
 
 		obj.chandle = C.int(-1)
 	}
 
-	return obj
+	return nil
 }
 
 // Read reads the entire data object into memory and returns a []byte slice. Don't use this for large files.
