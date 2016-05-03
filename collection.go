@@ -211,33 +211,48 @@ func (col *Collection) GetCol() *Collection {
 }
 
 // Attribute gets specific metadata AVU triple for Collection
-func (col *Collection) Attribute(attr string) *Meta {
-	col.init()
-
-	return col.Meta().Get(attr)
+func (col *Collection) Attribute(attr string) (*Meta, error) {
+	if mc, err := col.Meta(); err == nil {
+		return mc.Get(attr)
+	} else {
+		return nil, err
+	}
+	
 }
 
 // Meta returns collection of all metadata AVU triples for Collection
-func (col *Collection) Meta() *MetaCollection {
-	col.init()
+func (col *Collection) Meta() (*MetaCollection, error) {
+	if er := col.init(); er != nil {
+		return nil, er
+	}
 
 	if col.MetaCol == nil {
 		col.MetaCol = newMetaCollection(col)
 	}
 
-	return col.MetaCol
+	return col.MetaCol, nil
 }
 
 // AddMeta adds a single Meta triple struct
 func (col *Collection) AddMeta(m Meta) (newMeta *Meta, err error) {
-	newMeta, err = col.Meta().Add(m)
+	var mc *MetaCollection
+
+	if mc, err = col.Meta(); err != nil {
+		return
+	}
+
+	newMeta, err = mc.Add(m)
 
 	return
 }
 
 // DeleteMeta deletes a single Meta triple struct, identified by Attribute field
 func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
-	return col.Meta().Delete(attr)
+	if mc, err := col.Meta(); err == nil {
+		return mc, mc.Delete(attr)
+	} else {
+		return nil, err
+	}
 }
 
 // Open connects to iRods and sets the handle for Collection.

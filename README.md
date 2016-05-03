@@ -48,7 +48,7 @@ func main() {
 	buildFile := homeDir.Cd("gorods").Get("build.sh")
 
 	// Returns MetaCollection containing all metadata for buildFile DataObject
-	metas := buildFile.Meta()
+	metas, _ := buildFile.Meta()
 
 	// Returns pointer to Meta struct
 	metas.Get("MyAttribute")
@@ -61,7 +61,7 @@ func main() {
 	})
 
 	// Or use a shortcut
-	myAttr := buildFile.Attribute("MyAttribute")
+	myAttr, _ := buildFile.Attribute("MyAttribute")
 
 	myAttr.SetValue("New Value")
 
@@ -81,7 +81,7 @@ func main() {
 	buildFile.DownloadTo("build.sh")
 
 	// Read file from /tempZone/home/admin/gorods/build.sh
-	contents := buildFile.Read()
+	contents, _ := buildFile.Read()
 
 	// Read file in 5 byte chunks
 	var wholeFile []byte
@@ -96,7 +96,7 @@ func main() {
 	fmt.Printf(string(contents))
 
 	// Add local file to collection
-	remoteFile := homeDir.Put("local_file.txt")
+	remoteFile, _ := homeDir.Put("local_file.txt")
 
 	// Copy file to gorods directory
 	remoteFile.CopyTo("gorods")
@@ -112,7 +112,7 @@ func main() {
 	remoteFile.Rename("local_file3.txt")
 
 	// Create file in home directory, overwrite if it exists
-	test := gorods.CreateDataObj(gorods.DataObjOptions {
+	test, _ := gorods.CreateDataObj(gorods.DataObjOptions {
 		Name: "test.txt",
 		Mode: 0750,
 		Force: true,

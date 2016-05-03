@@ -36,12 +36,12 @@ const (
 
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
-	GetType() int
+	GetType()    int
 	Connection() *Connection
-	GetName() string
-	GetPath() string
-	GetCol() *Collection
-	Close() error
+	GetName()    string
+	GetPath()    string
+	GetCol()     *Collection
+	Close()      error
 }
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.

@@ -130,10 +130,12 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 
 }
 
-func (obj *DataObj) init() {
+func (obj *DataObj) init() error {
 	if int(obj.chandle) < 0 {
-		obj.Open()
+		return obj.Open()
 	}
+
+	return nil
 }
 
 // Type gets the type
@@ -193,7 +195,9 @@ func (obj *DataObj) Close() error {
 
 // Read reads the entire data object into memory and returns a []byte slice. Don't use this for large files.
 func (obj *DataObj) Read() ([]byte, error) {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return nil, er
+	}
 
 	var (
 		buffer C.bytesBuf_t
@@ -218,14 +222,18 @@ func (obj *DataObj) Read() ([]byte, error) {
 
 // ReadBytes reads bytes from a data object at the specified position and length, returns []byte slice and error.
 func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return nil, er
+	}
 
 	var (
 		buffer C.bytesBuf_t
 		err    *C.char
 	)
 
-	obj.LSeek(pos)
+	if er := obj.LSeek(pos); er != nil {
+		return nil, er
+	}
 
 	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, obj.Con.ccon, &err); status != 0 {
 		return nil, newError(Fatal, fmt.Sprintf("iRods ReadBytes DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
@@ -241,7 +249,9 @@ func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 
 // LSeek sets the read/write offset pointer of a data object, returns error
 func (obj *DataObj) LSeek(offset int64) error {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return er
+	}
 
 	var (
 		err *C.char
@@ -258,14 +268,18 @@ func (obj *DataObj) LSeek(offset int64) error {
 
 // ReadChunk reads the entire data object in chunks (size of chunk specified by size parameter), passing the data into a callback function for each chunk. Use this to read/write large files.
 func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return er
+	}
 
 	var (
 		buffer C.bytesBuf_t
 		err    *C.char
 	)
 
-	obj.LSeek(0)
+	if er := obj.LSeek(0); er != nil {
+		return er
+	}
 
 	for obj.Offset < obj.Size {
 		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, obj.Con.ccon, &err); status != 0 {
@@ -293,7 +307,9 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 
 // DownloadTo downloads and writes the entire data object to the provided path. Don't use this with large files unless you have RAM to spare, use ReadChunk() instead. Returns error.
 func (obj *DataObj) DownloadTo(localPath string) error {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return er
+	}
 
 	if objContents, err := obj.Read(); err != nil {
 		return err
@@ -308,7 +324,9 @@ func (obj *DataObj) DownloadTo(localPath string) error {
 
 // Write writes the data to the data object, starting from the beginning. Returns error.
 func (obj *DataObj) Write(data []byte) error {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return er
+	}
 
 	if er := obj.LSeek(0); er != nil {
 		return er
@@ -330,7 +348,9 @@ func (obj *DataObj) Write(data []byte) error {
 
 // WriteBytes writes to the data object wherever the object's offset pointer is currently set to. It advances the pointer to the end of the written data for supporting subsequent writes. Be sure to call obj.LSeek(0) before hand if you wish to write from the beginning. Returns error.
 func (obj *DataObj) WriteBytes(data []byte) error {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return er
+	}
 
 	size := int64(len(data))
 
@@ -364,7 +384,9 @@ func (obj *DataObj) WriteBytes(data []byte) error {
 //
 // "modifyTime"
 func (obj *DataObj) Stat() (map[string]interface{}, error) {
-	obj.init()
+	if er := obj.init(); er != nil {
+		return nil, er
+	}
 
 	var (
 		err        *C.char
@@ -397,31 +419,47 @@ func (obj *DataObj) Stat() (map[string]interface{}, error) {
 }
 
 // Attribute returns a single Meta triple struct found by the attributes name
-func (obj *DataObj) Attribute(attrName string) *Meta {
-	obj.init()
-
-	return obj.Meta().Get(attrName)
+func (obj *DataObj) Attribute(attrName string) (*Meta, error) {
+	if meta, err := obj.Meta(); err == nil {
+		return meta.Get(attrName)
+	} else {
+		return nil, err
+	}
 }
 
 // AddMeta adds a single Meta triple struct
-func (obj *DataObj) AddMeta(m Meta) (*Meta, error) {
-	return obj.Meta().Add(m)
+func (obj *DataObj) AddMeta(m Meta) (nm *Meta, err error) {
+	var mc *MetaCollection
+
+	if mc, err = obj.Meta(); err != nil {
+		return
+	}
+
+	nm, err = mc.Add(m)
+
+	return
 }
 
 // DeleteMeta deletes a single Meta triple struct, identified by Attribute field
-func (obj *DataObj) DeleteMeta(attr string) (*MetaCollection, error) {
-	return obj.Meta().Delete(attr)
+func (obj *DataObj) DeleteMeta(attr string) error {
+	if mc, err := obj.Meta(); err == nil {
+		return mc.Delete(attr)
+	} else {
+		return err
+	}
 }
 
 // Meta returns collection of Meta AVU triple structs of the data object
-func (obj *DataObj) Meta() *MetaCollection {
-	obj.init()
+func (obj *DataObj) Meta() (*MetaCollection, error) {
+	if er := obj.init(); er != nil {
+		return nil, er
+	}
 
 	if obj.MetaCol == nil {
 		obj.MetaCol = newMetaCollection(obj)
 	}
 
-	return obj.MetaCol
+	return obj.MetaCol, nil
 }
 
 // CopyTo copies the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the destination collection automatically to maintain correct state. Returns error.

@@ -129,7 +129,7 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 		m.Parent.Refresh()
 	}
 
-	newMeta = m.Parent.Get(attributeName)
+	newMeta, e = m.Parent.Get(attributeName)
 	return
 }
 
@@ -225,10 +225,9 @@ func (m *Meta) String() string {
 // 	Attr1: Val (unit: )
 // 	Attr2: Yes (unit: bool)
 func (mc *MetaCollection) String() string {
-	var str string
-
 	mc.init()
 
+	var str string
 	for _, m := range mc.Metas {
 		str += m.String() + "\n"
 	}
@@ -237,35 +236,48 @@ func (mc *MetaCollection) String() string {
 }
 
 // Get finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
-func (mc *MetaCollection) Get(attr string) *Meta {
-	mc.init()
+func (mc *MetaCollection) Get(attr string) (*Meta, error) {
+	if err := mc.init(); err != nil {
+		return nil, err
+	}
 
 	for i, m := range mc.Metas {
 		if m.Attribute == attr {
-			return mc.Metas[i]
+			return mc.Metas[i], nil
 		}
 	}
 
-	return nil
+	return nil, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
 }
 
 // Delete deletes the meta AVU triple from the data object, identified by it's Attribute field
-func (mc *MetaCollection) Delete(attr string) (*MetaCollection, error) {
-	mc.init()
-
-	m := mc.Get(attr)
-	if m != nil {
-		return m.Delete()
-	} else {
-		return mc, newError(Fatal, fmt.Sprintf("iRods Delete Meta Failed"))
+func (mc *MetaCollection) Delete(attr string) (err error) {
+	if err = mc.init(); err != nil {
+		return
 	}
+
+	var meta *Meta
+
+	if meta, err = mc.Get(attr); err != nil {
+		return
+	}
+
+	if _, err = meta.Delete(); err != nil {
+		return
+	}
+
+	return
 }
 
 // Add creates a new meta AVU triple, returns pointer to the created Meta struct
-func (mc *MetaCollection) Add(m Meta) (newMeta *Meta, e error) {
-	mc.init()
+func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
+	if er := mc.init(); er != nil {
+		return nil, er
+	}
 
-	if m.Attribute != "" && m.Value != "" && mc.Get(m.Attribute) == nil {
+	_, er := mc.Get(m.Attribute)
+
+	if m.Attribute != "" && m.Value != "" && er == nil {
 		m.Parent = mc
 
 		mT := C.CString(m.getTypeRodsString())
@@ -283,17 +295,19 @@ func (mc *MetaCollection) Add(m Meta) (newMeta *Meta, e error) {
 		var err *C.char
 
 		if status := C.gorods_add_meta(mT, path, na, nv, nu, m.Parent.Con.ccon, &err); status < 0 {
-			e = newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
-			return
+			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
 		}
 
 		m.Parent.Refresh()
 
 	} else {
-		e = newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields or the attribute already exists"))
-		return
+		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields or the attribute already exists"))
 	}
 
-	newMeta = m.Parent.Get(m.Attribute)
-	return
+	if attr, er := m.Parent.Get(m.Attribute); er == nil {
+		return attr, nil
+	} else {
+		return nil, er
+	}
+	
 }
