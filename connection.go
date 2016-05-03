@@ -151,8 +151,10 @@ func (con *Connection) Collection(startPath string, recursive bool) (collection 
 		}
 	}()
 
-	collection = getCollection(startPath, recursive, con)
-	con.OpenedCollections = append(con.OpenedCollections, collection)
+	if collection = con.OpenedCollections.Find(startPath); collection == nil {
+		collection = getCollection(startPath, recursive, con)
+		con.OpenedCollections = append(con.OpenedCollections, collection)
+	}
 
 	return
 }

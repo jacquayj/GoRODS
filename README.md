@@ -152,7 +152,6 @@ Send me a pull request!
 ### iRods API Coverage
 
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement Meta: set operations, imeta qu
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Implement Connection: ilocate, interface to query meta (imeta qu), direct DataObj getter like Connection.Collection()?
 * Implement structs: User, Group, Resource, Zone?
