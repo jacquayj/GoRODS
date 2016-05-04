@@ -72,6 +72,7 @@ func (obj *DataObj) String() string {
 	return "DataObject: " + obj.Path
 }
 
+// We don't init() here or return errors here because it takes forever. Lazy loading is better in this case.
 func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 	dataObj := new(DataObj)

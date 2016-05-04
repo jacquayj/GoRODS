@@ -121,7 +121,7 @@ func (obj *Collection) String() string {
 }
 
 // initCollection initializes collection from *C.collEnt_t. This is used internally in the gorods package.
-func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
+func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 
 	col := new(Collection)
 
@@ -137,10 +137,13 @@ func initCollection(data *C.collEnt_t, acol *Collection) *Collection {
 
 	if acol.Recursive {
 		col.Recursive = true
-		col.init()
+
+		if er := col.init(); er != nil {
+			return nil, er
+		}
 	}
 
-	return col
+	return col, nil
 }
 
 // getCollection initializes specified collection located at startPath using gorods.Connection.
@@ -217,7 +220,7 @@ func (col *Collection) Attribute(attr string) (*Meta, error) {
 	} else {
 		return nil, err
 	}
-	
+
 }
 
 // Meta returns collection of all metadata AVU triples for Collection
@@ -333,7 +336,11 @@ func (col *Collection) ReadCollection() error {
 		isCollection := (obj.objType != C.DATA_OBJ_T)
 
 		if isCollection {
-			col.add(initCollection(obj, col))
+			if newCol, er := initCollection(obj, col); er == nil {
+				col.add(newCol)
+			} else {
+				return er
+			}
 		} else {
 			col.add(initDataObj(obj, col))
 
@@ -410,7 +417,7 @@ func (col *Collection) Put(localFile string) (*DataObj, error) {
 	} else {
 		return nil, er
 	}
-	
+
 }
 
 // CreateDataObj creates a data object within the collection using the options specified

@@ -151,16 +151,16 @@ Send me a pull request!
 
 ### iRods API Coverage
 
-* Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Implement Connection: ilocate, interface to query meta (imeta qu), direct DataObj getter like Connection.Collection()?
-* Implement structs: User, Group, Resource, Zone?
+* Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
+* Implement: User, Group?, Resource, Zone?
+* ----------
 * Implement access control (rcModAccessControl) and tickets
+* Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
 
 ### Code Polish
 
-* Add more robust error handling: Add idiomatic return errors for public functions
-* Add unit tests
+* Complete unit tests
 
 ## Known Issues
 

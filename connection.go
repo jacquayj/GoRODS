@@ -36,12 +36,12 @@ const (
 
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
-	GetType()    int
+	GetType() int
 	Connection() *Connection
-	GetName()    string
-	GetPath()    string
-	GetCol()     *Collection
-	Close()      error
+	GetName() string
+	GetPath() string
+	GetCol() *Collection
+	Close() error
 }
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
@@ -113,10 +113,15 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	return con, nil
 }
 
-// Disconnect closes connection to iRods iCAT server
-func (con *Connection) Disconnect() {
-	C.rcDisconnect(con.ccon)
+// Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
+func (con *Connection) Disconnect() error {
+	if status := int(C.rcDisconnect(con.ccon)); status < 0 {
+		return newError(Fatal, fmt.Sprintf("iRods rcDisconnect Failed"))
+	}
+
 	con.Connected = false
+
+	return nil
 }
 
 // String provides connection status and options provided during initialization (gorods.New)
@@ -147,7 +152,7 @@ func (obj *Connection) String() string {
 // Collection initializes and returns an existing iRods collection using the specified path
 func (con *Connection) Collection(startPath string, recursive bool) (collection *Collection, err error) {
 
-	if collection = con.OpenedCollections.Find(startPath); collection == nil {
+	if collection = con.OpenedCollections.FindRecursive(startPath); collection == nil {
 		if collection, err = getCollection(startPath, recursive, con); err == nil {
 			con.OpenedCollections = append(con.OpenedCollections, collection)
 		}
