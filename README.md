@@ -151,7 +151,7 @@ Send me a pull request!
 
 ### iRods API Coverage
 
-* Implement Connection: ilocate, interface to query meta (imeta qu), direct DataObj getter like Connection.Collection()?
+* Implement Connection: ilocate, interface to query meta (imeta qu)
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Implement: User, Group?, Resource, Zone?
 * ----------
