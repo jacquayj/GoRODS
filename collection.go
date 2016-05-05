@@ -28,71 +28,6 @@ type Collection struct {
 	chandle C.int
 }
 
-// Collections is a slice of Collection structs
-type Collections []*Collection
-
-// Exists checks to see if a collection exists in the slice
-// and returns true or false
-func (colls Collections) Exists(path string) bool {
-	if c := colls.Find(path); c != nil {
-		return true
-	}
-
-	return false
-}
-
-// Find gets a collection from the slice and returns nil if one is not found.
-// Both the collection name or full path can be used as input.
-func (colls Collections) Find(path string) *Collection {
-	if path[len(path)-1] == '/' {
-		path = path[:len(path)-1]
-	}
-
-	for i, col := range colls {
-		if col.Path == path || col.Name == path {
-			return colls[i]
-		}
-	}
-
-	return nil
-}
-
-// FindRecursive acts just like Find, but also searches sub collections recursively.
-// If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
-func (colls Collections) FindRecursive(path string) *Collection {
-	if path[len(path)-1] == '/' {
-		path = path[:len(path)-1]
-	}
-
-	for i, col := range colls {
-		if col.Path == path || col.Name == path {
-			return colls[i]
-		}
-
-		if col.Recursive {
-			// Use Collections() since we already loaded everything
-			if subCol := col.Collections().FindRecursive(path); subCol != nil {
-				return subCol
-			}
-		} else {
-			// Use DataObjects so we don't load new collections
-			var filtered Collections
-
-			for n, obj := range col.DataObjects {
-				if obj.GetType() == CollectionType {
-					filtered = append(filtered, col.DataObjects[n].(*Collection))
-				}
-			}
-
-			if subCol := filtered.FindRecursive(path); subCol != nil {
-				return subCol
-			}
-		}
-	}
-
-	return nil
-}
-
 // String shows the contents of the collection.
 //
 // D = DataObj
@@ -109,12 +44,16 @@ func (colls Collections) FindRecursive(path string) *Collection {
 func (obj *Collection) String() string {
 	str := fmt.Sprintf("Collection: %v\n", obj.Path)
 
-	for _, o := range obj.DataObjs() {
-		str += fmt.Sprintf("\tD: %v\n", o.Name)
+	objs, _ := obj.GetDataObjs()
+
+	for _, o := range objs {
+		str += fmt.Sprintf("\tD: %v\n", o.GetName())
 	}
 
-	for _, o := range obj.Collections() {
-		str += fmt.Sprintf("\tC: %v\n", o.Name)
+	cols, _ := obj.GetCollections()
+
+	for _, o := range cols {
+		str += fmt.Sprintf("\tC: %v\n", o.GetName())
 	}
 
 	return str
@@ -177,7 +116,7 @@ func getCollection(startPath string, recursive bool, con *Connection) (*Collecti
 func (col *Collection) init() error {
 	// If connection hasn't been opened, do it!
 	if int(col.chandle) < 0 {
-		if _, err := col.Open(); err != nil {
+		if err := col.Open(); err != nil {
 			return err
 		}
 		if err := col.ReadCollection(); err != nil {
@@ -188,9 +127,30 @@ func (col *Collection) init() error {
 	return nil
 }
 
+
+// GetCollections returns only the IRodsObjs that represent collections
+func (col *Collection) GetCollections() (response IRodsObjs, err error) {
+	if err = col.init(); err != nil {
+		return
+	}
+
+	for i, obj := range col.DataObjects {
+		if obj.GetType() == CollectionType {
+			response = append(response, col.DataObjects[i])
+		}
+	}
+
+	return
+}
+
 // Type gets the type
 func (col *Collection) GetType() int {
 	return col.Type
+}
+
+// IsRecursive returns true or false
+func (col *Collection) IsRecursive() bool {
+	return col.Recursive
 }
 
 // Connection returns the *Connection used to get collection
@@ -260,7 +220,7 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 
 // Open connects to iRods and sets the handle for Collection.
 // Usually called by Collection.init()
-func (col *Collection) Open() (*Collection, error) {
+func (col *Collection) Open() error {
 	var errMsg *C.char
 
 	path := C.CString(col.Path)
@@ -268,10 +228,10 @@ func (col *Collection) Open() (*Collection, error) {
 	defer C.free(unsafe.Pointer(path))
 
 	if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
-		return col, newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+		return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 	}
 
-	return col, nil
+	return nil
 }
 
 // Close closes the Collection connection and resets the handle
@@ -304,7 +264,7 @@ func (col *Collection) Refresh() error {
 func (col *Collection) ReadCollection() error {
 
 	if int(col.chandle) < 0 {
-		if _, er := col.Open(); er != nil {
+		if er := col.Open(); er != nil {
 			return er
 		}
 	}
@@ -365,39 +325,28 @@ func (col *Collection) ReadCollection() error {
 	return col.Close()
 }
 
-// DataObjs returns only the data objects contained within the collection
-func (col *Collection) DataObjs() DataObjs {
-	col.init()
 
-	var response DataObjs
+// GetDataObjs returns only the data objects contained within the collection
+func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
+	if err = col.init(); err != nil {
+		return
+	}
 
 	for i, obj := range col.DataObjects {
 		if obj.GetType() == DataObjType {
-			response = append(response, col.DataObjects[i].(*DataObj))
+			response = append(response, col.DataObjects[i])
 		}
 	}
 
-	return response
+	return
 }
 
-// Collections returns only the collections contained within the collection
-func (col *Collection) Collections() Collections {
-	col.init()
-
-	var response Collections
-
-	for i, obj := range col.DataObjects {
-		if obj.GetType() == CollectionType {
-			response = append(response, col.DataObjects[i].(*Collection))
-		}
-	}
-
-	return response
-}
 
 // Put adds a local file to the remote iRods collection
 func (col *Collection) Put(localFile string) (*DataObj, error) {
-	col.init()
+	if err := col.init(); err != nil {
+		return nil, err
+	}
 
 	data, err := ioutil.ReadFile(localFile)
 	if err != nil {
@@ -426,49 +375,73 @@ func (col *Collection) CreateDataObj(opts DataObjOptions) (*DataObj, error) {
 }
 
 func (col *Collection) add(dataObj IRodsObj) *Collection {
-	col.init()
-
 	col.DataObjects = append(col.DataObjects, dataObj)
 
 	return col
 }
 
 // Returns generic interface slice containing both data objects and collections combined
-func (col *Collection) All() []IRodsObj {
-	col.init()
+func (col *Collection) All() (IRodsObjs, error) {
+	if err := col.init(); err != nil {
+		return col.DataObjects, err
+	}
 
-	return col.DataObjects
+	return col.DataObjects, nil
 }
 
-// Both returns two slices, the first for DataObjs and the second for Collections
-func (col *Collection) Both() (DataObjs, Collections) {
-	return col.DataObjs(), col.Collections()
-}
 
 // Exists returns true of false depending on whether the DataObj or Collection is found
 func (col *Collection) Exists(path string) bool {
-	return col.DataObjs().Exists(path) || col.Collections().Exists(path)
+	if objs, err := col.All(); err == nil {
+		return objs.Exists(path)
+	}
+
+	return false
 }
 
 // Find returns either a DataObject or Collection using the collection-relative or absolute path specified.
 func (col *Collection) Find(path string) IRodsObj {
-	if d := col.DataObjs().Find(path); d != nil {
-		return d
-	}
-
-	if c := col.Collections().Find(path); c != nil {
-		return c
+	if objs, err := col.All(); err == nil {
+		return objs.Find(path)
 	}
 
 	return nil
 }
 
-// Cd is a shortcut for calling collection.Collections().Find(path). It effectively returns (or changes to) the sub collection you specify collection-relatively or absolutely.
-func (col *Collection) Cd(path string) *Collection {
-	return col.Collections().Find(path)
+func (col *Collection) FindCol(path string) *Collection {
+	if c := col.Find(path); c != nil {
+		return c.(*Collection)
+	}
+
+	return nil
 }
 
-// Get is a shortcut for calling collection.DataObjs().Find(path). It effectively returns the DataObj you specify collection-relatively or absolutely.
+func (col *Collection) FindObj(path string) *DataObj {
+	if c := col.Find(path); c != nil {
+		return c.(*DataObj)
+	}
+
+	return nil
+}
+
+// Cd is a shortcut for calling collection.GetCollections().Find(path). It effectively returns (or changes to) the sub collection you specify collection-relatively or absolutely.
+func (col *Collection) Cd(path string) *Collection {
+	if cols, err := col.GetCollections(); err == nil {
+		if c := cols.Find(path); c != nil {
+			return c.(*Collection)
+		}
+	}
+
+	return nil
+}
+
+// Get is a shortcut for calling collection.GetDataObjs().Find(path). It effectively returns the DataObj you specify collection-relatively or absolutely.
 func (col *Collection) Get(path string) *DataObj {
-	return col.DataObjs().Find(path)
+	if cols, err := col.GetDataObjs(); err == nil {
+		if d := cols.Find(path); d != nil {
+			return d.(*DataObj)
+		}
+	}
+
+	return nil
 }

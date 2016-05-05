@@ -42,31 +42,6 @@ type DataObjOptions struct {
 	Resource string
 }
 
-// DataObjs is a slice of DataObj structs
-type DataObjs []*DataObj
-
-// Exists checks to see if a data object exists in the slice
-// and returns true or false
-func (dos DataObjs) Exists(path string) bool {
-	if d := dos.Find(path); d != nil {
-		return true
-	}
-
-	return false
-}
-
-// Find gets a data object from the slice and returns nil if one is not found.
-// Both the data object name or full path can be used as input.
-func (dos DataObjs) Find(path string) *DataObj {
-	for i, do := range dos {
-		if do.Path == path || do.Name == path {
-			return dos[i]
-		}
-	}
-
-	return nil
-}
-
 // String returns path of data object
 func (obj *DataObj) String() string {
 	return "DataObject: " + obj.Path
@@ -442,11 +417,11 @@ func (obj *DataObj) AddMeta(m Meta) (nm *Meta, err error) {
 }
 
 // DeleteMeta deletes a single Meta triple struct, identified by Attribute field
-func (obj *DataObj) DeleteMeta(attr string) error {
+func (obj *DataObj) DeleteMeta(attr string) (*MetaCollection, error) {
 	if mc, err := obj.Meta(); err == nil {
-		return mc.Delete(attr)
+		return mc, mc.Delete(attr)
 	} else {
-		return err
+		return nil, err
 	}
 }
 
@@ -470,7 +445,6 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 		err                         *C.char
 		destination                 string
 		destinationCollectionString string
-		destinationCollection       *Collection
 	)
 
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
@@ -505,15 +479,11 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 	// reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
-			destinationCollection.Refresh()
-		} else {
-			// Can't find, load collection into memory
-			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
+		if dc := obj.Con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+			(dc.(*Collection)).Refresh()
 		}
 	} else {
-		destinationCollection = (iRodsCollection.(*Collection))
-		destinationCollection.Refresh()
+		(iRodsCollection.(*Collection)).Refresh()
 	}
 
 	return nil
@@ -564,7 +534,9 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 	// Find & reload destination collection
 	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
 		// Find collection recursivly
-		if destinationCollection = obj.Con.OpenedCollections.FindRecursive(destinationCollectionString); destinationCollection != nil {
+		if dc := obj.Con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+			destinationCollection = dc.(*Collection)
+
 			destinationCollection.Refresh()
 		} else {
 			// Can't find, load collection into memory
@@ -694,3 +666,4 @@ func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
 
 	return obj
 }
+

@@ -37,12 +37,100 @@ const (
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
 	GetType() int
-	Connection() *Connection
 	GetName() string
 	GetPath() string
 	GetCol() *Collection
+
+	Meta() (*MetaCollection, error)
+	Attribute(string) (*Meta, error)
+	AddMeta(Meta) (*Meta, error)
+	DeleteMeta(string) (*MetaCollection, error)
+
+	String() string
+	Connection() *Connection
+	Open() error
 	Close() error
 }
+
+type IRodsObjs []IRodsObj
+
+// Exists checks to see if a collection exists in the slice
+// and returns true or false
+func (objs IRodsObjs) Exists(path string) bool {
+	if o := objs.Find(path); o != nil {
+		return true
+	}
+
+	return false
+}
+
+// Find gets a collection from the slice and returns nil if one is not found.
+// Both the collection name or full path can be used as input.
+func (objs IRodsObjs) Find(path string) IRodsObj {
+	
+	// Strip trailing forward slash
+	if path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
+	}
+
+	for i, obj := range objs {
+		if obj.GetPath() == path || obj.GetName() == path {
+			return objs[i]
+		}
+	}
+
+	return nil
+}
+
+// FindRecursive acts just like Find, but also searches sub collections recursively.
+// If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
+func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
+	
+	// Strip trailing forward slash
+	if path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
+	}
+
+	for i, obj := range objs {
+		if obj.GetPath() == path || obj.GetName() == path {
+			return objs[i]
+		}
+
+
+		if obj.GetType() == CollectionType {
+
+			col := obj.(*Collection)
+
+			if col.IsRecursive() {
+				if obs, err := col.GetCollections(); err == nil {
+					// Use Collections() since we already loaded everything
+					if subCol := obs.FindRecursive(path); subCol != nil {
+						return subCol
+					}
+				}
+			} else {
+
+				// Use DataObjects so we don't load new collections (don't init)
+				var filtered IRodsObjs
+
+				for n, o := range col.DataObjects {
+					if o.GetType() == CollectionType {
+						filtered = append(filtered, col.DataObjects[n])
+					}
+				}
+
+				if subCol := filtered.FindRecursive(path); subCol != nil {
+					return subCol
+				}
+
+			}
+		}
+		
+	}
+
+	return nil
+}
+
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
@@ -59,9 +147,9 @@ type ConnectionOptions struct {
 type Connection struct {
 	ccon *C.rcComm_t
 
-	Connected         bool
-	Options           *ConnectionOptions
-	OpenedCollections Collections
+	Connected   bool
+	Options     *ConnectionOptions
+	OpenedObjs  IRodsObjs
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
@@ -150,21 +238,33 @@ func (obj *Connection) String() string {
 }
 
 // Collection initializes and returns an existing iRods collection using the specified path
-func (con *Connection) Collection(startPath string, recursive bool) (collection *Collection, err error) {
+func (con *Connection) Collection(startPath string, recursive bool) (col *Collection, err error) {
 
-	if collection = con.OpenedCollections.FindRecursive(startPath); collection == nil {
+	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
 		if collection, err = getCollection(startPath, recursive, con); err == nil {
-			con.OpenedCollections = append(con.OpenedCollections, collection)
+			con.OpenedObjs = append(con.OpenedObjs, collection)
+
+			col = collection.(*Collection)
 		}
 	}
 
 	return
 }
 
-// Data object direct find
-// func (con *Connection) DataObject(query string) (dataobj *DataObj, err error) {
-// Init parent collection
-// }
+// DataObject directly returns a specific DataObj without the need to traverse collections. Must pass full path of data object.
+func (con *Connection) DataObject(dataObjPath string) (dataobj *DataObj, err error) {
+	return nil, nil
+}
+
+// SearchDataObjects searchs for and returns DataObjs slice based on a search string. Use '%' as a wildcard. Equivalent to ilocate command
+func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, err error) {
+	return nil, nil
+}
+
+// SearchDataObjects searchs for and returns DataObjs slice based on a search string. Use '%' as a wildcard. Equivalent to ilocate command
+func (con *Connection) QueryMeta(dataObjPath string) (dataobj *DataObj, err error) {
+	return nil, nil
+}
 
 // func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
 
