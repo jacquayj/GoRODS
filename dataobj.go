@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"unsafe"
+	"path/filepath"
 )
 
 // DataObj structs contain information about single data objects in an iRods zone.
@@ -63,6 +64,26 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 	return dataObj
 }
+
+// getDataObj initializes specified data object located at startPath using gorods.Connection.
+// Could be considered alias of Connection.DataObject()
+func getDataObj(startPath string, con *Connection) (*DataObj, error) {
+
+	collectionDir := filepath.Dir(startPath)
+	dataObjName := filepath.Base(startPath)
+
+	if col, err := con.Collection(collectionDir, false); err == nil {
+		if obj := col.FindObj(dataObjName); obj != nil {
+			return obj, nil
+		} else {
+			return nil, newError(Fatal, fmt.Sprintf("Can't find DataObj within collection %v", collectionDir))
+		}
+	} else {
+		return nil, err
+	}
+
+}
+
 
 // CreateDataObj creates and adds a data object to the specified collection using provided options. Returns the newly created data object.
 func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
@@ -120,7 +141,7 @@ func (obj *DataObj) GetType() int {
 }
 
 // Connection returns the *Connection used to get data object
-func (obj *DataObj) Connection() *Connection {
+func (obj *DataObj) GetCon() *Connection {
 	return obj.Con
 }
 

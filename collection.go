@@ -30,30 +30,24 @@ type Collection struct {
 
 // String shows the contents of the collection.
 //
-// D = DataObj
+// d = DataObj
 //
 // C = Collection
 //
 // Sample output:
 //
 // 	Collection: /tempZone/home/admin/gorods
-// 		D: build.sh
+// 		d: build.sh
 // 		C: bin
 // 		C: pkg
 // 		C: src
 func (obj *Collection) String() string {
 	str := fmt.Sprintf("Collection: %v\n", obj.Path)
 
-	objs, _ := obj.GetDataObjs()
+	objs, _ := obj.All()
 
 	for _, o := range objs {
-		str += fmt.Sprintf("\tD: %v\n", o.GetName())
-	}
-
-	cols, _ := obj.GetCollections()
-
-	for _, o := range cols {
-		str += fmt.Sprintf("\tC: %v\n", o.GetName())
+		str += fmt.Sprintf("\t%v: %v\n", getTypeString(o.GetType()), o.GetName())
 	}
 
 	return str
@@ -154,7 +148,7 @@ func (col *Collection) IsRecursive() bool {
 }
 
 // Connection returns the *Connection used to get collection
-func (col *Collection) Connection() *Connection {
+func (col *Collection) GetCon() *Connection {
 	return col.Con
 }
 

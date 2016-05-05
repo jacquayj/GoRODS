@@ -31,24 +31,13 @@ func newMetaCollection(obj IRodsObj) *MetaCollection {
 
 	result := new(MetaCollection)
 	result.Obj = obj
-	result.Con = obj.Connection()
+	result.Con = obj.GetCon()
 
 	return result
 }
 
 func (m *Meta) getTypeRodsString() string {
-	switch m.Parent.Obj.GetType() {
-	case DataObjType:
-		return "d"
-	case CollectionType:
-		return "C"
-	case ResourceType:
-		return "R"
-	case UserType:
-		return "u"
-	default:
-		panic(newError(Fatal, "unrecognized meta type constant"))
-	}
+	return getTypeString(m.Parent.Obj.GetType())
 }
 
 // SetValue will modify metadata AVU value only
@@ -228,8 +217,10 @@ func (mc *MetaCollection) String() string {
 	mc.init()
 
 	var str string
+
+	str = "Metadata: " + mc.Obj.GetPath() + "\n"
 	for _, m := range mc.Metas {
-		str += m.String() + "\n"
+		str += "\t" + m.String() + "\n"
 	}
 
 	return str

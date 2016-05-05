@@ -34,12 +34,28 @@ const (
 	UserType
 )
 
+func getTypeString(t int) string {
+	switch t {
+		case DataObjType:
+			return "d"
+		case CollectionType:
+			return "C"
+		case ResourceType:
+			return "R"
+		case UserType:
+			return "u"
+		default:
+			panic(newError(Fatal, "unrecognized meta type constant"))
+	}
+}
+
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
 	GetType() int
 	GetName() string
 	GetPath() string
 	GetCol() *Collection
+	GetCon() *Connection
 
 	Meta() (*MetaCollection, error)
 	Attribute(string) (*Meta, error)
@@ -47,7 +63,6 @@ type IRodsObj interface {
 	DeleteMeta(string) (*MetaCollection, error)
 
 	String() string
-	Connection() *Connection
 	Open() error
 	Close() error
 }
@@ -152,6 +167,7 @@ type Connection struct {
 	OpenedObjs  IRodsObjs
 }
 
+
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
 // constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
@@ -238,22 +254,30 @@ func (obj *Connection) String() string {
 }
 
 // Collection initializes and returns an existing iRods collection using the specified path
-func (con *Connection) Collection(startPath string, recursive bool) (col *Collection, err error) {
+func (con *Connection) Collection(startPath string, recursive bool) (*Collection, error) {
 
+	// Check the cache
 	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
-		if collection, err = getCollection(startPath, recursive, con); err == nil {
-			con.OpenedObjs = append(con.OpenedObjs, collection)
 
-			col = collection.(*Collection)
+		// Load collection, no cache found
+		if col, err := getCollection(startPath, recursive, con); err == nil {
+			con.OpenedObjs = append(con.OpenedObjs, col)
+
+			return col, nil
+		} else {
+			return nil, err
 		}
+	} else {
+		return collection.(*Collection), nil
 	}
-
-	return
 }
 
 // DataObject directly returns a specific DataObj without the need to traverse collections. Must pass full path of data object.
 func (con *Connection) DataObject(dataObjPath string) (dataobj *DataObj, err error) {
-	return nil, nil
+	// We use the caching mechanism from Collection()
+	dataobj, err = getDataObj(dataObjPath, con)
+	
+	return
 }
 
 // SearchDataObjects searchs for and returns DataObjs slice based on a search string. Use '%' as a wildcard. Equivalent to ilocate command
