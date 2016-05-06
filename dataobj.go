@@ -9,7 +9,6 @@ import "C"
 import (
 	"fmt"
 	"io/ioutil"
-	"reflect"
 	"strings"
 	"unsafe"
 	"path/filepath"
@@ -42,6 +41,7 @@ type DataObjOptions struct {
 	Force    bool
 	Resource string
 }
+
 
 // String returns path of data object
 func (obj *DataObj) String() string {
@@ -468,7 +468,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 		destinationCollectionString string
 	)
 
-	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+	if isString(iRodsCollection) {
 		destinationCollectionString = iRodsCollection.(string)
 
 		// Is this a relative path?
@@ -498,7 +498,7 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 	}
 
 	// reload destination collection
-	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+	if isString(iRodsCollection) {
 		// Find collection recursivly
 		if dc := obj.Con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
 			(dc.(*Collection)).Refresh()
@@ -520,7 +520,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 		destinationCollection       *Collection
 	)
 
-	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+	if isString(iRodsCollection) {
 		destinationCollectionString = iRodsCollection.(string)
 
 		// Is this a relative path?
@@ -553,7 +553,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 	obj.Col.Refresh()
 
 	// Find & reload destination collection
-	if reflect.TypeOf(iRodsCollection).Kind() == reflect.String {
+	if isString(iRodsCollection) {
 		// Find collection recursivly
 		if dc := obj.Con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
 			destinationCollection = dc.(*Collection)

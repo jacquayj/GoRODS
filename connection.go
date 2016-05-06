@@ -49,6 +49,16 @@ func getTypeString(t int) string {
 	}
 }
 
+func isString(obj interface{}) bool {
+	switch obj.(type) {
+		case string:
+			return true
+		default:		
+	}
+
+	return false
+}
+
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
 	GetType() int
@@ -285,8 +295,13 @@ func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, 
 	return nil, nil
 }
 
-// SearchDataObjects searchs for and returns DataObjs slice based on a search string. Use '%' as a wildcard. Equivalent to ilocate command
+// QueryMeta 
 func (con *Connection) QueryMeta(dataObjPath string) (dataobj *DataObj, err error) {
+	
+	// re implement queryDataObj( char *cmdToken[] ) since it outputs to stdout
+
+	//https://github.com/irods/irods/blob/4.1.8/iRODS/clients/icommands/src/imeta.cpp#L582
+
 	return nil, nil
 }
 
