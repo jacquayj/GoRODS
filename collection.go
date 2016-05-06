@@ -18,7 +18,7 @@ import (
 type Collection struct {
 	Path        string
 	Name        string
-	DataObjects []IRodsObj
+	DataObjects IRodsObjs
 	MetaCol     *MetaCollection
 	Con         *Connection
 	Col         *Collection
@@ -397,6 +397,15 @@ func (col *Collection) Exists(path string) bool {
 func (col *Collection) Find(path string) IRodsObj {
 	if objs, err := col.All(); err == nil {
 		return objs.Find(path)
+	}
+
+	return nil
+}
+
+// Find returns either a DataObject or Collection using the collection-relative or absolute path specified.
+func (col *Collection) FindRecursive(path string) IRodsObj {
+	if objs, err := col.All(); err == nil {
+		return objs.FindRecursive(path)
 	}
 
 	return nil

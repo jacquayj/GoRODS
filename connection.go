@@ -154,10 +154,10 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 
 		if obj.GetType() == CollectionType {
 			col := obj.(*Collection)
-			if obs, err := col.All(); err == nil {
-				if subCol := obs.FindRecursive(path); subCol != nil {
-					return subCol
-				}
+
+			// Use .DataObjects and not All() so we don't init the non-recursive collections
+			if subCol := col.DataObjects.FindRecursive(path); subCol != nil {
+				return subCol
 			}
 		}
 	}
