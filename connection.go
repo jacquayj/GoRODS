@@ -13,6 +13,7 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+	"sync"
 )
 
 // EnvironmentDefined and UserDefined constants are used when calling
@@ -111,6 +112,36 @@ func (objs IRodsObjs) Find(path string) IRodsObj {
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
 	
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var (
+		f1 IRodsObj
+		f2 IRodsObj
+	)
+
+	half := len(objs) / 2
+
+	go func() {
+		defer wg.Done()
+		f1 = findRecursiveHelper(objs[:half], path)
+	}()
+
+	go func() {
+		defer wg.Done()
+		f2 = findRecursiveHelper(objs[half:], path)
+	}()
+
+	wg.Wait()
+
+	if f1 != nil {
+		return f1
+	}
+	
+	return f2
+}
+
+func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	// Strip trailing forward slash
 	if path[len(path)-1] == '/' {
 		path = path[:len(path)-1]
@@ -121,36 +152,14 @@ func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
 			return objs[i]
 		}
 
-
 		if obj.GetType() == CollectionType {
-
 			col := obj.(*Collection)
-
-			if col.IsRecursive() {
-				if obs, err := col.GetCollections(); err == nil {
-					// Use Collections() since we already loaded everything
-					if subCol := obs.FindRecursive(path); subCol != nil {
-						return subCol
-					}
-				}
-			} else {
-
-				// Use DataObjects so we don't load new collections (don't init)
-				var filtered IRodsObjs
-
-				for n, o := range col.DataObjects {
-					if o.GetType() == CollectionType {
-						filtered = append(filtered, col.DataObjects[n])
-					}
-				}
-
-				if subCol := filtered.FindRecursive(path); subCol != nil {
+			if obs, err := col.All(); err == nil {
+				if subCol := obs.FindRecursive(path); subCol != nil {
 					return subCol
 				}
-
 			}
 		}
-		
 	}
 
 	return nil
@@ -278,7 +287,18 @@ func (con *Connection) Collection(startPath string, recursive bool) (*Collection
 			return nil, err
 		}
 	} else {
-		return collection.(*Collection), nil
+		col := collection.(*Collection)
+
+		// Init the cached collection if recursive is set
+		if recursive {
+			col.Recursive = true
+			
+			if er := col.init(); er != nil {
+				return nil, er
+			}
+		}
+		
+		return col, nil
 	}
 }
 

@@ -23,6 +23,7 @@ type Collection struct {
 	Con         *Connection
 	Col         *Collection
 	Recursive   bool
+	Init 		bool
 	Type        int
 
 	chandle C.int
@@ -106,21 +107,23 @@ func getCollection(startPath string, recursive bool, con *Connection) (*Collecti
 	return col, nil
 }
 
-// init opens and reads collection information from iRods if the handle isn't set
+// init opens and reads collection information from iRods if it hasn't been init'd already
 func (col *Collection) init() error {
-	// If connection hasn't been opened, do it!
-	if int(col.chandle) < 0 {
+
+	if !col.Init {
 		if err := col.Open(); err != nil {
 			return err
 		}
+
 		if err := col.ReadCollection(); err != nil {
 			return err
 		}
 	}
 
+	col.Init = true
+
 	return nil
 }
-
 
 // GetCollections returns only the IRodsObjs that represent collections
 func (col *Collection) GetCollections() (response IRodsObjs, err error) {
@@ -136,6 +139,22 @@ func (col *Collection) GetCollections() (response IRodsObjs, err error) {
 
 	return
 }
+
+// GetDataObjs returns only the data objects contained within the collection
+func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
+	if err = col.init(); err != nil {
+		return
+	}
+
+	for i, obj := range col.DataObjects {
+		if obj.GetType() == DataObjType {
+			response = append(response, col.DataObjects[i])
+		}
+	}
+
+	return
+}
+
 
 // Type gets the type
 func (col *Collection) GetType() int {
@@ -215,14 +234,16 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 // Open connects to iRods and sets the handle for Collection.
 // Usually called by Collection.init()
 func (col *Collection) Open() error {
-	var errMsg *C.char
+	if int(col.chandle) < 0 {
+		var errMsg *C.char
 
-	path := C.CString(col.Path)
+		path := C.CString(col.Path)
 
-	defer C.free(unsafe.Pointer(path))
+		defer C.free(unsafe.Pointer(path))
 
-	if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+		if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
+			return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+		}
 	}
 
 	return nil
@@ -257,10 +278,8 @@ func (col *Collection) Refresh() error {
 // ReadCollection reads data (overwrites) into col.DataObjects field.
 func (col *Collection) ReadCollection() error {
 
-	if int(col.chandle) < 0 {
-		if er := col.Open(); er != nil {
-			return er
-		}
+	if er := col.Open(); er != nil {
+		return er
 	}
 
 	// Init C varaibles
@@ -318,23 +337,6 @@ func (col *Collection) ReadCollection() error {
 
 	return col.Close()
 }
-
-
-// GetDataObjs returns only the data objects contained within the collection
-func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
-	if err = col.init(); err != nil {
-		return
-	}
-
-	for i, obj := range col.DataObjects {
-		if obj.GetType() == DataObjType {
-			response = append(response, col.DataObjects[i])
-		}
-	}
-
-	return
-}
-
 
 // Put adds a local file to the remote iRods collection
 func (col *Collection) Put(localFile string) (*DataObj, error) {
