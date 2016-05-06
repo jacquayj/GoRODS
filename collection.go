@@ -155,6 +155,14 @@ func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
 	return
 }
 
+// Returns generic interface slice containing both data objects and collections combined
+func (col *Collection) All() (IRodsObjs, error) {
+	if err := col.init(); err != nil {
+		return col.DataObjects, err
+	}
+
+	return col.DataObjects, nil
+}
 
 // Type gets the type
 func (col *Collection) GetType() int {
@@ -375,16 +383,6 @@ func (col *Collection) add(dataObj IRodsObj) *Collection {
 
 	return col
 }
-
-// Returns generic interface slice containing both data objects and collections combined
-func (col *Collection) All() (IRodsObjs, error) {
-	if err := col.init(); err != nil {
-		return col.DataObjects, err
-	}
-
-	return col.DataObjects, nil
-}
-
 
 // Exists returns true of false depending on whether the DataObj or Collection is found
 func (col *Collection) Exists(path string) bool {
