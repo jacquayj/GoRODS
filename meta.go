@@ -20,20 +20,26 @@ type Meta struct {
 	Parent    *MetaCollection
 }
 
+type Metas []*Meta
+
 // MetaCollection is a collection of metadata AVU triples for a single data object
 type MetaCollection struct {
-	Metas []*Meta
+	Metas Metas
 	Obj   IRodsObj
 	Con   *Connection
 }
 
-func newMetaCollection(obj IRodsObj) *MetaCollection {
+func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
 
 	result := new(MetaCollection)
 	result.Obj = obj
 	result.Con = obj.GetCon()
 
-	return result
+	if err := result.init(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (m *Meta) getTypeRodsString() string {
@@ -239,6 +245,15 @@ func (mc *MetaCollection) Get(attr string) (*Meta, error) {
 	}
 
 	return nil, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
+}
+
+// All
+func (mc *MetaCollection) All() (Metas, error) {
+	if err := mc.init(); err != nil {
+		return nil, err
+	}
+
+	return mc.Metas, nil
 }
 
 // Delete deletes the meta AVU triple from the data object, identified by it's Attribute field

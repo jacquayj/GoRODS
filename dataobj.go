@@ -453,7 +453,11 @@ func (obj *DataObj) Meta() (*MetaCollection, error) {
 	}
 
 	if obj.MetaCol == nil {
-		obj.MetaCol = newMetaCollection(obj)
+		if mc, err := newMetaCollection(obj); err == nil {
+			obj.MetaCol = mc
+		} else {
+			return nil, err
+		}
 	}
 
 	return obj.MetaCol, nil

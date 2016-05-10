@@ -211,7 +211,11 @@ func (col *Collection) Meta() (*MetaCollection, error) {
 	}
 
 	if col.MetaCol == nil {
-		col.MetaCol = newMetaCollection(col)
+		if mc, err := newMetaCollection(col); err == nil {
+			col.MetaCol = mc
+		} else {
+			return nil, err
+		}
 	}
 
 	return col.MetaCol, nil
