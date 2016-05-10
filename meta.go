@@ -256,6 +256,20 @@ func (mc *MetaCollection) All() (Metas, error) {
 	return mc.Metas, nil
 }
 
+// Each
+func (mc *MetaCollection) Each(iterator func(*Meta)) error {
+	if err := mc.init(); err != nil {
+		return err
+	}
+
+	for _, value := range mc.Metas {
+		iterator(value)
+	}
+
+
+	return nil
+}
+
 // Delete deletes the meta AVU triple from the data object, identified by it's Attribute field
 func (mc *MetaCollection) Delete(attr string) (err error) {
 	if err = mc.init(); err != nil {
