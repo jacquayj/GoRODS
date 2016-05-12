@@ -47,6 +47,26 @@ int gorods_connect(rcComm_t** conn, char* password, char** err) {
     return 0;
 }
 
+int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
+    ticketAdminInp_t ticketAdminInp;
+    int status;
+
+    ticketAdminInp.arg1 = "session";
+    ticketAdminInp.arg2 = ticket;
+    ticketAdminInp.arg3 = "";
+    ticketAdminInp.arg4 = "";
+    ticketAdminInp.arg5 = "";
+    ticketAdminInp.arg6 = "";
+
+    status = rcTicketAdmin( myConn, &ticketAdminInp );
+
+    if ( status != 0 ) {
+        sprintf(*err, "set ticket error %d \n", status);
+    }
+
+    return status;
+}
+
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err) {
     int status;
 

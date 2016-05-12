@@ -53,6 +53,7 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* na, char* nv, char* nu, rcComm_t* conn, char** err);
 int gorods_add_meta(char* type, char* path, char* na, char* nv, char* nu, rcComm_t* conn, char** err);
 int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_t* conn, char** err);
+int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err);
 
 int gorodsclearCollEnt( collEnt_t *collEnt );
 int gorodsFreeCollEnt( collEnt_t *collEnt );

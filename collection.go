@@ -102,6 +102,10 @@ func getCollection(startPath string, recursive bool, con *Connection) (*Collecti
 		if er := col.init(); er != nil {
 			return nil, er
 		}
+	} else {
+		if er := col.Open(); er != nil {
+			return nil, er
+		}
 	}
 
 	return col, nil

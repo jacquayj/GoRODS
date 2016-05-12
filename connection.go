@@ -176,6 +176,7 @@ type ConnectionOptions struct {
 
 	Username string
 	Password string
+	Ticket   string
 }
 
 type Connection struct {
@@ -190,8 +191,8 @@ type Connection struct {
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
 // constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
-// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password
-// should be set regardless.
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password 
+// should be set unless using an anonymous user account with tickets.
 func New(opts ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
 
@@ -233,7 +234,32 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
 	}
 
+	if con.Options.Ticket != "" {
+		if err := con.SetTicket(con.Options.Ticket); err != nil {
+			return nil, err
+		}
+	}
+
 	return con, nil
+}
+
+// SetTicket is equivalent to using the -t flag with icommands
+func (con *Connection) SetTicket(t string) error {
+	var (
+		status   C.int
+		errMsg   *C.char
+	)
+
+	con.Options.Ticket = t
+
+	ticket := C.CString(t)
+	defer C.free(unsafe.Pointer(ticket))
+
+	if status = C.gorods_set_session_ticket(con.ccon, ticket, &errMsg); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Set Ticket Failed: %v", C.GoString(errMsg)))
+	}
+
+	return nil
 }
 
 // Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
