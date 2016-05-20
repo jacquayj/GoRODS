@@ -348,6 +348,10 @@ func (con *Connection) QueryMeta(dataObjPath string) (dataobj *DataObj, err erro
 
 	//https://github.com/irods/irods/blob/4.1.8/iRODS/clients/icommands/src/imeta.cpp#L582
 
+	var errMsg *C.char
+
+	C.gorods_query_collection(con.ccon, &errMsg)
+
 	return nil, nil
 }
 

@@ -55,6 +55,14 @@ int gorods_add_meta(char* type, char* path, char* na, char* nv, char* nu, rcComm
 int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_t* conn, char** err);
 int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err);
 
+int gorods_query_collection(rcComm_t* conn, char** err);
+void
+printGenQueryResults(rcComm_t *Conn, int status, genQueryOut_t *genQueryOut, 
+		     char *descriptions[]);
+
+int gorods_query_dataobj(char *cmdToken[]);
+
+
 int gorodsclearCollEnt( collEnt_t *collEnt );
 int gorodsFreeCollEnt( collEnt_t *collEnt );
 char* irods_env_str();
