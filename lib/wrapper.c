@@ -399,7 +399,12 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 
 int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err) {
 	
-	char* cmdToken[10];
+	char* cmdToken[40];
+
+	int i;
+	for ( i = 0; i < 40; i++ ) {
+		cmdToken[i] = "";
+	}
 
 	cmdToken[0] = "qu";
 	cmdToken[1] = "-d";
@@ -499,7 +504,12 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 
 int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err) {
 
-	char* cmdToken[10];
+	char* cmdToken[40];
+
+	int i;
+	for ( i = 0; i < 40; i++ ) {
+		cmdToken[i] = "";
+	}
 
 	cmdToken[0] = "qu";
 	cmdToken[1] = "-C";
@@ -601,11 +611,6 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 }
 
 void build_cmd_token(char** cmdToken, int* tokenIndex, char* query) {
-	cmdToken[2] = "";
-	cmdToken[3] = "";
-	cmdToken[4] = "";
-	cmdToken[5] = "";
-	cmdToken[6] = "";
 
 	int queryStringLen = strlen(query);
 	
@@ -616,6 +621,10 @@ void build_cmd_token(char** cmdToken, int* tokenIndex, char* query) {
 	for ( n = 0; n <= queryStringLen; n++ ) {
 		char c = query[n];
 
+		if ( *tokenIndex == 40 ) {
+			break;
+		}
+
 		// Did we find a space?
 		if ( c == ' ' || c == '\0' ) { // Yes, set cmdToken element, reset token
 			cmdToken[*tokenIndex] = gorods_malloc(strlen(token) + 1);
@@ -625,9 +634,12 @@ void build_cmd_token(char** cmdToken, int* tokenIndex, char* query) {
 
 			(*tokenIndex)++;
 		} else { // No, keep building token
+			if ( strlen(token) == 250 ) continue;
+
 			strncat(token, &c, 1);
 		}
 	}
+
 }
 
 char** expandGoRodsPathResult(goRodsPathResult_t* result, int length) {

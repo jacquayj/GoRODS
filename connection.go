@@ -360,6 +360,8 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	var dresult C.goRodsPathResult_t
 
 	defer C.free(unsafe.Pointer(query))
+	defer C.freeGoRodsPathResult(&colresult)
+	defer C.freeGoRodsPathResult(&dresult)
 
 	if status := C.gorods_query_collection(con.ccon, query, &colresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
@@ -380,8 +382,6 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 			}
 		}
 	}
-	
-	C.freeGoRodsPathResult(&colresult)
 
 	if status := C.gorods_query_dataobj(con.ccon, query, &dresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
@@ -389,7 +389,7 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	}
 
 	size = int(dresult.size)
-
+	
 	if size > 0 {
 		slice := (*[1 << 30]*C.char)(unsafe.Pointer(dresult.pathArr))[:size:size]
 
@@ -403,8 +403,6 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 			}
 		}
 	}
-	
-	C.freeGoRodsPathResult(&dresult)
 
 	return
 }
