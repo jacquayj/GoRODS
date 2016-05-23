@@ -53,6 +53,7 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result);
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
+
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
 int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
 int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* na, char* nv, char* nu, rcComm_t* conn, char** err);
@@ -61,9 +62,10 @@ int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_
 int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err);
 
 int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err);
+void getPathGenQueryResults(int status, genQueryOut_t *genQueryOut, char *descriptions[], goRodsPathResult_t* result);
+void freeGoRodsPathResult(goRodsPathResult_t* result);
 
 //
-void printGenQueryResults(rcComm_t *Conn, int status, genQueryOut_t *genQueryOut, char *descriptions[], goRodsPathResult_t* result);
 int gorods_query_dataobj(char *cmdToken[]);
 //
 

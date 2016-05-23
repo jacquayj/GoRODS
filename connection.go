@@ -108,6 +108,15 @@ func (objs IRodsObjs) Find(path string) IRodsObj {
 	return nil
 }
 
+// Each
+func (objs IRodsObjs) Each(iterator func(IRodsObj)) error {
+	for _, value := range objs {
+		iterator(value)
+	}
+
+	return nil
+}
+
 // FindRecursive acts just like Find, but also searches sub collections recursively.
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
@@ -343,29 +352,34 @@ func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, 
 
 // QueryMeta 
 func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error) {
-	
-	// re implement queryDataObj( char *cmdToken[] ) since it outputs to stdout
-
-	//https://github.com/irods/irods/blob/4.1.8/iRODS/clients/icommands/src/imeta.cpp#L582
 
 	var errMsg *C.char
 	var query *C.char = C.CString(qString)
 	var result C.goRodsPathResult_t
 
-	C.gorods_query_collection(con.ccon, query, &result, &errMsg)
+	defer C.free(unsafe.Pointer(query))
+
+	if status := C.gorods_query_collection(con.ccon, query, &result, &errMsg); status != 0 {
+		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
+		return
+	}
 
 	size := int(result.size)
 
-	slice := (*[1 << 30]*C.char)(unsafe.Pointer(result.pathArr))[:size:size]
+	if size > 0 {
+		slice := (*[1 << 30]*C.char)(unsafe.Pointer(result.pathArr))[:size:size]
 
-	response = make(IRodsObjs, 0)
-
-	for _, colString := range slice {
-		c, _ := con.Collection(C.GoString(colString), false)
-		
-		response = append(response, c)
-		
+		for _, colString := range slice {
+			if c, er := con.Collection(C.GoString(colString), false); er == 0 {
+				response = append(response, c)
+			} else {
+				err = er
+				return
+			}
+		}
 	}
+	
+	C.freeGoRodsPathResult(&result)
 
 	return
 }
