@@ -396,40 +396,117 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 	return 0;
 }
 
+
+int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err) {
+	
+	char* cmdToken[10];
+
+	cmdToken[0] = "qu";
+	cmdToken[1] = "-d";
+
+	int tokenIndex = 2;
+
+	build_cmd_token(cmdToken, &tokenIndex, query);
+
+	genQueryInp_t genQueryInp;
+	genQueryOut_t *genQueryOut;
+
+	int i1a[20];
+	int i1b[20];
+	int i2a[20];
+	char *condVal[20];
+	char v1[BIG_STR];
+	char v2[BIG_STR];
+	char v3[BIG_STR];
+	int status;
+	char *columnNames[] = {"dataObj", "collection"};
+	int cmdIx;
+	int condIx;
+	char vstr[20][BIG_STR];
+
+	memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+	i1a[0] = COL_COLL_NAME;
+	i1b[0] = 0;  /* (unused) */
+	i1a[1] = COL_DATA_NAME;
+	i1b[1] = 0;
+	genQueryInp.selectInp.inx = i1a;
+	genQueryInp.selectInp.value = i1b;
+	genQueryInp.selectInp.len = 2;
+
+	i2a[0] = COL_META_DATA_ATTR_NAME;
+	snprintf(v1, sizeof(v1), "='%s'", cmdToken[2]);
+	condVal[0] = v1;
+
+	i2a[1] = COL_META_DATA_ATTR_VALUE;
+	snprintf(v2, sizeof(v2), "%s '%s'", cmdToken[3], cmdToken[4]);
+	condVal[1] = v2;
+
+	genQueryInp.sqlCondInp.inx = i2a;
+	genQueryInp.sqlCondInp.value = condVal;
+	genQueryInp.sqlCondInp.len = 2;
+
+	if ( strcmp(cmdToken[5], "or") == 0 ) {
+		snprintf(v3, sizeof(v3), "|| %s '%s'", cmdToken[6], cmdToken[7]);
+		rstrcat(v2, v3, BIG_STR);
+	}
+
+	cmdIx = 5;
+	condIx = 2;
+	while ( strcmp(cmdToken[cmdIx], "and") == 0 ) {
+		i2a[condIx] = COL_META_DATA_ATTR_NAME;
+		cmdIx++;
+		snprintf(vstr[condIx], BIG_STR, "='%s'", cmdToken[cmdIx]);
+		condVal[condIx] = vstr[condIx];
+		condIx++;
+
+		i2a[condIx] = COL_META_DATA_ATTR_VALUE;
+		snprintf(vstr[condIx], BIG_STR, "%s '%s'", cmdToken[cmdIx+1], cmdToken[cmdIx+2]);
+		cmdIx += 3;
+		condVal[condIx] = vstr[condIx];
+		condIx++;
+		genQueryInp.sqlCondInp.len += 2;
+	}
+
+	if ( *cmdToken[cmdIx] != '\0' ) {
+		*err = "Unrecognized input\n";
+		return -1;
+	}
+
+	genQueryInp.maxRows = 10;
+	genQueryInp.continueInx = 0;
+	genQueryInp.condInput.len = 0;
+
+	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+	getPathGenQueryResults(status, genQueryOut, columnNames, result);
+
+	while ( status == 0 && genQueryOut->continueInx > 0 ) {
+		genQueryInp.continueInx = genQueryOut->continueInx;
+		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+		
+		getPathGenQueryResults(status, genQueryOut, columnNames, result);
+	}
+
+	// Clean up cmdToken strings
+	tokenIndex--;
+	for ( ; tokenIndex >= 2; tokenIndex-- ) {
+		free(cmdToken[tokenIndex]);
+	}
+
+	return 0;
+}
+
 int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err) {
 
 	char* cmdToken[10];
 
 	cmdToken[0] = "qu";
 	cmdToken[1] = "-C";
-	cmdToken[2] = "";
-	cmdToken[3] = "";
-	cmdToken[4] = "";
-	cmdToken[5] = "";
-	cmdToken[6] = "";
 
-	int queryStringLen = strlen(query);
-	
-	char token[255] = "";
-	int  tokenIndex = 2;
-	int  n;
+	int tokenIndex = 2;
 
-	// Build cmdToken array from query (string) input
-	for ( n = 0; n <= queryStringLen; n++ ) {
-		char c = query[n];
-
-		// Did we find a space?
-		if ( c == ' ' || c == '\0' ) { // Yes, set cmdToken element, reset token
-			cmdToken[tokenIndex] = gorods_malloc(strlen(token) + 1);
-			
-			memcpy(cmdToken[tokenIndex], token, strlen(token) + 1);
-			memset(&token[0], 0, sizeof(token));
-
-			tokenIndex++;
-		} else { // No, keep building token
-			strcat(token, &c);
-		}
-	}
+	build_cmd_token(cmdToken, &tokenIndex, query);
 
 	genQueryInp_t genQueryInp;
 	genQueryOut_t *genQueryOut;
@@ -523,6 +600,36 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	return 0;
 }
 
+void build_cmd_token(char** cmdToken, int* tokenIndex, char* query) {
+	cmdToken[2] = "";
+	cmdToken[3] = "";
+	cmdToken[4] = "";
+	cmdToken[5] = "";
+	cmdToken[6] = "";
+
+	int queryStringLen = strlen(query);
+	
+	char token[255] = "";
+	int  n;
+
+	// Build cmdToken array from query (string) input
+	for ( n = 0; n <= queryStringLen; n++ ) {
+		char c = query[n];
+
+		// Did we find a space?
+		if ( c == ' ' || c == '\0' ) { // Yes, set cmdToken element, reset token
+			cmdToken[*tokenIndex] = gorods_malloc(strlen(token) + 1);
+			
+			memcpy(cmdToken[*tokenIndex], token, strlen(token) + 1);
+			memset(&token[0], 0, sizeof(token));
+
+			(*tokenIndex)++;
+		} else { // No, keep building token
+			strncat(token, &c, 1);
+		}
+	}
+}
+
 char** expandGoRodsPathResult(goRodsPathResult_t* result, int length) {
 	int newSize = result->size + length;
 
@@ -539,21 +646,34 @@ void getPathGenQueryResults(int status, genQueryOut_t *genQueryOut, char *descri
 
 	if ( status != CAT_NO_ROWS_FOUND ) {
 		for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
-			for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
-				
+
+			// This would be dataobjs + collection for dataobj
+			if ( descriptions[0] == "collection" ) {
 				char *tResult;
-				
-				tResult = genQueryOut->sqlResult[j].value;
-				tResult += i*genQueryOut->sqlResult[j].len;
+				tResult = genQueryOut->sqlResult[0].value;
+				tResult += i * genQueryOut->sqlResult[0].len;
 
-				if ( *descriptions[j] != '\0') {
-					
-					char** item = expandGoRodsPathResult(result, 1);
+				char** item = expandGoRodsPathResult(result, 1);
 
-					*item = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
-					
-				}
+				*item = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+			} else { 
+				char *dobj;
+				dobj = genQueryOut->sqlResult[1].value;
+				dobj += i * genQueryOut->sqlResult[1].len;
+
+				char *col;
+				col = genQueryOut->sqlResult[0].value;
+				col += i * genQueryOut->sqlResult[0].len;
+
+				char** item = expandGoRodsPathResult(result, 1);
+
+				*item = gorods_malloc(strlen(col) + strlen(dobj) + 2);
+
+				strcpy(*item, col);
+				strcat(*item, "/");
+				strcat(*item, dobj);
 			}
+
 		}
 	}
 }

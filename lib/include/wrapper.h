@@ -62,12 +62,11 @@ int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_
 int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err);
 
 int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err);
+int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err);
+
 void getPathGenQueryResults(int status, genQueryOut_t *genQueryOut, char *descriptions[], goRodsPathResult_t* result);
 void freeGoRodsPathResult(goRodsPathResult_t* result);
-
-//
-int gorods_query_dataobj(char *cmdToken[]);
-//
+void build_cmd_token(char** cmdToken, int* tokenIndex, char* query);
 
 int gorodsclearCollEnt( collEnt_t *collEnt );
 int gorodsFreeCollEnt( collEnt_t *collEnt );

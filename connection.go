@@ -335,6 +335,7 @@ func (con *Connection) Collection(startPath string, recursive bool) (*Collection
 		
 		return col, nil
 	}
+
 }
 
 // DataObject directly returns a specific DataObj without the need to traverse collections. Must pass full path of data object.
@@ -355,22 +356,23 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 
 	var errMsg *C.char
 	var query *C.char = C.CString(qString)
-	var result C.goRodsPathResult_t
+	var colresult C.goRodsPathResult_t
+	var dresult C.goRodsPathResult_t
 
 	defer C.free(unsafe.Pointer(query))
 
-	if status := C.gorods_query_collection(con.ccon, query, &result, &errMsg); status != 0 {
+	if status := C.gorods_query_collection(con.ccon, query, &colresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
 		return
 	}
 
-	size := int(result.size)
+	size := int(colresult.size)
 
 	if size > 0 {
-		slice := (*[1 << 30]*C.char)(unsafe.Pointer(result.pathArr))[:size:size]
+		slice := (*[1 << 30]*C.char)(unsafe.Pointer(colresult.pathArr))[:size:size]
 
 		for _, colString := range slice {
-			if c, er := con.Collection(C.GoString(colString), false); er == 0 {
+			if c, er := con.Collection(C.GoString(colString), false); er == nil {
 				response = append(response, c)
 			} else {
 				err = er
@@ -379,10 +381,34 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 		}
 	}
 	
-	C.freeGoRodsPathResult(&result)
+	C.freeGoRodsPathResult(&colresult)
+
+	if status := C.gorods_query_dataobj(con.ccon, query, &dresult, &errMsg); status != 0 {
+		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
+		return
+	}
+
+	size = int(dresult.size)
+
+	if size > 0 {
+		slice := (*[1 << 30]*C.char)(unsafe.Pointer(dresult.pathArr))[:size:size]
+
+		for _, colString := range slice {
+
+			if c, er := con.DataObject(C.GoString(colString)); er == nil {
+				response = append(response, c)
+			} else {
+				err = er
+				return
+			}
+		}
+	}
+	
+	C.freeGoRodsPathResult(&dresult)
 
 	return
 }
+
 
 // func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
 
