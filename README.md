@@ -47,6 +47,12 @@ func main() {
 
 	buildFile := homeDir.Cd("gorods").Get("build.sh")
 
+	// Search collections & objects by metadata
+	metaResult, _ := irods.QueryMeta("myattr = myval")
+	metaResult.Each(func (irodsObj gorods.IRodsObj) {
+		fmt.Printf("Found: %v\n", irodsObj)
+	})
+
 	// Returns MetaCollection containing all metadata for buildFile DataObject
 	metas, _ := buildFile.Meta()
 
