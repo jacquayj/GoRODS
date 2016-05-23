@@ -342,17 +342,32 @@ func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, 
 }
 
 // QueryMeta 
-func (con *Connection) QueryMeta(dataObjPath string) (dataobj *DataObj, err error) {
+func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error) {
 	
 	// re implement queryDataObj( char *cmdToken[] ) since it outputs to stdout
 
 	//https://github.com/irods/irods/blob/4.1.8/iRODS/clients/icommands/src/imeta.cpp#L582
 
 	var errMsg *C.char
+	var query *C.char = C.CString(qString)
+	var result C.goRodsPathResult_t
 
-	C.gorods_query_collection(con.ccon, &errMsg)
+	C.gorods_query_collection(con.ccon, query, &result, &errMsg)
 
-	return nil, nil
+	size := int(result.size)
+
+	slice := (*[1 << 30]*C.char)(unsafe.Pointer(result.pathArr))[:size:size]
+
+	response = make(IRodsObjs, 0)
+
+	for _, colString := range slice {
+		c, _ := con.Collection(C.GoString(colString), false)
+		
+		response = append(response, c)
+		
+	}
+
+	return
 }
 
 // func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {

@@ -25,6 +25,11 @@ typedef struct {
 	goRodsMeta_t* metaArr;
 } goRodsMetaResult_t;
 
+typedef struct {
+	int size;
+	char** pathArr;
+} goRodsPathResult_t;
+
 void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
@@ -55,13 +60,12 @@ int gorods_add_meta(char* type, char* path, char* na, char* nv, char* nu, rcComm
 int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_t* conn, char** err);
 int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err);
 
-int gorods_query_collection(rcComm_t* conn, char** err);
-void
-printGenQueryResults(rcComm_t *Conn, int status, genQueryOut_t *genQueryOut, 
-		     char *descriptions[]);
+int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err);
 
+//
+void printGenQueryResults(rcComm_t *Conn, int status, genQueryOut_t *genQueryOut, char *descriptions[], goRodsPathResult_t* result);
 int gorods_query_dataobj(char *cmdToken[]);
-
+//
 
 int gorodsclearCollEnt( collEnt_t *collEnt );
 int gorodsFreeCollEnt( collEnt_t *collEnt );

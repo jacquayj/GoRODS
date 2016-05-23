@@ -403,20 +403,35 @@ int gorods_query_dataobj(char *cmdToken[]) {
 
 int printCount;
 
-int gorods_query_collection(rcComm_t* conn, char** err) {
+int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err) {
 
 	char* cmdToken[10];
 
 	cmdToken[0] = "qu";
 	cmdToken[1] = "-C";
-	cmdToken[2] = "sfc";
-	cmdToken[3] = "=";
-	cmdToken[4] = "yes";
-	cmdToken[5] = "";
-	cmdToken[6] = "";
-	cmdToken[7] = "";
-	cmdToken[8] = "";
-	cmdToken[9] = "";
+
+	int queryStringLen = strlen(query);
+	
+	char token[255] = "";
+	int tokenIndex = 2;
+	int n;
+
+	// Build cmdToken array from query (string) input
+	for ( n = 0; n <= queryStringLen; n++ ) {
+		char c = query[n];
+
+		// Did we find a space?
+		if ( c == ' ' || c == '\0' ) { // Yes, set cmdToken element, reset token
+			cmdToken[tokenIndex] = gorods_malloc(strlen(token) + 1);
+			
+			memcpy(cmdToken[tokenIndex], token, strlen(token) + 1);
+			memset(&token[0], 0, sizeof(token));
+
+			tokenIndex++;
+		} else { // No, keep building token
+			strcat(token, &c);
+		}
+	}
 
 	genQueryInp_t genQueryInp;
 	genQueryOut_t *genQueryOut;
@@ -428,130 +443,153 @@ int gorods_query_collection(rcComm_t* conn, char** err) {
 	char v2[BIG_STR];
 	char v3[BIG_STR];
 	int status;
-	char *columnNames[]={"collection"};
+	char *columnNames[] = {"collection"};
 	int cmdIx;
 	int condIx;
 	char vstr[20] [BIG_STR];
 
-	char zoneArgument[MAX_NAME_LEN+2]="";
+	char zoneArgument[MAX_NAME_LEN + 2]="";
 	int upperCaseFlag = 0;
 
-	memset (&genQueryInp, 0, sizeof (genQueryInp_t));
+	memset(&genQueryInp, 0, sizeof(genQueryInp_t));
 
-	if (upperCaseFlag) {
-	 genQueryInp.options = UPPER_CASE_WHERE;
+	if ( upperCaseFlag ) {
+		genQueryInp.options = UPPER_CASE_WHERE;
 	}
 
 	//int printCount=0;
-	i1a[0]=COL_COLL_NAME;
-	i1b[0]=0;  /* (unused) */
+	i1a[0] = COL_COLL_NAME;
+	i1b[0] = 0;  /* (unused) */
 	genQueryInp.selectInp.inx = i1a;
 	genQueryInp.selectInp.value = i1b;
 	genQueryInp.selectInp.len = 1;
 
 	i2a[0]=COL_META_COLL_ATTR_NAME;
-	snprintf(v1,sizeof(v1),"='%s'",cmdToken[2]);
-	condVal[0]=v1;
+	snprintf(v1, sizeof(v1), "='%s'", cmdToken[2]);
+	condVal[0] = v1;
 
-	i2a[1]=COL_META_COLL_ATTR_VALUE;
-	snprintf(v2, sizeof(v2),"%s '%s'", cmdToken[3], cmdToken[4]);
-	condVal[1]=v2;
+	i2a[1] = COL_META_COLL_ATTR_VALUE;
+	snprintf(v2, sizeof(v2), "%s '%s'", cmdToken[3], cmdToken[4]);
+	condVal[1] = v2;
 
 	genQueryInp.sqlCondInp.inx = i2a;
 	genQueryInp.sqlCondInp.value = condVal;
-	genQueryInp.sqlCondInp.len=2;
+	genQueryInp.sqlCondInp.len = 2;
 
-	if (strcmp(cmdToken[5], "or")==0) {
-	  snprintf(v3, sizeof(v3), "|| %s '%s'", cmdToken[6], cmdToken[7]);
-	  rstrcat(v2, v3, BIG_STR);
+	if ( strcmp(cmdToken[5], "or") == 0 ) {
+		snprintf(v3, sizeof(v3), "|| %s '%s'", cmdToken[6], cmdToken[7]);
+		rstrcat(v2, v3, BIG_STR);
 	}
 
 	cmdIx = 5;
 	condIx = 2;
-	while (strcmp(cmdToken[cmdIx], "and")==0) {
-	  i2a[condIx]=COL_META_COLL_ATTR_NAME;
-	  cmdIx++;
-	  snprintf(vstr[condIx],BIG_STR,"='%s'", cmdToken[cmdIx]);
-	  condVal[condIx]=vstr[condIx];
-	  condIx++;
+	while ( strcmp(cmdToken[cmdIx], "and") == 0 ) {
+		i2a[condIx] = COL_META_COLL_ATTR_NAME;
+		cmdIx++;
+		snprintf(vstr[condIx], BIG_STR, "='%s'", cmdToken[cmdIx]);
+		condVal[condIx] = vstr[condIx];
+		condIx++;
 
-	  i2a[condIx]=COL_META_COLL_ATTR_VALUE;
-	  snprintf(vstr[condIx], BIG_STR, 
-	       "%s '%s'", cmdToken[cmdIx+1], cmdToken[cmdIx+2]);
-	  cmdIx+=3;
-	  condVal[condIx]=vstr[condIx];
-	  condIx++;
-	  genQueryInp.sqlCondInp.len+=2;
+		i2a[condIx] = COL_META_COLL_ATTR_VALUE;
+		snprintf(vstr[condIx], BIG_STR, "%s '%s'", cmdToken[cmdIx+1], cmdToken[cmdIx+2]);
+		cmdIx += 3;
+		condVal[condIx] = vstr[condIx];
+		condIx++;
+		genQueryInp.sqlCondInp.len += 2;
 	}
 
-	if (*cmdToken[cmdIx] != '\0') {
-	  printf("Unrecognized input\n");
-	  return(-2);
+	if ( *cmdToken[cmdIx] != '\0' ) {
+		*err = "Unrecognized input\n";
+		return -2;
 	}
 
-	genQueryInp.maxRows=10;
-	genQueryInp.continueInx=0;
-	genQueryInp.condInput.len=0;
+	genQueryInp.maxRows = 10;
+	genQueryInp.continueInx = 0;
+	genQueryInp.condInput.len = 0;
 
-	if (zoneArgument[0]!='\0') {
-	  addKeyVal (&genQueryInp.condInput, ZONE_KW, zoneArgument);
+	if ( zoneArgument[0] != '\0' ) {
+		addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneArgument);
 	}
 
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
-	printGenQueryResults(conn, status, genQueryOut, columnNames);
-
-	printf("%i %i\n\n", status, genQueryOut->continueInx);
+	printGenQueryResults(conn, status, genQueryOut, columnNames, result);
 
 	while ( status == 0 && genQueryOut->continueInx > 0 ) {
-		printf("PEWPEW\n\n");
-	  genQueryInp.continueInx=genQueryOut->continueInx;
-	  status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
-	  if (genQueryOut->rowCnt>0) printf("----\n");
-	  printGenQueryResults(conn, status, genQueryOut, 
-					columnNames);
+		
+		genQueryInp.continueInx = genQueryOut->continueInx;
+		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+		//if ( genQueryOut->rowCnt > 0 ) printf("----\n");
+
+		printGenQueryResults(conn, status, genQueryOut, columnNames, result);
 	}
 
-	return (0);
+	// Clean up cmdToken strings
+	tokenIndex--;
+	for ( ; tokenIndex >= 2; tokenIndex-- ) {
+		free(cmdToken[tokenIndex]);
+	}
+
+	return 0;
 }
 
-void
-printGenQueryResults(rcComm_t *Conn, int status, genQueryOut_t *genQueryOut, 
-		     char *descriptions[])
-{
-   int i, j;
-   char localTime[20];
-   int lastCommandStatus = status;
-   if (status == CAT_NO_ROWS_FOUND) lastCommandStatus = 0;
-   if (status!=0 && status != CAT_NO_ROWS_FOUND) {
-      printError(Conn, status, "rcGenQuery");
-   }
-   else {
-      if (status == CAT_NO_ROWS_FOUND) {
-	 if (printCount==0) printf("No rows found\n");
-      }
-      else {
-	 for (i=0;i<genQueryOut->rowCnt;i++) {
-	    if (i>0) printf("----\n");
-	    for (j=0;j<genQueryOut->attriCnt;j++) {
-	       char *tResult;
-	       tResult = genQueryOut->sqlResult[j].value;
-	       tResult += i*genQueryOut->sqlResult[j].len;
-	       if (*descriptions[j]!='\0') {
-		  if (strstr(descriptions[j],"time")!=0) {
-		     getLocalTimeFromRodsTime(tResult, localTime);
-		     printf("%s: %s\n", descriptions[j], 
-			    localTime);
-		  } 
-		  else {
-		     printf("%s: %s\n", descriptions[j], tResult);
-		     printCount++;
-		  }
-	       }
-	    }
-	 }
-      }
-   }
+
+char** expandGoRodsPathResult(goRodsPathResult_t* result, int length) {
+	int newSize = result->size + length;
+
+	result->pathArr = realloc(result->pathArr, sizeof(char*) * newSize);
+	result->size = newSize;
+
+	char** newItem = &(result->pathArr[newSize - 1]);
+
+	return newItem;
+}
+
+
+void printGenQueryResults(rcComm_t *Conn, int status, genQueryOut_t *genQueryOut, char *descriptions[], goRodsPathResult_t* result) {
+	int i, j;
+	char localTime[20];
+	int lastCommandStatus = status;
+
+	if ( status == CAT_NO_ROWS_FOUND ) lastCommandStatus = 0;
+
+	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
+		printError(Conn, status, "rcGenQuery");
+	} else {
+		if ( status == CAT_NO_ROWS_FOUND ) {
+			if ( printCount == 0 ) printf("No rows found\n");
+		} else {
+
+			for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+
+				//if ( i > 0 ) printf("lol----\n");
+
+				for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+
+					char *tResult;
+					tResult = genQueryOut->sqlResult[j].value;
+					tResult += i*genQueryOut->sqlResult[j].len;
+
+					if ( *descriptions[j] != '\0') {
+						if ( strstr(descriptions[j], "time") != 0 ) {
+							getLocalTimeFromRodsTime(tResult, localTime);
+							printf("%s: %s\n", descriptions[j], localTime);
+						} else {
+
+							char** item = expandGoRodsPathResult(result, 1);
+
+							*item = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+
+							//printf("%s: %s\n", descriptions[j], tResult);
+							printCount++;
+						}
+					}
+
+				}
+			}
+		}
+	}
 }
 
 int gorods_query_user( char *cmdToken[] ) {
