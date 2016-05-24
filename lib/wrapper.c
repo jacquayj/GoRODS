@@ -484,6 +484,12 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
+	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
+		*err = (char *)gorods_malloc(sizeof(char) * BIG_STR);
+		sprintf(*err, "Error in rcGenQuery using '%s', check your syntax\n", query);
+		return -1;
+	}
+
 	getPathGenQueryResults(status, genQueryOut, columnNames, result);
 
 	while ( status == 0 && genQueryOut->continueInx > 0 ) {
@@ -591,6 +597,12 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	}
 
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
+		*err = (char *)gorods_malloc(sizeof(char) * BIG_STR);
+		sprintf(*err, "Error in rcGenQuery using '%s', check your syntax\n", query);
+		return -1;
+	}
 
 	getPathGenQueryResults(status, genQueryOut, columnNames, result);
 
