@@ -269,7 +269,7 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 	// pass memory address of rodsObjStatOut pointer
 	int status = rcObjStat(conn, &dataObjInp, &(*rodsObjStatOut)); 
 	if ( status < 0 ) { 
-		*err = "rcDataObjRead failed";
+		*err = "rcObjStat failed";
 		return -1;
 	}
 
@@ -539,8 +539,6 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	int condIx;
 	char vstr[20][BIG_STR];
 
-	char zoneArgument[MAX_NAME_LEN + 2]="";
-
 	memset(&genQueryInp, 0, sizeof(genQueryInp_t));
 
 	i1a[0] = COL_COLL_NAME;
@@ -549,7 +547,7 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	genQueryInp.selectInp.value = i1b;
 	genQueryInp.selectInp.len = 1;
 
-	i2a[0]=COL_META_COLL_ATTR_NAME;
+	i2a[0] = COL_META_COLL_ATTR_NAME;
 	snprintf(v1, sizeof(v1), "='%s'", cmdToken[2]);
 	condVal[0] = v1;
 
@@ -591,10 +589,6 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	genQueryInp.maxRows = 10;
 	genQueryInp.continueInx = 0;
 	genQueryInp.condInput.len = 0;
-
-	if ( zoneArgument[0] != '\0' ) {
-		addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneArgument);
-	}
 
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 

@@ -381,9 +381,6 @@ func (obj *DataObj) WriteBytes(data []byte) error {
 //
 // "modifyTime"
 func (obj *DataObj) Stat() (map[string]interface{}, error) {
-	if er := obj.init(); er != nil {
-		return nil, er
-	}
 
 	var (
 		err        *C.char
