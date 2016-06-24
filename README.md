@@ -157,12 +157,14 @@ Send me a pull request!
 
 ### iRods API Coverage
 
-* Implement Connection: ilocate, interface to query meta (imeta qu)
+* Implement Connection: ilocate, iquest 
 * Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
 * Implement: User, Group?, Resource, Zone?
 * ----------
-* Implement access control (rcModAccessControl) and tickets
+* Implement access control (rcModAccessControl, ichmod?)
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
+* Refactor Collection.Put() so correct iRods events are fired
+* Issue with icat package being required to build
 
 ### Code Polish
 
