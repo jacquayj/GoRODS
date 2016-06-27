@@ -18,9 +18,13 @@ import (
 type DataObj struct {
 	Path   string
 	Name   string
+	Checksum string
 	Size   int64
 	Offset int64
 	Type   int
+	DataId string
+	Resource string
+	PhyPath string
 
 	MetaCol *MetaCollection
 
@@ -61,6 +65,10 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.Path = C.GoString(data.collName) + "/" + dataObj.Name
 	dataObj.Size = int64(data.dataSize)
 	dataObj.chandle = C.int(-1)
+	dataObj.Checksum = C.GoString(data.chksum)
+	dataObj.DataId = C.GoString(data.dataId)
+	dataObj.Resource = C.GoString(data.resource)
+	dataObj.PhyPath = C.GoString(data.phyPath)
 
 	return dataObj
 }
@@ -657,7 +665,9 @@ func (obj *DataObj) Chksum() (string, error) {
 		return "", newError(Fatal, fmt.Sprintf("iRods Chksum DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
-	return C.GoString(chksumOut), nil
+	obj.Checksum = C.GoString(chksumOut)
+
+	return obj.Checksum, nil
 }
 
 // Verify returns true or false depending on whether the checksum md5 string matches
