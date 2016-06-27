@@ -157,14 +157,11 @@ Send me a pull request!
 
 ### iRods API Coverage
 
-* Implement Connection: ilocate, iquest 
-* Implement Collection: CreateCollection(), MoveTo(), CopyTo(), DownloadTo()
-* Implement: User, Group?, Resource, Zone?
-* ----------
+* See Github issues for more https://github.com/jjacquay712/GoRods/issues
+* Implement Collection: MoveTo(), CopyTo(), DownloadTo()
 * Implement access control (rcModAccessControl, ichmod?)
 * Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Refactor Collection.Put() so correct iRods events are fired
-* Issue with icat package being required to build
+* Implement: User, Group?, Resource, Zone?
 
 ### Code Polish
 
