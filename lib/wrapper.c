@@ -138,7 +138,6 @@ int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, ch
 	return 0;
 }
 
-
 int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, char* resource, int* handle, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 	
@@ -159,6 +158,26 @@ int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, c
 	*handle = rcDataObjCreate(conn, &dataObjInp); 
 	if ( *handle < 0 ) { 
 		*err = "rcDataObjCreate failed";
+		return -1;
+	}
+
+	return 0;
+}
+
+int gorods_create_collection(char* path, rcComm_t* conn, char** err) {
+	int status;
+
+	collInp_t collCreateInp; 
+
+	bzero(&collCreateInp, sizeof(collCreateInp));
+
+	rstrcpy(collCreateInp.collName, path, MAX_NAME_LEN); 
+
+	addKeyVal(&collCreateInp.condInput, RECURSIVE_OPR__KW, "");
+	
+	status = rcCollCreate(conn, &collCreateInp);
+	if ( status < 0 ) { 
+		*err = "rcCollCreate failed";
 		return -1;
 	}
 

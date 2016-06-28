@@ -111,6 +111,29 @@ func getCollection(startPath string, recursive bool, con *Connection) (*Collecti
 	return col, nil
 }
 
+// CreateCollection creates a collection in the specified collection using provided options. Returns the newly created collection object.
+func CreateCollection(name string, coll *Collection) (*Collection, error) {
+
+	var (
+		errMsg *C.char
+	)
+
+	path := C.CString(coll.Path + "/" + name)
+
+	defer C.free(unsafe.Pointer(path))
+
+	if status := C.gorods_create_collection(path, coll.Con.ccon, &errMsg); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Create Collection Failed: %v, Does the collection already exist?", C.GoString(errMsg)))
+	}
+
+	coll.Refresh()
+
+	newCol := coll.Cd(name)
+
+	return newCol, nil
+
+}
+
 // init opens and reads collection information from iRods if it hasn't been init'd already
 func (col *Collection) init() error {
 
@@ -384,6 +407,11 @@ func (col *Collection) Put(localFile string) (*DataObj, error) {
 // CreateDataObj creates a data object within the collection using the options specified
 func (col *Collection) CreateDataObj(opts DataObjOptions) (*DataObj, error) {
 	return CreateDataObj(opts, col)
+}
+
+// CreateSubCollection creates a collection within the collection using the options specified
+func (col *Collection) CreateSubCollection(name string) (*Collection, error) {
+	return CreateCollection(name, col)
 }
 
 func (col *Collection) add(dataObj IRodsObj) *Collection {

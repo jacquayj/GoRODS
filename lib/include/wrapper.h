@@ -37,6 +37,7 @@ int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, ch
 int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
 int gorods_close_collection(int handleInx, rcComm_t* conn, char** err);
+int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 
 int gorods_open_dataobject(char* path, int* handle, rodsLong_t length, rcComm_t* conn, char** err);
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err);
