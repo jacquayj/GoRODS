@@ -155,13 +155,8 @@ Send me a pull request!
 
 ## Todo
 
-### iRods API Coverage
+* See Github issues for todo list https://github.com/jjacquay712/GoRods/issues
 
-* See Github issues for more https://github.com/jjacquay712/GoRods/issues
-* Implement Collection: MoveTo(), CopyTo(), DownloadTo()
-* Implement access control (rcModAccessControl, ichmod?)
-* Implement DataObj: MoveToResource(), Replicate(), ReplSettings()
-* Implement: User, Group?, Resource, Zone?
 
 ### Code Polish
 
