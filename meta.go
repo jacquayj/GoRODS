@@ -297,7 +297,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 
 	_, er := mc.Get(m.Attribute)
 
-	if m.Attribute != "" && m.Value != "" && er == nil {
+	if m.Attribute != "" && m.Value != "" && er != nil {
 		m.Parent = mc
 
 		mT := C.CString(m.getTypeRodsString())
