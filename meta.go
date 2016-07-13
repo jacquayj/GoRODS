@@ -132,7 +132,7 @@ func (mc *MetaCollection) init() error {
 	// If MetaCollection hasn't been opened, do it!
 	if len(mc.Metas) < 1 {
 		if err := mc.ReadMeta(); err != nil {
-			return err
+			//return err
 		}
 	}
 
