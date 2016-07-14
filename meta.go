@@ -132,7 +132,7 @@ func (mc *MetaCollection) init() error {
 	// If MetaCollection hasn't been opened, do it!
 	if len(mc.Metas) < 1 {
 		if err := mc.ReadMeta(); err != nil {
-			//return err
+			return err
 		}
 	}
 
@@ -160,18 +160,30 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	switch mc.Obj.GetType() {
 	case DataObjType:
-		cwd := C.CString(mc.Obj.GetCol().Path)
+		cwdGo := mc.Obj.GetCol().Path
+		cwd := C.CString(cwdGo)
+
 		defer C.free(unsafe.Pointer(cwd))
 
 		if status := C.gorods_meta_dataobj(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
+			if status == C.CAT_NO_ROWS_FOUND {
+				return nil
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v, %v", cwdGo, C.GoString(err), status))
+			}
 		}
 	case CollectionType:
-		cwd := C.CString(filepath.Dir(mc.Obj.GetPath()))
+		cwdGo := filepath.Dir(mc.Obj.GetPath())
+		cwd := C.CString(cwdGo)
+
 		defer C.free(unsafe.Pointer(cwd))
 
 		if status := C.gorods_meta_collection(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v", cwd, C.GoString(err)))
+			if status == C.CAT_NO_ROWS_FOUND {
+				return nil
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v, %v", cwdGo, C.GoString(err), status))
+			}
 		}
 	case ResourceType:
 
