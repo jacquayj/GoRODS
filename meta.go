@@ -295,9 +295,11 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		return nil, er
 	}
 
-	_, er := mc.Get(m.Attribute)
+	if _, er := mc.Get(m.Attribute); er == nil {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Attribute already exists"))
+	}
 
-	if m.Attribute != "" && m.Value != "" && er != nil {
+	if m.Attribute != "" && m.Value != "" {
 		m.Parent = mc
 
 		mT := C.CString(m.getTypeRodsString())
@@ -321,7 +323,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		m.Parent.Refresh()
 
 	} else {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields or the attribute already exists"))
+		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields"))
 	}
 
 	if attr, er := m.Parent.Get(m.Attribute); er == nil {
