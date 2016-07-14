@@ -68,6 +68,18 @@ type IRodsObj interface {
 	GetCol() *Collection
 	GetCon() *Connection
 
+	// irm -rf
+	Destroy() error
+
+	// irm -f {-r}
+	Delete(bool) error
+
+	// irm {-r}
+	Trash(bool) error
+
+	// irm {-r} {-f}
+	Rm(bool, bool) error
+
 	Meta() (*MetaCollection, error)
 	Attribute(string) (*Meta, error)
 	AddMeta(Meta) (*Meta, error)

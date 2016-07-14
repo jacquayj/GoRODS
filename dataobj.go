@@ -168,6 +168,49 @@ func (obj *DataObj) GetCol() *Collection {
 	return obj.Col
 }
 
+// Destroy is equivalent to irm -rf
+func (obj *DataObj) Destroy() error {
+	return obj.Rm(true, true)
+}
+
+// Delete is equivalent to irm -f {-r}
+func (obj *DataObj) Delete(recursive bool) error {
+	return obj.Rm(recursive, true)
+}
+
+// Trash is equivalent to irm {-r}
+func (obj *DataObj) Trash(recursive bool) error {
+	return obj.Rm(recursive, false)
+}
+
+// Rm is equivalent to irm {-r} {-f}
+func (obj *DataObj) Rm(recursive bool, force bool) error {
+	var errMsg *C.char
+
+	path := C.CString(obj.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	var (
+		cForce C.int
+		cRecursive C.int
+	)
+
+	if force {
+		cForce = C.int(1)
+	}
+
+	if recursive {
+		cRecursive = C.int(1)
+	}
+
+	if status := C.gorods_rm(path, 0, cRecursive, cForce, obj.Con.ccon, &errMsg); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Rm DataObject Failed: %v", C.GoString(errMsg)))
+	}
+
+	return nil
+}
+
 // Open opens a connection to iRods and sets the data object handle
 func (obj *DataObj) Open() error {
 	var errMsg *C.char
@@ -616,36 +659,25 @@ func (obj *DataObj) Rename(newFileName string) error {
 	return nil
 }
 
-// Delete deletes the data object from the iRods server with a force flag
-func (obj *DataObj) Delete() error {
+// // Delete deletes the data object from the iRods server with a force flag
+// func (obj *DataObj) Delete() error {
 
-	var err *C.char
+// 	var err *C.char
 
-	path := C.CString(obj.Path)
+// 	path := C.CString(obj.Path)
 
-	defer C.free(unsafe.Pointer(path))
+// 	defer C.free(unsafe.Pointer(path))
 
-	if status := C.gorods_unlink_dataobject(path, C.int(1), obj.Con.ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
-	}
+// 	if status := C.gorods_unlink_dataobject(path, C.int(1), obj.Con.ccon, &err); status != 0 {
+// 		return newError(Fatal, fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // Unlink deletes the data object from the iRods server, no force flag is used
 func (obj *DataObj) Unlink() error {
-
-	var err *C.char
-
-	path := C.CString(obj.Path)
-
-	defer C.free(unsafe.Pointer(path))
-
-	if status := C.gorods_unlink_dataobject(path, C.int(0), obj.Con.ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
-	}
-
-	return nil
+	return obj.Rm(true, false)
 }
 
 // Chksum returns md5 hash string of data object

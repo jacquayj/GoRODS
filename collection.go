@@ -221,6 +221,49 @@ func (col *Collection) GetCol() *Collection {
 	return col.Col
 }
 
+// Destroy is equivalent to irm -rf
+func (col *Collection) Destroy() error {
+	return col.Rm(true, true)
+}
+
+// Delete is equivalent to irm -f {-r}
+func (col *Collection) Delete(recursive bool) error {
+	return col.Rm(recursive, true)
+}
+
+// Trash is equivalent to irm {-r}
+func (col *Collection) Trash(recursive bool) error {
+	return col.Rm(recursive, false)
+}
+
+// Rm is equivalent to irm {-r} {-f}
+func (col *Collection) Rm(recursive bool, force bool) error {
+	var errMsg *C.char
+
+	path := C.CString(col.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	var (
+		cForce C.int
+		cRecursive C.int
+	)
+
+	if force {
+		cForce = C.int(1)
+	}
+
+	if recursive {
+		cRecursive = C.int(1)
+	}
+
+	if status := C.gorods_rm(path, 1, cRecursive, cForce, col.Con.ccon, &errMsg); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Rm Collection Failed: %v", C.GoString(errMsg)))
+	}
+
+	return nil
+}
+
 // Attribute gets specific metadata AVU triple for Collection
 func (col *Collection) Attribute(attr string) (*Meta, error) {
 	if mc, err := col.Meta(); err == nil {

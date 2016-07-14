@@ -846,6 +846,52 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 
 }
 
+int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* conn, char** err) {
+
+	if ( isCollection > 0 ) {
+		collInp_t collInp;
+		memset(&collInp, 0, sizeof(collInp_t));
+
+		if ( force > 0 ) {
+			addKeyVal(&collInp.condInput, FORCE_FLAG_KW, "");
+		}
+
+		if ( recursive > 0 ) {
+			addKeyVal(&collInp.condInput, RECURSIVE_OPR__KW, "");
+		} else {
+			*err = "Recursive flag must be used on collections\n";
+			return USER__NULL_INPUT_ERR;
+		}
+
+		rstrcpy(collInp.collName, path, MAX_NAME_LEN);
+		
+		int status = rcRmColl(conn, &collInp, 0);
+
+		return status;
+
+	} else {
+		dataObjInp_t dataObjInp;
+		memset(&dataObjInp, 0, sizeof(dataObjInp_t ));
+
+		if ( force > 0 ) {
+			addKeyVal(&dataObjInp.condInput, FORCE_FLAG_KW, "");
+		}
+
+		if ( recursive > 0 ) {
+			addKeyVal(&dataObjInp.condInput, RECURSIVE_OPR__KW, "");
+		}
+
+		dataObjInp.openFlags = O_RDONLY;
+
+		rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN);
+
+    	int status = rcDataObjUnlink(conn, &dataObjInp);
+
+    	return status;
+	}
+
+}
+
 int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
 	genQueryInp_t genQueryInp;
 	genQueryOut_t *genQueryOut;
