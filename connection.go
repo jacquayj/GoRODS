@@ -377,7 +377,6 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 
 	if status := C.gorods_query_collection(con.ccon, query, &colresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
-		C.free(unsafe.Pointer(errMsg))
 		return
 	}
 
@@ -398,7 +397,6 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 
 	if status := C.gorods_query_dataobj(con.ccon, query, &dresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
-		C.free(unsafe.Pointer(errMsg))
 		return
 	}
 

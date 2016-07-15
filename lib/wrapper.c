@@ -492,10 +492,10 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 		genQueryInp.sqlCondInp.len += 2;
 	}
 
-	if ( *cmdToken[cmdIx] != '\0' ) {
-		*err = "Unrecognized input\n";
-		return -1;
-	}
+	// if ( *cmdToken[cmdIx] != '\0' ) {
+	// 	*err = "Unrecognized input\n";
+	// 	return -1;
+	// }
 
 	genQueryInp.maxRows = 10;
 	genQueryInp.continueInx = 0;
@@ -600,10 +600,10 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 		genQueryInp.sqlCondInp.len += 2;
 	}
 
-	if ( *cmdToken[cmdIx] != '\0' ) {
-		*err = "Unrecognized input\n";
-		return -1;
-	}
+	// if ( *cmdToken[cmdIx] != '\0' ) {
+	// 	*err = "Unrecognized input\n";
+	// 	return -1;
+	// }
 
 	genQueryInp.maxRows = 10;
 	genQueryInp.continueInx = 0;
