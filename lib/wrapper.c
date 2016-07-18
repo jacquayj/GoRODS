@@ -492,10 +492,10 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 		genQueryInp.sqlCondInp.len += 2;
 	}
 
-	// if ( *cmdToken[cmdIx] != '\0' ) {
-	// 	*err = "Unrecognized input\n";
-	// 	return -1;
-	// }
+	if ( *cmdToken[cmdIx] != '\0' ) {
+		*err = "Unrecognized input\n";
+		return -1;
+	}
 
 	genQueryInp.maxRows = 10;
 	genQueryInp.continueInx = 0;
@@ -600,10 +600,10 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 		genQueryInp.sqlCondInp.len += 2;
 	}
 
-	// if ( *cmdToken[cmdIx] != '\0' ) {
-	// 	*err = "Unrecognized input\n";
-	// 	return -1;
-	// }
+	if ( *cmdToken[cmdIx] != '\0' ) {
+		*err = "Unrecognized input\n";
+		return -1;
+	}
 
 	genQueryInp.maxRows = 10;
 	genQueryInp.continueInx = 0;
@@ -642,6 +642,9 @@ void build_cmd_token(char** cmdToken, int* tokenIndex, char* query) {
 	char token[255] = "";
 	int  n;
 
+	int inString = 0;
+	int ignoreNext = 0;
+
 	// Build cmdToken array from query (string) input
 	for ( n = 0; n <= queryStringLen; n++ ) {
 		char c = query[n];
@@ -649,15 +652,35 @@ void build_cmd_token(char** cmdToken, int* tokenIndex, char* query) {
 		if ( *tokenIndex == 40 ) {
 			break;
 		}
+		
+		if ( !inString && (c == '\'' || c == '"') ) {
+			inString = 1;
+			continue;
+		}
+
+		if ( inString && c == '\\' ) {
+			ignoreNext = 1;
+			continue;
+		}
+
+		if ( ignoreNext ) {
+			ignoreNext = 0;
+		} else {
+			if ( inString && (c == '\'' || c == '"') ) {
+				inString = 0;
+				continue;
+			}
+		}
 
 		// Did we find a space?
-		if ( c == ' ' || c == '\0' ) { // Yes, set cmdToken element, reset token
+		if ( !inString && (c == ' ' || c == '\0') ) { // Yes, set cmdToken element, reset token
 			cmdToken[*tokenIndex] = gorods_malloc(strlen(token) + 1);
 			
 			memcpy(cmdToken[*tokenIndex], token, strlen(token) + 1);
 			memset(&token[0], 0, sizeof(token));
-
+	
 			(*tokenIndex)++;
+
 		} else { // No, keep building token
 			if ( strlen(token) == 250 ) continue;
 
