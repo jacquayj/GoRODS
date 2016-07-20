@@ -160,7 +160,7 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	switch mc.Obj.GetType() {
 	case DataObjType:
-		cwdGo := mc.Obj.GetCol().Path
+		cwdGo := mc.Obj.GetCol().GetPath()
 		cwd := C.CString(cwdGo)
 
 		defer C.free(unsafe.Pointer(cwd))

@@ -1214,8 +1214,8 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
 		if ( status == 0 ) {
-			*err = "None";
-			return -1;
+			*err = "No rows found";
+			return CAT_NO_ROWS_FOUND;
 		}
 
 		if ( status == CAT_NO_ROWS_FOUND ) {
