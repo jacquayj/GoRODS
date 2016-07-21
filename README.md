@@ -156,6 +156,14 @@ func main() {
 	// Delete the file
 	test.Delete()
 
+	// Close data object/collection handles if open
+	homeDir.Close()
+	buildFile.Close()
+	remoteFile.Close()
+
+	// Disconnect from the iCAT server, important!
+	irods.Disconnect()
+
 }
 
 ```
