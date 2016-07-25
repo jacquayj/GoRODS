@@ -234,8 +234,8 @@ int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer,
 	int bytesRead; 
 	openedDataObjInp_t dataObjReadInp; 
 	
-	bzero(&dataObjReadInp, sizeof(dataObjReadInp)); 
-	bzero(buffer, sizeof(*buffer)); 
+	bzero(&dataObjReadInp, sizeof(openedDataObjInp_t)); 
+	bzero(buffer, sizeof(bytesBuf_t)); 
 
 	dataObjReadInp.l1descInx = handleInx; 
 	dataObjReadInp.len = (int)length;
@@ -273,6 +273,9 @@ int gorods_lseek_dataobject(int handleInx, rodsLong_t offset, rcComm_t* conn, ch
 		*err = "rcDataObjLSeek failed";
 		return -1;
 	}
+
+	free(dataObjLseekOut);
+    dataObjLseekOut = NULL;
 
 	return 0;
 }
