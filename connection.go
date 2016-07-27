@@ -68,6 +68,10 @@ type IRodsObj interface {
 	GetCol() *Collection
 	GetCon() *Connection
 
+	GetOwnerName() string
+	GetCreateTime() int
+	GetModifyTime() int
+
 	// irm -rf
 	Destroy() error
 

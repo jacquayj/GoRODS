@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unsafe"
 	"path/filepath"
+	"strconv"
 )
 
 // DataObj structs contain information about single data objects in an iRods zone.
@@ -25,6 +26,10 @@ type DataObj struct {
 	DataId string
 	Resource string
 	PhyPath string
+
+	OwnerName string
+	CreateTime int
+	ModifyTime int
 
 	MetaCol *MetaCollection
 
@@ -69,6 +74,10 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.DataId = C.GoString(data.dataId)
 	dataObj.Resource = C.GoString(data.resource)
 	dataObj.PhyPath = C.GoString(data.phyPath)
+
+	dataObj.OwnerName = C.GoString(data.ownerName)
+	dataObj.CreateTime, _ = strconv.Atoi(C.GoString(data.createTime))
+	dataObj.ModifyTime, _ = strconv.Atoi(C.GoString(data.modifyTime))
 
 	return dataObj
 }
@@ -166,6 +175,21 @@ func (obj *DataObj) GetPath() string {
 // GetName returns the *Collection of the data object
 func (obj *DataObj) GetCol() *Collection {
 	return obj.Col
+}
+
+// GetOwnerName returns the owner name of the data object
+func (obj *DataObj) GetOwnerName() string {
+	return obj.OwnerName
+}
+
+// GetCreateTime returns the create time of the data object
+func (obj *DataObj) GetCreateTime() int {
+	return obj.CreateTime
+}
+
+// GetModifyTime returns the modify time of the data object
+func (obj *DataObj) GetModifyTime() int {
+	return obj.ModifyTime
 }
 
 // Destroy is equivalent to irm -rf

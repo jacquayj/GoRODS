@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"unsafe"
+	"strconv"
 )
 
 // Collection structs contain information about single collections in an iRods zone.
@@ -25,6 +26,10 @@ type Collection struct {
 	Recursive   bool
 	Init 		bool
 	Type        int
+
+	OwnerName string
+	CreateTime int
+	ModifyTime int
 
 	chandle C.int
 }
@@ -64,6 +69,10 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	col.Col = acol
 	col.Con = col.Col.Con
 	col.Path = C.GoString(data.collName)
+
+	col.OwnerName = C.GoString(data.ownerName)
+	col.CreateTime, _ = strconv.Atoi(C.GoString(data.createTime))
+	col.ModifyTime, _ = strconv.Atoi(C.GoString(data.modifyTime))
 
 	pathSlice := strings.Split(col.Path, "/")
 
@@ -214,6 +223,21 @@ func (col *Collection) GetName() string {
 // GetPath returns the Path of the collection
 func (col *Collection) GetPath() string {
 	return col.Path
+}
+
+// GetOwnerName returns the owner name of the collection
+func (col *Collection) GetOwnerName() string {
+	return col.OwnerName
+}
+
+// GetCreateTime returns the create time of the collection
+func (col *Collection) GetCreateTime() int {
+	return col.CreateTime
+}
+
+// GetModifyTime returns the modify time of the collection
+func (col *Collection) GetModifyTime() int {
+	return col.ModifyTime
 }
 
 // GetCol returns the *Collection of the collection
