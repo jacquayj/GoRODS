@@ -39,7 +39,7 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 int gorods_close_collection(int handleInx, rcComm_t* conn, char** err);
 int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 
-int gorods_open_dataobject(char* path, int* handle, rodsLong_t length, rcComm_t* conn, char** err);
+int gorods_open_dataobject(char* path, int* handle, rcComm_t* conn, char** err);
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err);
 int gorods_lseek_dataobject(int handleInx, rodsLong_t offset, rcComm_t* conn, char** err);
 int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err);

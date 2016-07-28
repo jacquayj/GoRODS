@@ -184,7 +184,7 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err) {
 	return 0;
 }
 
-int gorods_open_dataobject(char* path, int* handle, rodsLong_t length, rcComm_t* conn, char** err) {
+int gorods_open_dataobject(char* path, int* handle, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 	
 	bzero(&dataObjInp, sizeof(dataObjInp)); 

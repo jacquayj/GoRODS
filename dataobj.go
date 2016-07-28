@@ -243,7 +243,7 @@ func (obj *DataObj) Open() error {
 
 	defer C.free(unsafe.Pointer(path))
 
-	if status := C.gorods_open_dataobject(path, &obj.chandle, C.rodsLong_t(obj.Size), obj.Con.ccon, &errMsg); status != 0 {
+	if status := C.gorods_open_dataobject(path, &obj.chandle, obj.Con.ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
 
