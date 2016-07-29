@@ -274,20 +274,21 @@ func (obj *DataObj) Read() ([]byte, error) {
 	var (
 		buffer C.bytesBuf_t
 		err    *C.char
+		bytesRead C.int
 	)
 
 	if er := obj.LSeek(0); er != nil {
 		return nil, er
 	}
 
-	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.Size), &buffer, obj.Con.ccon, &err); status != 0 {
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.Size), &buffer, &bytesRead, obj.Con.ccon, &err); status != 0 {
 		return nil, newError(Fatal, fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
 	buf := unsafe.Pointer(buffer.buf)
 	defer C.free(buf)
 
-	data := C.GoBytes(buf, C.int(obj.Size))
+	data := C.GoBytes(buf, bytesRead)
 
 	return data, obj.Close()
 }
@@ -301,20 +302,21 @@ func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 	var (
 		buffer C.bytesBuf_t
 		err    *C.char
+		bytesRead C.int
 	)
 
 	if er := obj.LSeek(pos); er != nil {
 		return nil, er
 	}
 
-	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, obj.Con.ccon, &err); status != 0 {
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, &bytesRead, obj.Con.ccon, &err); status != 0 {
 		return nil, newError(Fatal, fmt.Sprintf("iRods ReadBytes DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 	}
 
 	buf := unsafe.Pointer(buffer.buf)
 	defer C.free(buf)
 
-	data := C.GoBytes(buf, C.int(obj.Size))
+	data := C.GoBytes(buf, bytesRead)
 
 	return data, nil
 }
@@ -345,8 +347,9 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 	}
 
 	var (
-		buffer C.bytesBuf_t
-		err    *C.char
+		buffer   C.bytesBuf_t
+		err      *C.char
+		bytesRead C.int
 	)
 
 	if er := obj.LSeek(0); er != nil {
@@ -354,13 +357,15 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 	}
 
 	for obj.Offset < obj.Size {
-		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, obj.Con.ccon, &err); status != 0 {
+
+		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, &bytesRead, obj.Con.ccon, &err); status != 0 {
 			return newError(Fatal, fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
 		}
 
 		buf := unsafe.Pointer(buffer.buf)
 
-		chunk := C.GoBytes(buf, C.int(size))
+		chunk := C.GoBytes(buf, bytesRead)
+		
 		C.free(buf)
 
 		callback(chunk)

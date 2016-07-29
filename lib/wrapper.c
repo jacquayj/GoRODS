@@ -229,9 +229,8 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
-int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, rcComm_t* conn, char** err) {
+int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err) {
 	
-	int bytesRead; 
 	openedDataObjInp_t dataObjReadInp; 
 	
 	bzero(&dataObjReadInp, sizeof(openedDataObjInp_t)); 
@@ -240,9 +239,9 @@ int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer,
 	dataObjReadInp.l1descInx = handleInx; 
 	dataObjReadInp.len = (int)length;
 
-	bytesRead = rcDataObjRead(conn, &dataObjReadInp, buffer); 
-	
-	if ( bytesRead < 0 ) { 
+	*bytesRead = rcDataObjRead(conn, &dataObjReadInp, buffer); 
+
+	if ( *bytesRead < 0 ) { 
 		*err = "rcDataObjRead failed";
 		return -1;
 	}
