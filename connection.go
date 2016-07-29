@@ -207,6 +207,8 @@ type ConnectionOptions struct {
 type Connection struct {
 	ccon *C.rcComm_t
 
+	cconBuffer chan *C.rcComm_t
+
 	Connected   bool
 	Options     *ConnectionOptions
 	OpenedObjs  IRodsObjs
@@ -253,6 +255,9 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		status = C.gorods_connect(&con.ccon, password, &errMsg)
 	}
 
+	con.cconBuffer = make(chan *C.rcComm_t, 1)
+	con.cconBuffer <- con.ccon
+
 	if status == 0 {
 		con.Connected = true
 	} else {
@@ -268,6 +273,14 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	return con, nil
 }
 
+func (con *Connection) GetCcon() *C.rcComm_t {
+	return <-con.cconBuffer
+}
+
+func (con *Connection) ReturnCcon(ccon *C.rcComm_t) {
+	con.cconBuffer <- ccon
+}
+
 // SetTicket is equivalent to using the -t flag with icommands
 func (con *Connection) SetTicket(t string) error {
 	var (
@@ -280,16 +293,24 @@ func (con *Connection) SetTicket(t string) error {
 	ticket := C.CString(t)
 	defer C.free(unsafe.Pointer(ticket))
 
-	if status = C.gorods_set_session_ticket(con.ccon, ticket, &errMsg); status != 0 {
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status = C.gorods_set_session_ticket(ccon, ticket, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Set Ticket Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
 }
 
+
 // Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
-	if status := int(C.rcDisconnect(con.ccon)); status < 0 {
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := int(C.rcDisconnect(ccon)); status < 0 {
 		return newError(Fatal, fmt.Sprintf("iRods rcDisconnect Failed"))
 	}
 
@@ -327,7 +348,8 @@ func (obj *Connection) String() string {
 func (con *Connection) Collection(startPath string, recursive bool) (*Collection, error) {
 
 	// Check the cache
-	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
+	//if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
+	if collection := con.OpenedObjs.FindRecursive(startPath); true {
 
 		// Load collection, no cache found
 		if col, err := getCollection(startPath, recursive, con); err == nil {
@@ -379,7 +401,10 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	defer C.freeGoRodsPathResult(&colresult)
 	defer C.freeGoRodsPathResult(&dresult)
 
-	if status := C.gorods_query_collection(con.ccon, query, &colresult, &errMsg); status != 0 {
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_query_collection(ccon, query, &colresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
 		return
 	}
@@ -399,7 +424,7 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 		}
 	}
 
-	if status := C.gorods_query_dataobj(con.ccon, query, &dresult, &errMsg); status != 0 {
+	if status := C.gorods_query_dataobj(ccon, query, &dresult, &errMsg); status != 0 {
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
 		return
 	}

@@ -83,9 +83,15 @@ func (m *Meta) Delete() (*MetaCollection, error) {
 
 	var err *C.char
 
-	if status := C.gorods_rm_meta(mT, path, oa, ov, ou, m.Parent.Con.ccon, &err); status < 0 {
+	ccon := m.Parent.Con.GetCcon()
+
+	if status := C.gorods_rm_meta(mT, path, oa, ov, ou, ccon, &err); status < 0 {
+		m.Parent.Con.ReturnCcon(ccon)
+
 		return m.Parent, newError(Fatal, fmt.Sprintf("iRods rm Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
 	}
+
+	m.Parent.Con.ReturnCcon(ccon)
 
 	m.Parent.Refresh()
 
@@ -116,10 +122,15 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 
 		var err *C.char
 
-		if status := C.gorods_mod_meta(mT, path, oa, ov, ou, na, nv, nu, m.Parent.Con.ccon, &err); status < 0 {
+		ccon := m.Parent.Con.GetCcon()
+
+		if status := C.gorods_mod_meta(mT, path, oa, ov, ou, na, nv, nu, ccon, &err); status < 0 {
+			m.Parent.Con.ReturnCcon(ccon)
 			e = newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
 			return
 		}
+
+		m.Parent.Con.ReturnCcon(ccon)
 
 		m.Parent.Refresh()
 	}
@@ -158,6 +169,9 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	defer C.free(unsafe.Pointer(name))
 
+	ccon := mc.Con.GetCcon()
+	defer mc.Con.ReturnCcon(ccon)
+
 	switch mc.Obj.GetType() {
 	case DataObjType:
 		cwdGo := mc.Obj.GetCol().GetPath()
@@ -165,7 +179,7 @@ func (mc *MetaCollection) ReadMeta() error {
 
 		defer C.free(unsafe.Pointer(cwd))
 
-		if status := C.gorods_meta_dataobj(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
+		if status := C.gorods_meta_dataobj(name, cwd, &metaResult, ccon, &err); status != 0 {
 			if status == C.CAT_NO_ROWS_FOUND {
 				return nil
 			} else {
@@ -178,7 +192,7 @@ func (mc *MetaCollection) ReadMeta() error {
 
 		defer C.free(unsafe.Pointer(cwd))
 
-		if status := C.gorods_meta_collection(name, cwd, &metaResult, mc.Con.ccon, &err); status != 0 {
+		if status := C.gorods_meta_collection(name, cwd, &metaResult, ccon, &err); status != 0 {
 			if status == C.CAT_NO_ROWS_FOUND {
 				return nil
 			} else {
@@ -328,9 +342,14 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 
 		var err *C.char
 
-		if status := C.gorods_add_meta(mT, path, na, nv, nu, m.Parent.Con.ccon, &err); status < 0 {
+		ccon := m.Parent.Con.GetCcon()
+
+		if status := C.gorods_add_meta(mT, path, na, nv, nu, ccon, &err); status < 0 {
+			m.Parent.Con.ReturnCcon(ccon)
 			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
 		}
+
+		m.Parent.Con.ReturnCcon(ccon)
 
 		m.Parent.Refresh()
 

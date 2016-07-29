@@ -131,9 +131,14 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 
 	defer C.free(unsafe.Pointer(path))
 
-	if status := C.gorods_create_collection(path, coll.Con.ccon, &errMsg); status != 0 {
+	ccon := coll.Con.GetCcon()
+
+	if status := C.gorods_create_collection(path, ccon, &errMsg); status != 0 {
+		coll.Con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Create Collection Failed: %v, Does the collection already exist?", C.GoString(errMsg)))
 	}
+
+	coll.Con.ReturnCcon(ccon)
 
 	coll.Refresh()
 
@@ -281,7 +286,10 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 		cRecursive = C.int(1)
 	}
 
-	if status := C.gorods_rm(path, 1, cRecursive, cForce, col.Con.ccon, &errMsg); status != 0 {
+	ccon := col.Con.GetCcon()
+	defer col.Con.ReturnCcon(ccon)
+
+	if status := C.gorods_rm(path, 1, cRecursive, cForce, ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Rm Collection Failed: %v", C.GoString(errMsg)))
 	}
 
@@ -347,7 +355,10 @@ func (col *Collection) Open() error {
 
 		defer C.free(unsafe.Pointer(path))
 
-		if status := C.gorods_open_collection(path, &col.chandle, col.Con.ccon, &errMsg); status != 0 {
+		ccon := col.Con.GetCcon()
+		defer col.Con.ReturnCcon(ccon)
+
+		if status := C.gorods_open_collection(path, &col.chandle, ccon, &errMsg); status != 0 {
 			return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 		}
 	}
@@ -366,7 +377,11 @@ func (col *Collection) Close() error {
 	}
 
 	if int(col.chandle) > -1 {
-		if status := C.gorods_close_collection(col.chandle, col.Con.ccon, &errMsg); status != 0 {
+
+		ccon := col.Con.GetCcon()
+		defer col.Con.ReturnCcon(ccon)
+
+		if status := C.gorods_close_collection(col.chandle, ccon, &errMsg); status != 0 {
 			return newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 		}
 
@@ -395,8 +410,12 @@ func (col *Collection) ReadCollection() error {
 		arrSize C.int
 	)
 
+	ccon := col.Con.GetCcon()
+
 	// Read data objs from collection
-	C.gorods_read_collection(col.Con.ccon, col.chandle, &arr, &arrSize, &err)
+	C.gorods_read_collection(ccon, col.chandle, &arr, &arrSize, &err)
+
+	col.Con.ReturnCcon(ccon)
 
 	// Get result length
 	arrLen := int(arrSize)
