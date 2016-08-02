@@ -27,6 +27,8 @@ type DataObj struct {
 	Resource string
 	PhyPath string
 
+	OpenedAs C.int
+
 	OwnerName string
 	CreateTime int
 	ModifyTime int
@@ -74,6 +76,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.DataId = C.GoString(data.dataId)
 	dataObj.Resource = C.GoString(data.resource)
 	dataObj.PhyPath = C.GoString(data.phyPath)
+	dataObj.OpenedAs = C.int(-1)
 
 	dataObj.OwnerName = C.GoString(data.ownerName)
 	dataObj.CreateTime, _ = strconv.Atoi(C.GoString(data.createTime))
@@ -140,6 +143,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 	dataObj.Path = C.GoString(path)
 	dataObj.Size = opts.Size
 	dataObj.chandle = handle
+	dataObj.OpenedAs = C.int(-1)
 
 	coll.add(dataObj)
 
@@ -150,6 +154,14 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 func (obj *DataObj) init() error {
 	if int(obj.chandle) < 0 {
 		return obj.Open()
+	}
+
+	return nil
+}
+
+func (obj *DataObj) initRW() error {
+	if int(obj.chandle) < 0 {
+		return obj.OpenRW()
 	}
 
 	return nil
@@ -252,9 +264,31 @@ func (obj *DataObj) Open() error {
 	ccon := obj.Con.GetCcon()
 	defer obj.Con.ReturnCcon(ccon)
 
-	if status := C.gorods_open_dataobject(path, &obj.chandle, ccon, &errMsg); status != 0 {
+	if status := C.gorods_open_dataobject(path, C.O_RDONLY, &obj.chandle, ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
+
+	obj.OpenedAs = C.O_RDONLY
+
+	return nil
+}
+
+// OpenRW opens a connection to iRods and sets the data object handle for read/write access
+func (obj *DataObj) OpenRW() error {
+	var errMsg *C.char
+
+	path := C.CString(obj.Path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	ccon := obj.Con.GetCcon()
+	defer obj.Con.ReturnCcon(ccon)
+
+	if status := C.gorods_open_dataobject(path, C.O_RDWR, &obj.chandle, ccon, &errMsg); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods OpenRW DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
+	}
+
+	obj.OpenedAs = C.O_RDWR
 
 	return nil
 }
@@ -432,8 +466,13 @@ func (obj *DataObj) DownloadTo(localPath string) error {
 
 // Write writes the data to the data object, starting from the beginning. Returns error.
 func (obj *DataObj) Write(data []byte) error {
-	if er := obj.init(); er != nil {
+	if er := obj.initRW(); er != nil {
 		return er
+	}
+
+	if obj.OpenedAs != C.O_RDWR || obj.OpenedAs != C.O_WRONLY {
+		obj.Close()
+		obj.OpenRW()
 	}
 
 	if er := obj.LSeek(0); er != nil {
@@ -462,8 +501,13 @@ func (obj *DataObj) Write(data []byte) error {
 
 // WriteBytes writes to the data object wherever the object's offset pointer is currently set to. It advances the pointer to the end of the written data for supporting subsequent writes. Be sure to call obj.LSeek(0) before hand if you wish to write from the beginning. Returns error.
 func (obj *DataObj) WriteBytes(data []byte) error {
-	if er := obj.init(); er != nil {
+	if er := obj.initRW(); er != nil {
 		return er
+	}
+
+	if obj.OpenedAs != C.O_RDWR || obj.OpenedAs != C.O_WRONLY {
+		obj.Close()
+		obj.OpenRW()
 	}
 
 	size := int64(len(data))
