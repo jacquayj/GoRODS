@@ -396,18 +396,19 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	var query *C.char = C.CString(qString)
 	var colresult C.goRodsPathResult_t
 	var dresult C.goRodsPathResult_t
+	var ccon *C.rcComm_t
 
 	defer C.free(unsafe.Pointer(query))
 	defer C.freeGoRodsPathResult(&colresult)
 	defer C.freeGoRodsPathResult(&dresult)
 
-	ccon := con.GetCcon()
-	defer con.ReturnCcon(ccon)
-
+	ccon = con.GetCcon()
 	if status := C.gorods_query_collection(ccon, query, &colresult, &errMsg); status != 0 {
+		con.ReturnCcon(ccon)
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
 		return
 	}
+	con.ReturnCcon(ccon)
 
 	size := int(colresult.size)
 
@@ -424,10 +425,13 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 		}
 	}
 
+	ccon = con.GetCcon()
 	if status := C.gorods_query_dataobj(ccon, query, &dresult, &errMsg); status != 0 {
+		con.ReturnCcon(ccon)
 		err = newError(Fatal, fmt.Sprintf(C.GoString(errMsg)))
 		return
 	}
+	con.ReturnCcon(ccon)
 
 	size = int(dresult.size)
 	
