@@ -321,8 +321,10 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		return nil, er
 	}
 
-	if _, er := mc.Get(m.Attribute); er == nil {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Attribute already exists"))
+	if existingMeta, er := mc.Get(m.Attribute); er == nil {
+		if m.Value == existingMeta.Value {
+			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Attribute + Value already exists"))
+		}
 	}
 
 	if m.Attribute != "" && m.Value != "" {
