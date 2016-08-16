@@ -85,7 +85,7 @@ type IRodsObj interface {
 	Rm(bool, bool) error
 
 	Meta() (*MetaCollection, error)
-	Attribute(string) (*Meta, error)
+	Attribute(string) (Metas, error)
 	AddMeta(Meta) (*Meta, error)
 	DeleteMeta(string) (*MetaCollection, error)
 

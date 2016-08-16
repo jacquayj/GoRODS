@@ -22,6 +22,32 @@ type Meta struct {
 
 type Metas []*Meta
 
+func (ms Metas) MatchOne(m *Meta) *Meta {
+	
+	if len(ms) > 0 {
+		for _, am := range ms {
+			if am.Attribute == m.Attribute && am.Value == m.Value && am.Units == m.Units {
+				return am
+			}
+		}
+	}
+
+	return nil
+}
+
+// String shows the contents of the meta slice struct.
+//
+// Sample output:
+//
+// 	Attr1: Val (unit: foo)
+func (ms Metas) String() string {
+	result := ""
+	for _, m := range ms {
+		result += m.String() + "\n"
+	}
+	return result
+}
+
 // MetaCollection is a collection of metadata AVU triples for a single data object
 type MetaCollection struct {
 	Metas Metas
@@ -135,7 +161,23 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 		m.Parent.Refresh()
 	}
 
-	newMeta, e = m.Parent.Get(attributeName)
+	var metaResult Metas
+
+	metaResult, e = m.Parent.Get(attributeName)
+
+	if len(metaResult) == 0 {
+		return
+	}
+
+	if match := metaResult.MatchOne(&Meta {
+		Attribute: attributeName,
+		Value: value,
+		Units: units,
+	}); match != nil {
+		newMeta = match
+		return
+	}
+
 	return
 }
 
@@ -163,7 +205,7 @@ func (mc *MetaCollection) ReadMeta() error {
 		metaResult C.goRodsMetaResult_t
 	)
 
-	mc.Metas = make([]*Meta, 0)
+	mc.Metas = make(Metas, 0)
 
 	name := C.CString(mc.Obj.GetName())
 
@@ -258,8 +300,8 @@ func (mc *MetaCollection) String() string {
 	return str
 }
 
-// Get finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
-func (mc *MetaCollection) Get(attr string) (*Meta, error) {
+// One finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
+func (mc *MetaCollection) One(attr string) (*Meta, error) {
 	if err := mc.init(); err != nil {
 		return nil, err
 	}
@@ -271,6 +313,27 @@ func (mc *MetaCollection) Get(attr string) (*Meta, error) {
 	}
 
 	return nil, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
+}
+
+// One finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
+func (mc *MetaCollection) Get(attr string) (Metas, error) {
+	if err := mc.init(); err != nil {
+		return nil, err
+	}
+
+	result := make(Metas, 0)
+
+	for _, m := range mc.Metas {
+		if m.Attribute == attr {
+			result = append(result, m)
+		}
+	}
+
+	if len(result) == 0 {
+		return result, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
+	}
+	
+	return result, nil
 }
 
 // All
@@ -302,14 +365,16 @@ func (mc *MetaCollection) Delete(attr string) (err error) {
 		return
 	}
 
-	var meta *Meta
+	var meta Metas
 
 	if meta, err = mc.Get(attr); err != nil {
 		return
 	}
 
-	if _, err = meta.Delete(); err != nil {
-		return
+	for _, m := range meta {
+		if _, err = m.Delete(); err != nil {
+			return
+		}
 	}
 
 	return
@@ -322,8 +387,12 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 	}
 
 	if existingMeta, er := mc.Get(m.Attribute); er == nil {
-		if m.Value == existingMeta.Value {
-			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Attribute + Value already exists"))
+		if len(existingMeta) > 0 {
+			for _, am := range existingMeta {
+				if m.Value == am.Value {
+					return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Attribute + Value already exists"))
+				}
+			}
 		}
 	}
 
@@ -359,10 +428,13 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields"))
 	}
 
-	if attr, er := m.Parent.Get(m.Attribute); er == nil {
-		return attr, nil
+	if attrs, er := m.Parent.Get(m.Attribute); er == nil {
+		if am := attrs.MatchOne(&m); am != nil {
+			return am, nil
+		}
+		return nil, er
 	} else {
 		return nil, er
 	}
-
+	
 }

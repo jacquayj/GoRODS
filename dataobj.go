@@ -583,7 +583,7 @@ func (obj *DataObj) Stat() (map[string]interface{}, error) {
 }
 
 // Attribute returns a single Meta triple struct found by the attributes name
-func (obj *DataObj) Attribute(attrName string) (*Meta, error) {
+func (obj *DataObj) Attribute(attrName string) (Metas, error) {
 	if meta, err := obj.Meta(); err == nil {
 		return meta.Get(attrName)
 	} else {
