@@ -296,7 +296,7 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 	return nil
 }
 
-// Attribute gets specific metadata AVU triple for Collection
+// Attribute gets slice of Meta AVU triples, matching by Attribute name for Collection
 func (col *Collection) Attribute(attr string) (Metas, error) {
 	if mc, err := col.Meta(); err == nil {
 		return mc.Get(attr)

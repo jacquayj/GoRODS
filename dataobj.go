@@ -582,7 +582,7 @@ func (obj *DataObj) Stat() (map[string]interface{}, error) {
 	return result, nil
 }
 
-// Attribute returns a single Meta triple struct found by the attributes name
+// Attribute gets slice of Meta AVU triples, matching by Attribute name for DataObj
 func (obj *DataObj) Attribute(attrName string) (Metas, error) {
 	if meta, err := obj.Meta(); err == nil {
 		return meta.Get(attrName)

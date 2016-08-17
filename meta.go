@@ -22,6 +22,7 @@ type Meta struct {
 
 type Metas []*Meta
 
+// MatchOne returns a single Meta struct from the slice, matching on Attribute, Value, and Units
 func (ms Metas) MatchOne(m *Meta) *Meta {
 	
 	if len(ms) > 0 {
@@ -300,8 +301,8 @@ func (mc *MetaCollection) String() string {
 	return str
 }
 
-// One finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
-func (mc *MetaCollection) One(attr string) (*Meta, error) {
+// First finds the first matching Meta struct by it's Attribute field
+func (mc *MetaCollection) First(attr string) (*Meta, error) {
 	if err := mc.init(); err != nil {
 		return nil, err
 	}
@@ -315,7 +316,7 @@ func (mc *MetaCollection) One(attr string) (*Meta, error) {
 	return nil, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
 }
 
-// One finds a single Meta struct by it's Attribute field. Similar to Attribute() function of other types.
+// Get returns a Meta struct slice (since attributes can share the same name in iRods), matching by their Attribute field. Similar to Attribute() function of other types
 func (mc *MetaCollection) Get(attr string) (Metas, error) {
 	if err := mc.init(); err != nil {
 		return nil, err
@@ -336,7 +337,7 @@ func (mc *MetaCollection) Get(attr string) (Metas, error) {
 	return result, nil
 }
 
-// All
+// All returns a slice of all Meta structs in the MetaCollection
 func (mc *MetaCollection) All() (Metas, error) {
 	if err := mc.init(); err != nil {
 		return nil, err
@@ -345,7 +346,7 @@ func (mc *MetaCollection) All() (Metas, error) {
 	return mc.Metas, nil
 }
 
-// Each
+// Each accepts an iterator function for looping over all Meta structs in the MetaCollection
 func (mc *MetaCollection) Each(iterator func(*Meta)) error {
 	if err := mc.init(); err != nil {
 		return err
@@ -432,7 +433,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		if am := attrs.MatchOne(&m); am != nil {
 			return am, nil
 		}
-		return nil, er
+		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Error: Unable to locate added meta triple"))
 	} else {
 		return nil, er
 	}
