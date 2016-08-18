@@ -230,6 +230,54 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err) {
+    genQueryOut_t *genQueryOut = NULL;
+    int status;
+    int i;
+    sqlResult_t *userName, *userZone, *dataAccess;
+    char *userNameStr, *userZoneStr, *dataAccessStr;
+
+    status = queryDataObjAcl(conn, dataId, zoneHint, &genQueryOut);
+
+    if ( status < 0 ) {
+        return status;
+    }
+
+    if ( ( userName = getSqlResultByInx( genQueryOut, COL_USER_NAME ) ) == NULL ) {
+        *err = "printDataAcl: getSqlResultByInx for COL_USER_NAME failed";
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( userZone = getSqlResultByInx( genQueryOut, COL_USER_ZONE ) ) == NULL ) {
+        *err = "printDataAcl: getSqlResultByInx for COL_USER_ZONE failed";
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( dataAccess = getSqlResultByInx( genQueryOut, COL_DATA_ACCESS_NAME ) ) == NULL ) {
+        *err = "printDataAcl: getSqlResultByInx for COL_DATA_ACCESS_NAME failed";
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    result->size = genQueryOut->rowCnt;
+    result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
+
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        userNameStr = &userName->value[userName->len * i];
+        userZoneStr = &userZone->value[userZone->len * i];
+        dataAccessStr = &dataAccess->value[dataAccess->len * i];
+
+        goRodsACL_t* acl = &(result->aclArr[i]);
+
+        acl->username = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
+        acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
+        acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
+    }
+
+    freeGenQueryOut(&genQueryOut);
+
+    return status;
+}
+
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err) {
 	
 	openedDataObjInp_t dataObjReadInp; 

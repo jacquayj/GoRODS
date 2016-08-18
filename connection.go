@@ -67,6 +67,7 @@ type IRodsObj interface {
 	GetPath() string
 	GetCol() *Collection
 	GetCon() *Connection
+	//GetACL() map[string]string
 
 	GetOwnerName() string
 	GetCreateTime() int
@@ -212,6 +213,18 @@ type Connection struct {
 	Connected   bool
 	Options     *ConnectionOptions
 	OpenedObjs  IRodsObjs
+}
+
+type ACL struct {
+	Username string
+	Zone string
+	DataAccess string
+}
+
+type ACLs []*ACL
+
+func (acl ACL) String() string {
+	return fmt.Sprintf("%v#%v:%v", acl.Username, acl.Zone, acl.DataAccess)
 }
 
 

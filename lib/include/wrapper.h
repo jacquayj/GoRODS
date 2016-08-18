@@ -26,6 +26,17 @@ typedef struct {
 } goRodsMetaResult_t;
 
 typedef struct {
+	char* username;
+	char* zone;
+	char* dataAccess;
+} goRodsACL_t;
+
+typedef struct {
+	int size;
+	goRodsACL_t* aclArr;
+} goRodsACLResult_t;
+
+typedef struct {
 	int size;
 	char** pathArr;
 } goRodsPathResult_t;
@@ -51,6 +62,8 @@ int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char
 int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);
 int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err);
 int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* conn, char** err);
+int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err);
+
 
 void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result);
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);

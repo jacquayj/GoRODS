@@ -167,6 +167,51 @@ func (obj *DataObj) initRW() error {
 	return nil
 }
 
+// GetACL retuns a slice of ACL structs. Example of slice in string format:
+// [rods#tempZone:own
+// developers#tempZone:modify object
+// designers#tempZone:read object]
+func (obj *DataObj) GetACL() (ACLs, error) {
+
+	var (
+		result C.goRodsACLResult_t
+		err    *C.char
+	)
+
+	zoneHint := C.CString("tempZone")
+	cDataId := C.CString(obj.DataId)
+	defer C.free(unsafe.Pointer(cDataId))
+	defer C.free(unsafe.Pointer(zoneHint))
+
+	ccon := obj.Con.GetCcon()
+	defer obj.Con.ReturnCcon(ccon)
+
+	if status := C.gorods_get_dataobject_acl(ccon, cDataId, &result, zoneHint, &err); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Data Object ACL Failed: %v", C.GoString(err)))
+	}
+
+	unsafeArr := unsafe.Pointer(result.aclArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.collEnt_t
+	slice := (*[1 << 30]C.goRodsACL_t)(unsafeArr)[:arrLen:arrLen]
+
+	response := make([]*ACL, 0)
+
+	for _, acl := range slice {
+
+		response = append(response, &ACL {
+			Username: C.GoString(acl.username),
+			Zone: C.GoString(acl.zone),
+			DataAccess: C.GoString(acl.dataAccess),
+		})
+
+	}
+
+	return response, nil
+
+}
+
 // Type gets the type
 func (obj *DataObj) GetType() int {
 	return obj.Type
