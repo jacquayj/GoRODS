@@ -230,6 +230,39 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err) {
+    genQueryOut_t *genQueryOut = NULL;
+    int status;
+    sqlResult_t *inheritResult;
+    char *inheritStr;
+
+    status = queryCollInheritance(conn, collName, &genQueryOut);
+
+    if ( status < 0 ) {
+        freeGenQueryOut(&genQueryOut);
+        return status;
+    }
+
+    if ( (inheritResult = getSqlResultByInx(genQueryOut, COL_COLL_INHERITANCE)) == NULL ) {
+        *err = "printCollInheritance: getSqlResultByInx for COL_COLL_INHERITANCE failed";
+        freeGenQueryOut(&genQueryOut);
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    inheritStr = &inheritResult->value[0];
+
+    if ( *inheritStr == '1' ) {
+        *enabled = 1;
+    } else {
+        *enabled = -1;
+    }
+
+    freeGenQueryOut(&genQueryOut);
+
+    return status;
+}
+
+
 
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err) {
     genQueryOut_t *genQueryOut = NULL;

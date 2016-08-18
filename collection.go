@@ -206,6 +206,31 @@ func (col *Collection) All() (IRodsObjs, error) {
 	return col.DataObjects, nil
 }
 
+// Inheritance returns true or false, depending on the collection's inheritance setting
+func (col *Collection) Inheritance() (bool, error) {
+
+	var (
+		enabled C.int
+		err    *C.char
+	)
+
+	collName := C.CString(col.Path)
+	defer C.free(unsafe.Pointer(collName))
+
+	ccon := col.Con.GetCcon()
+	defer col.Con.ReturnCcon(ccon)
+
+	if status := C.gorods_get_collection_inheritance(ccon, collName, &enabled, &err); status != 0 {
+		return false, newError(Fatal, fmt.Sprintf("iRods Get Collection Inheritance Failed: %v", C.GoString(err)))
+	}
+
+	if int(enabled) > 0 {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 
 // GetACL retuns a slice of ACL structs. Example of slice in string format:
 // [rods#tempZone:own
