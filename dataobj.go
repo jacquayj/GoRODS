@@ -208,6 +208,8 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 
 	}
 
+	C.gorods_free_acl_result(&result)
+
 	return response, nil
 
 }

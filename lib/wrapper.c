@@ -278,6 +278,21 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
     return status;
 }
 
+void gorods_free_acl_result(goRodsACLResult_t* result) {
+
+	int i;
+	for ( i = 0; i < result->size; i++ ) {
+        goRodsACL_t* acl = &(result->aclArr[i]);
+
+        free(acl->username);
+        free(acl->zone);
+        free(acl->dataAccess);
+    }
+
+    free(result->aclArr);
+
+}
+
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err) {
 	
 	openedDataObjInp_t dataObjReadInp; 
