@@ -26,6 +26,7 @@ type Collection struct {
 	Recursive   bool
 	Init 		bool
 	Type        int
+	ACLInheritance bool
 
 	OwnerName string
 	CreateTime int
@@ -204,6 +205,55 @@ func (col *Collection) All() (IRodsObjs, error) {
 
 	return col.DataObjects, nil
 }
+
+
+// GetACL retuns a slice of ACL structs. Example of slice in string format:
+// [rods#tempZone:own
+// developers#tempZone:modify object
+// designers#tempZone:read object]
+func (col *Collection) GetACL() (ACLs, error) {
+
+	var (
+		result C.goRodsACLResult_t
+		err    *C.char
+	)
+
+	zoneHint := C.CString("tempZone")
+	collName := C.CString(col.Path)
+	defer C.free(unsafe.Pointer(collName))
+	defer C.free(unsafe.Pointer(zoneHint))
+
+	ccon := col.Con.GetCcon()
+	defer col.Con.ReturnCcon(ccon)
+
+	if status := C.gorods_get_collection_acl(ccon, collName, &result, zoneHint, &err); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Collection ACL Failed: %v", C.GoString(err)))
+	}
+
+	unsafeArr := unsafe.Pointer(result.aclArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.goRodsACL_t
+	slice := (*[1 << 30]C.goRodsACL_t)(unsafeArr)[:arrLen:arrLen]
+
+	response := make([]*ACL, 0)
+
+	for _, acl := range slice {
+
+		response = append(response, &ACL {
+			Name: C.GoString(acl.name),
+			Zone: C.GoString(acl.zone),
+			DataAccess: C.GoString(acl.dataAccess),
+			ACLType: C.GoString(acl.acltype),
+		})
+
+	}
+
+	C.gorods_free_acl_result(&result)
+
+	return response, nil
+}
+
 
 // Type gets the type
 func (col *Collection) GetType() int {

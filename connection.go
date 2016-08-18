@@ -216,15 +216,24 @@ type Connection struct {
 }
 
 type ACL struct {
-	Username string
+	Name string
 	Zone string
 	DataAccess string
+	ACLType string
 }
 
 type ACLs []*ACL
 
 func (acl ACL) String() string {
-	return fmt.Sprintf("%v#%v:%v", acl.Username, acl.Zone, acl.DataAccess)
+	typeString := ""
+
+	if acl.ACLType == "group" {
+		typeString = "g:"
+	} else if acl.ACLType == "user" {
+		typeString = "u:"
+	}
+
+	return fmt.Sprintf("%v%v#%v:%v", typeString, acl.Name, acl.Zone, acl.DataAccess)
 }
 
 

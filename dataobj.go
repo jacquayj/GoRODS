@@ -193,7 +193,7 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 	unsafeArr := unsafe.Pointer(result.aclArr)
 	arrLen := int(result.size)
 
-	// Convert C array to slice, backed by arr *C.collEnt_t
+	// Convert C array to slice, backed by arr *C.goRodsACL_t
 	slice := (*[1 << 30]C.goRodsACL_t)(unsafeArr)[:arrLen:arrLen]
 
 	response := make([]*ACL, 0)
@@ -201,9 +201,10 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 	for _, acl := range slice {
 
 		response = append(response, &ACL {
-			Username: C.GoString(acl.username),
+			Name: C.GoString(acl.name),
 			Zone: C.GoString(acl.zone),
 			DataAccess: C.GoString(acl.dataAccess),
+			ACLType: C.GoString(acl.acltype),
 		})
 
 	}

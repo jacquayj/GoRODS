@@ -230,6 +230,109 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+
+int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err) {
+    genQueryOut_t *genQueryOut = NULL;
+    int status;
+    int i;
+    sqlResult_t *userName, *userZone, *dataAccess;
+    char *userNameStr, *userZoneStr, *dataAccessStr;
+
+    /* First try a specific-query.  If this is defined, it should be
+        used as it returns the group names without expanding them to
+        individual users and this is important to some sites (iPlant,
+        in particular).  If this fails, go on the the general-query.
+     */
+    status = queryCollAclSpecific(conn, collName, zoneHint, &genQueryOut);
+    if ( status >= 0 ) {
+        int i, j;
+
+        result->size = genQueryOut->rowCnt;
+    	result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
+
+        for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+            char *tResult[10];
+            char empty = 0;
+            char typeStr[8];
+            tResult[3] = 0;
+
+            for ( j = 0; j < 10; j++ ) {
+                tResult[j] = &empty;
+                if ( j < genQueryOut->attriCnt ) {
+                    tResult[j] = genQueryOut->sqlResult[j].value;
+                    tResult[j] += i * genQueryOut->sqlResult[j].len;
+                }
+            }
+            typeStr[0] = '\0';
+            if ( tResult[3] != 0 && strncmp(tResult[3], "rodsgroup", 9) == 0 ) {
+                strncpy( typeStr, "g:", 3 );
+            }
+
+            goRodsACL_t* acl = &(result->aclArr[i]);
+
+	        acl->name = strcpy(gorods_malloc(strlen(tResult[0]) + 1), tResult[0]);
+	        acl->zone = strcpy(gorods_malloc(strlen(tResult[1]) + 1), tResult[1]);
+	        acl->dataAccess = strcpy(gorods_malloc(strlen(tResult[2]) + 1), tResult[2]);
+
+	        if ( typeStr[0] == '\0' ) {
+	        	acl->acltype = "user";
+	        } else {
+	        	acl->acltype = "group";
+	        }
+        }
+
+        freeGenQueryOut(&genQueryOut);
+        return status;
+    }
+
+    status = queryCollAcl(conn, collName, zoneHint, &genQueryOut);
+
+    if ( status < 0 ) {
+        *err = "Error in queryCollAcl";
+        freeGenQueryOut(&genQueryOut);
+        return status;
+    }
+
+    if ( ( userName = getSqlResultByInx( genQueryOut, COL_COLL_USER_NAME ) ) == NULL ) {
+        *err = "printCollAcl: getSqlResultByInx for COL_COLL_USER_NAME failed";
+        freeGenQueryOut(&genQueryOut);
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+    if ( ( userZone = getSqlResultByInx( genQueryOut, COL_COLL_USER_ZONE ) ) == NULL ) {
+        *err = "printCollAcl: getSqlResultByInx for COL_COLL_USER_ZONE failed";
+        freeGenQueryOut(&genQueryOut);
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( dataAccess = getSqlResultByInx( genQueryOut, COL_COLL_ACCESS_NAME ) ) == NULL ) {
+        *err = "printCollAcl: getSqlResultByInx for COL_COLL_ACCESS_NAME failed";
+        freeGenQueryOut(&genQueryOut);
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    result->size = genQueryOut->rowCnt;
+    result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
+
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        userNameStr = &userName->value[userName->len * i];
+        userZoneStr = &userZone->value[userZone->len * i];
+        dataAccessStr = &dataAccess->value[dataAccess->len * i];
+
+        goRodsACL_t* acl = &(result->aclArr[i]);
+
+        acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
+        acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
+        acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
+        
+        acl->acltype = "unknown";
+    }
+
+    freeGenQueryOut(&genQueryOut);
+
+    return status;
+}
+
+
 int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
@@ -240,6 +343,7 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
     status = queryDataObjAcl(conn, dataId, zoneHint, &genQueryOut);
 
     if ( status < 0 ) {
+    	*err = "Error in queryDataObjAcl";
         return status;
     }
 
@@ -268,9 +372,10 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
 
         goRodsACL_t* acl = &(result->aclArr[i]);
 
-        acl->username = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
+        acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
+        acl->acltype = "unknown";
     }
 
     freeGenQueryOut(&genQueryOut);
@@ -284,7 +389,7 @@ void gorods_free_acl_result(goRodsACLResult_t* result) {
 	for ( i = 0; i < result->size; i++ ) {
         goRodsACL_t* acl = &(result->aclArr[i]);
 
-        free(acl->username);
+        free(acl->name);
         free(acl->zone);
         free(acl->dataAccess);
     }

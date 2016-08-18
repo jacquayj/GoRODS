@@ -26,9 +26,10 @@ typedef struct {
 } goRodsMetaResult_t;
 
 typedef struct {
-	char* username;
+	char* name;
 	char* zone;
 	char* dataAccess;
+	char* acltype;
 } goRodsACL_t;
 
 typedef struct {
@@ -49,6 +50,7 @@ int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** e
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
 int gorods_close_collection(int handleInx, rcComm_t* conn, char** err);
 int gorods_create_collection(char* path, rcComm_t* conn, char** err);
+int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err);
 
 int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn, char** err);
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err);
