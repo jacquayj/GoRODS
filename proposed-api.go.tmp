@@ -1,0 +1,102 @@
+package main
+
+import (
+    "os"
+    "fmt"
+    "github.com/jjacquay712/GoRods"
+)
+
+func main() {
+
+	// Struct: Client
+    irodsClient, err := gorods.NewClient(gorods.ClientOpts {
+        Type: gorods.UserDefined, 
+        //Type: gorods.EnvironmentDefined, 
+        Host: "localhost",
+        Port: 1247,
+        Zone: "tempZone",
+        User: gorods.User {
+        	Auth: ,
+			Username: "john",
+	        Password: "test",
+        },
+    })
+    irodsClient.CurrentUser() // $ iuserinfo
+    irodsClient.GetUsers()
+    irodsClient.CreateUser(gorods.UserOpts {})
+    irodsClient.DeleteUser()
+    irodsClient.DeleteUserByString()
+    irodsClient.GetGroups()
+    irodsClient.CreateGroup()
+    irodsClient.DeleteGroup()
+    irodsClient.DeleteGroupByString()
+    irodsClient.GetZones()
+    irodsClient.CreateZone()
+    irodsClient.DeleteZone()
+    irodsClient.DeleteZoneByString()
+    irodsClient.GetResources()
+    irodsClient.CreateResource()
+    irodsClient.DeleteResource()
+    irodsClient.DeleteResourceByString()
+    irodsClient.OtherEntryPointsHere()
+
+
+    // Struct: Resource
+    resource.Info()
+    resource.Delete()
+
+
+    // Struct: User
+    user.Info()
+    user.Delete()
+    user.ChangePassword()
+    user.SetQuota()
+    user.AuthType() // $ lua doesn't work? Need to investigate authentication plugins
+    user.Modify()
+    user.AddToGroup()
+    user.AddToGroupByString()
+    user.RemoveFromGroup()
+    user.RemoveFromGroupByString()
+
+
+    // Struct: Group
+    myGroup.Info()
+    myGroup.GetUsers()
+    myGroup.AddUser(aUser)
+    myGroup.RemoveUser(aUser)
+    myGroup.AddUserByString(userString)
+    myGroup.RemoveUserByString(userString)
+    myGroup.Delete()
+    myGroup.SetQuota()
+
+
+    // Struct: Collection
+    // $ ichmod
+    collection.AddGroup()
+    collection.AddGroupByString()
+    collection.RemoveGroup()
+    collection.RemoveGroupByString()
+    collection.AddUser()
+    collection.AddUserByString()
+    collection.RemoveUser()
+    collection.RemoveUserByString()
+    collection.SetInheritiance(true)
+    collection.Inheritiance()
+
+    // Struct: DataObj
+    dataObj.AddGroup()
+    dataObj.AddGroupByString()
+    dataObj.RemoveGroup()
+    dataObj.RemoveGroupByString()
+    dataObj.AddUser()
+    dataObj.AddUserByString()
+    dataObj.RemoveUser()
+    dataObj.RemoveUserByString()
+
+
+    // Struct: Zone
+    zone.Modify()
+    zone.Delete()
+
+
+}

@@ -215,28 +215,6 @@ type Connection struct {
 	OpenedObjs  IRodsObjs
 }
 
-type ACL struct {
-	Name string
-	Zone string
-	DataAccess string
-	ACLType string
-}
-
-type ACLs []*ACL
-
-func (acl ACL) String() string {
-	typeString := ""
-
-	if acl.ACLType == "group" {
-		typeString = "g:"
-	} else if acl.ACLType == "user" {
-		typeString = "u:"
-	}
-
-	return fmt.Sprintf("%v%v#%v:%v", typeString, acl.Name, acl.Zone, acl.DataAccess)
-}
-
-
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
 // constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
