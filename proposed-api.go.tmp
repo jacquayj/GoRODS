@@ -72,6 +72,7 @@ func main() {
 
     // Struct: Collection
     // $ ichmod
+    collection.GetGroups()
     collection.AddGroup()
     collection.AddGroupByString()
     collection.RemoveGroup()
@@ -83,7 +84,9 @@ func main() {
     collection.SetInheritiance(true)
     collection.Inheritiance()
 
+
     // Struct: DataObj
+    dataObj.GetGroups()
     dataObj.AddGroup()
     dataObj.AddGroupByString()
     dataObj.RemoveGroup()
