@@ -13,13 +13,13 @@ import (
 )
 
 type User struct {
-	Name    string
-	Groups	Groups
+	Name   string
+	Zone   string
+	Groups Groups
 }
 
 type Users []*User
 
 func (usr User) String() string {
-	
-	return fmt.Sprintf("%v", "")
+	return fmt.Sprintf("%v#%v", usr.Name, usr.Zone)
 }

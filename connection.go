@@ -509,7 +509,7 @@ func (con *Connection) GetGroups() (Groups, error) {
 	unsafeArr := unsafe.Pointer(result.grpArr)
 	arrLen := int(result.size)
 
-	// Convert C array to slice, backed by arr *C.goRodsACL_t
+	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
 	response := make(Groups, 0)
@@ -518,6 +518,7 @@ func (con *Connection) GetGroups() (Groups, error) {
 
 		response = append(response, &Group{
 			Name: C.GoString(groupName),
+			Con:  con,
 		})
 
 	}

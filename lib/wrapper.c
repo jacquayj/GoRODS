@@ -301,6 +301,99 @@ int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err) {
     return 0;
 }
 
+int gorods_get_group(rcComm_t *conn, goRodsGroupResult_t* result, char* groupName, char** err) {
+    genQueryInp_t  genQueryInp;
+    genQueryOut_t *genQueryOut = 0;
+    int selectIndexes[10];
+    int selectValues[10];
+    int conditionIndexes[10];
+    char *conditionValues[10];
+    char conditionString1[BIG_STR];
+    char conditionString2[BIG_STR];
+    int status;
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    selectIndexes[0] = COL_USER_NAME;
+    selectValues[0] = 0;
+    selectIndexes[1] = COL_USER_ZONE;
+    selectValues[1] = 0;
+    genQueryInp.selectInp.inx = selectIndexes;
+    genQueryInp.selectInp.value = selectValues;
+   
+   	genQueryInp.selectInp.len = 2;
+ 
+    conditionIndexes[0] = COL_USER_TYPE;
+    sprintf(conditionString1, "='rodsgroup'");
+    conditionValues[0] = conditionString1;
+
+    genQueryInp.sqlCondInp.inx = conditionIndexes;
+    genQueryInp.sqlCondInp.value = conditionValues;
+    genQueryInp.sqlCondInp.len = 1;
+
+    sprintf(conditionString1, "!='rodsgroup'");
+
+    conditionIndexes[1] = COL_USER_GROUP_NAME;
+    sprintf(conditionString2, "='%s'", groupName);
+    conditionValues[1] = conditionString2;
+    genQueryInp.sqlCondInp.len = 2;
+
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    genQueryInp.condInput.len = 0;
+
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "No rows found";
+        return status;
+    } 
+
+    gorods_build_group_user_result(genQueryOut, result);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        if ( status == 0 ) {
+            gorods_build_group_user_result(genQueryOut, result);
+        }
+    }
+
+    return 0;
+}
+
+
+void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
+    
+	if ( result->size == 0 ) {
+    	result->size = genQueryOut->rowCnt;
+		result->grpArr = gorods_malloc(result->size * sizeof(char*));
+    } else {
+    	result->size += genQueryOut->rowCnt;
+    	result->grpArr = realloc(result->grpArr, result->size * sizeof(char*));
+    }
+
+    int i, j;
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        char *tResult;
+        
+        char resultStr[255] = "";
+
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+            
+            if ( j > 0 ) {
+            	strcat(&resultStr[0], "#");
+            	strcat(&resultStr[0], tResult);
+            } else {
+               	strcat(&resultStr[0], tResult);
+            }
+        }
+
+        result->grpArr[i] = strcpy(gorods_malloc(strlen(resultStr) + 1), resultStr);
+    }
+}
+
+
 void gorods_free_group_result(goRodsGroupResult_t* result) {
 	int i;
 	for ( i = 0; i < result->size; i++ ) {
