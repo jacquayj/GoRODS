@@ -233,10 +233,9 @@ func (col *Collection) Inheritance() (bool, error) {
 
 // Chmod changes the permissions/ACL of the collection
 // accessLevel: "null" | "read" | "write" | "own"
-func (col *Collection) Chmod(user string, accessLevel string, recursive bool) error {
-	return Chmod(col, user, accessLevel, recursive)
+func (col *Collection) Chmod(userOrGroup string, accessLevel string, recursive bool) error {
+	return Chmod(col, userOrGroup, accessLevel, recursive)
 }
-
 
 // GetACL retuns a slice of ACL structs. Example of slice in string format:
 // [rods#tempZone:own
@@ -508,7 +507,7 @@ func (col *Collection) ReadCollection() error {
 
 	col.DataObjects = make([]IRodsObj, 0)
 
-	for i, _ := range slice {
+	for i := range slice {
 		obj := &slice[i]
 
 		isCollection := (obj.objType != C.DATA_OBJ_T)

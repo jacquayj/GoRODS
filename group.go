@@ -13,13 +13,13 @@ import (
 )
 
 type Group struct {
-	Name    string
-	Users	Users
+	Name  string
+	Users Users
 }
 
 type Groups []*Group
 
 func (grp Group) String() string {
-	
-	return fmt.Sprintf("%v", "")
+
+	return fmt.Sprintf("%v", grp.Name)
 }

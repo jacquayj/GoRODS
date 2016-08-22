@@ -12,8 +12,9 @@ import "C"
 
 import (
 	"fmt"
-	"unsafe"
+	"strings"
 	"sync"
+	"unsafe"
 )
 
 // EnvironmentDefined and UserDefined constants are used when calling
@@ -37,24 +38,24 @@ const (
 
 func getTypeString(t int) string {
 	switch t {
-		case DataObjType:
-			return "d"
-		case CollectionType:
-			return "C"
-		case ResourceType:
-			return "R"
-		case UserType:
-			return "u"
-		default:
-			panic(newError(Fatal, "unrecognized meta type constant"))
+	case DataObjType:
+		return "d"
+	case CollectionType:
+		return "C"
+	case ResourceType:
+		return "R"
+	case UserType:
+		return "u"
+	default:
+		panic(newError(Fatal, "unrecognized meta type constant"))
 	}
 }
 
 func isString(obj interface{}) bool {
 	switch obj.(type) {
-		case string:
-			return true
-		default:		
+	case string:
+		return true
+	default:
 	}
 
 	return false
@@ -112,7 +113,7 @@ func (objs IRodsObjs) Exists(path string) bool {
 // Find gets a collection from the slice and returns nil if one is not found.
 // Both the collection name or full path can be used as input.
 func (objs IRodsObjs) Find(path string) IRodsObj {
-	
+
 	// Strip trailing forward slash
 	if path[len(path)-1] == '/' {
 		path = path[:len(path)-1]
@@ -139,7 +140,7 @@ func (objs IRodsObjs) Each(iterator func(IRodsObj)) error {
 // FindRecursive acts just like Find, but also searches sub collections recursively.
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
-	
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -165,7 +166,7 @@ func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
 	if f1 != nil {
 		return f1
 	}
-	
+
 	return f2
 }
 
@@ -193,12 +194,17 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	return nil
 }
 
-
 func Chmod(obj IRodsObj, user string, accessLevel string, recursive bool) error {
 	var (
-		err         *C.char
-		cRecursive   C.int
+		err        *C.char
+		cRecursive C.int
 	)
+
+	accessLevel = strings.ToLower(accessLevel)
+
+	if accessLevel != "null" && accessLevel != "read" && accessLevel != "write" && accessLevel != "own" {
+		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be \"null\" | \"read\" | \"write\" | \"own\""))
+	}
 
 	cUser := C.CString(user)
 	cPath := C.CString(obj.GetPath())
@@ -225,7 +231,6 @@ func Chmod(obj IRodsObj, user string, accessLevel string, recursive bool) error 
 	return nil
 }
 
-
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
 	Type int
@@ -244,15 +249,15 @@ type Connection struct {
 
 	cconBuffer chan *C.rcComm_t
 
-	Connected   bool
-	Options     *ConnectionOptions
-	OpenedObjs  IRodsObjs
+	Connected  bool
+	Options    *ConnectionOptions
+	OpenedObjs IRodsObjs
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
 // constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
-// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password 
+// When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password
 // should be set unless using an anonymous user account with tickets.
 func New(opts ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
@@ -318,8 +323,8 @@ func (con *Connection) ReturnCcon(ccon *C.rcComm_t) {
 // SetTicket is equivalent to using the -t flag with icommands
 func (con *Connection) SetTicket(t string) error {
 	var (
-		status   C.int
-		errMsg   *C.char
+		status C.int
+		errMsg *C.char
 	)
 
 	con.Options.Ticket = t
@@ -336,7 +341,6 @@ func (con *Connection) SetTicket(t string) error {
 
 	return nil
 }
-
 
 // Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
@@ -399,12 +403,12 @@ func (con *Connection) Collection(startPath string, recursive bool) (*Collection
 		// Init the cached collection if recursive is set
 		if recursive {
 			col.Recursive = true
-			
+
 			if er := col.init(); er != nil {
 				return nil, er
 			}
 		}
-		
+
 		return col, nil
 	}
 
@@ -414,7 +418,7 @@ func (con *Connection) Collection(startPath string, recursive bool) (*Collection
 func (con *Connection) DataObject(dataObjPath string) (dataobj *DataObj, err error) {
 	// We use the caching mechanism from Collection()
 	dataobj, err = getDataObj(dataObjPath, con)
-	
+
 	return
 }
 
@@ -423,7 +427,7 @@ func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, 
 	return nil, nil
 }
 
-// QueryMeta 
+// QueryMeta
 func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error) {
 
 	var errMsg *C.char
@@ -468,7 +472,7 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	con.ReturnCcon(ccon)
 
 	size = int(dresult.size)
-	
+
 	if size > 0 {
 		slice := (*[1 << 30]*C.char)(unsafe.Pointer(dresult.pathArr))[:size:size]
 
@@ -486,6 +490,41 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	return
 }
 
+func (con *Connection) GetGroups() (Groups, error) {
+
+	var (
+		result C.goRodsGroupResult_t
+		err    *C.char
+	)
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_get_groups(ccon, &result, &err); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Groups Failed: %v", C.GoString(err)))
+	}
+
+	unsafeArr := unsafe.Pointer(result.grpArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.goRodsACL_t
+	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
+
+	response := make(Groups, 0)
+
+	for _, groupName := range slice {
+
+		response = append(response, &Group{
+			Name: C.GoString(groupName),
+		})
+
+	}
+
+	//C.gorods_free_acl_result(&result)
+
+	return response, nil
+
+}
 
 // func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
 

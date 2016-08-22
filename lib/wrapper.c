@@ -230,6 +230,111 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err) {
+    genQueryInp_t  genQueryInp;
+    genQueryOut_t *genQueryOut = 0;
+    int selectIndexes[10];
+    int selectValues[10];
+    int conditionIndexes[10];
+    char *conditionValues[10];
+    char conditionString1[BIG_STR];
+    char conditionString2[BIG_STR];
+    int status;
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    // if ( groupName != NULL && *groupName != '\0' ) {
+    //     printf( "Members of group %s:\n", groupName );
+    // }
+
+    selectIndexes[0] = COL_USER_NAME;
+    selectValues[0] = 0;
+    selectIndexes[1] = COL_USER_ZONE;
+    selectValues[1] = 0;
+    genQueryInp.selectInp.inx = selectIndexes;
+    genQueryInp.selectInp.value = selectValues;
+   
+    // if ( groupName != NULL && *groupName != '\0' ) {
+    //     genQueryInp.selectInp.len = 2;
+    // }
+    // else {
+        genQueryInp.selectInp.len = 1;
+    // }
+
+    conditionIndexes[0] = COL_USER_TYPE;
+    sprintf(conditionString1, "='rodsgroup'");
+    conditionValues[0] = conditionString1;
+
+    genQueryInp.sqlCondInp.inx = conditionIndexes;
+    genQueryInp.sqlCondInp.value = conditionValues;
+    genQueryInp.sqlCondInp.len = 1;
+
+    // if ( groupName != NULL && *groupName != '\0' ) {
+
+    //     sprintf( conditionString1, "!='rodsgroup'" );
+
+    //     conditionIndexes[1] = COL_USER_GROUP_NAME;
+    //     sprintf( conditionString2, "='%s'", groupName );
+    //     conditionValues[1] = conditionString2;
+    //     genQueryInp.sqlCondInp.len = 2;
+    // }
+
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    genQueryInp.condInput.len = 0;
+
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "No rows found";
+        return status;
+    } 
+
+	result->size = genQueryOut->rowCnt;
+	result->grpArr = gorods_malloc(result->size * sizeof(char*));
+
+    gorods_build_group_result(genQueryOut, result);
+
+
+    // Need to figure this out, reallocate array
+    // while ( status == 0 && genQueryOut->continueInx > 0 ) {
+    //     genQueryInp.continueInx = genQueryOut->continueInx;
+    //     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    //     if ( status == 0 ) {
+
+    //         gorods_build_group_result(genQueryOut, result);
+    //     }
+    // }
+
+    return 0;
+}
+
+
+
+void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
+    int i, j;
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        char *tResult;
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+            
+            // if ( j > 0 ) {
+            //     printf( "#%s", tResult );
+            // } else {
+            //     printf( "%s", tResult );
+            // }
+
+        }
+
+        
+        result->grpArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+
+
+        //printf( "\n" );
+    }
+}
+
+
+
 int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err) {
 
 	int status;
@@ -378,7 +483,7 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
         
-        acl->acltype = "unknown";
+        acl->acltype = "unknown"; // FIXME
     }
 
     freeGenQueryOut(&genQueryOut);

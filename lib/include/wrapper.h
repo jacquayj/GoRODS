@@ -26,6 +26,11 @@ typedef struct {
 } goRodsMetaResult_t;
 
 typedef struct {
+	int size;
+	char** grpArr;
+} goRodsGroupResult_t;
+
+typedef struct {
 	char* name;
 	char* zone;
 	char* dataAccess;
@@ -45,6 +50,9 @@ typedef struct {
 void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
+
+int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err);
+void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result);
 
 int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
