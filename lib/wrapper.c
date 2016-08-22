@@ -230,6 +230,27 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err) {
+
+	int status;
+	modAccessControlInp_t modAccessControlInp;
+
+	modAccessControlInp.recursiveFlag = recursive;
+	modAccessControlInp.accessLevel = accessLevel;
+	modAccessControlInp.userName = ugName;
+	modAccessControlInp.zone = zone;
+	modAccessControlInp.path = path;
+
+	status = rcModAccessControl(conn, &modAccessControlInp);	
+
+	if ( status < 0 ) {
+		*err = "rcModAccessControl failed";
+		return status;
+	}
+
+	return 0;
+}
+
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;

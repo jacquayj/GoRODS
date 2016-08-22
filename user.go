@@ -4,3 +4,22 @@
 // Package gorods is a Golang binding for the iRods C API (iRods client library).
 // GoRods uses cgo to call iRods client functions.
 package gorods
+
+// #include "wrapper.h"
+import "C"
+
+import (
+	"fmt"
+)
+
+type User struct {
+	Name    string
+	Groups	Groups
+}
+
+type Users []*User
+
+func (usr User) String() string {
+	
+	return fmt.Sprintf("%v", "")
+}

@@ -68,6 +68,8 @@ int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* 
 int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err);
 void gorods_free_acl_result(goRodsACLResult_t* result);
 
+int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err);
+
 
 void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result);
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);
