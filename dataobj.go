@@ -9,27 +9,27 @@ import "C"
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
-	"unsafe"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"unsafe"
 )
 
 // DataObj structs contain information about single data objects in an iRods zone.
 type DataObj struct {
-	Path   string
-	Name   string
+	Path     string
+	Name     string
 	Checksum string
-	Size   int64
-	Offset int64
-	Type   int
-	DataId string
+	Size     int64
+	Offset   int64
+	Type     int
+	DataId   string
 	Resource string
-	PhyPath string
+	PhyPath  string
 
 	OpenedAs C.int
 
-	OwnerName string
+	OwnerName  string
 	CreateTime int
 	ModifyTime int
 
@@ -52,7 +52,6 @@ type DataObjOptions struct {
 	Force    bool
 	Resource string
 }
-
 
 // String returns path of data object
 func (obj *DataObj) String() string {
@@ -103,7 +102,6 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 	}
 
 }
-
 
 // CreateDataObj creates and adds a data object to the specified collection using provided options. Returns the newly created data object.
 func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
@@ -200,11 +198,11 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 
 	for _, acl := range slice {
 
-		response = append(response, &ACL {
-			Name: C.GoString(acl.name),
-			Zone: C.GoString(acl.zone),
+		response = append(response, &ACL{
+			Name:       C.GoString(acl.name),
+			Zone:       C.GoString(acl.zone),
 			DataAccess: C.GoString(acl.dataAccess),
-			ACLType: C.GoString(acl.acltype),
+			ACLType:    C.GoString(acl.acltype),
 		})
 
 	}
@@ -279,7 +277,7 @@ func (obj *DataObj) Rm(recursive bool, force bool) error {
 	defer C.free(unsafe.Pointer(path))
 
 	var (
-		cForce C.int
+		cForce     C.int
 		cRecursive C.int
 	)
 
@@ -367,8 +365,8 @@ func (obj *DataObj) Read() ([]byte, error) {
 	}
 
 	var (
-		buffer C.bytesBuf_t
-		err    *C.char
+		buffer    C.bytesBuf_t
+		err       *C.char
 		bytesRead C.int
 	)
 
@@ -400,15 +398,14 @@ func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 	}
 
 	var (
-		buffer C.bytesBuf_t
-		err    *C.char
+		buffer    C.bytesBuf_t
+		err       *C.char
 		bytesRead C.int
 	)
 
 	if er := obj.LSeek(pos); er != nil {
 		return nil, er
 	}
-
 
 	ccon := obj.Con.GetCcon()
 	defer obj.Con.ReturnCcon(ccon)
@@ -454,8 +451,8 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 	}
 
 	var (
-		buffer   C.bytesBuf_t
-		err      *C.char
+		buffer    C.bytesBuf_t
+		err       *C.char
 		bytesRead C.int
 	)
 
@@ -464,7 +461,6 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 	}
 
 	for obj.Offset < obj.Size {
-
 
 		ccon := obj.Con.GetCcon()
 
@@ -478,7 +474,7 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 		buf := unsafe.Pointer(buffer.buf)
 
 		chunk := C.GoBytes(buf, bytesRead)
-		
+
 		C.free(buf)
 
 		callback(chunk)
@@ -913,4 +909,3 @@ func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
 
 	return obj
 }
-

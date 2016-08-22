@@ -5,19 +5,18 @@
 // GoRods uses cgo to call iRods client functions.
 package gorods
 
- // #include "wrapper.h"
+// #include "wrapper.h"
 import "C"
 
 import (
 	"fmt"
 )
 
-
 type ACL struct {
-	Name string
-	Zone string
+	Name       string
+	Zone       string
 	DataAccess string
-	ACLType string
+	ACLType    string
 }
 
 type ACLs []*ACL

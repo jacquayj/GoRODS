@@ -10,25 +10,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unsafe"
-	"strconv"
 )
 
 // Collection structs contain information about single collections in an iRods zone.
 type Collection struct {
-	Path        string
-	Name        string
-	DataObjects IRodsObjs
-	MetaCol     *MetaCollection
-	Con         *Connection
-	Col         *Collection
-	Recursive   bool
-	Init 		bool
-	Type        int
+	Path           string
+	Name           string
+	DataObjects    IRodsObjs
+	MetaCol        *MetaCollection
+	Con            *Connection
+	Col            *Collection
+	Recursive      bool
+	Init           bool
+	Type           int
 	ACLInheritance bool
 
-	OwnerName string
+	OwnerName  string
 	CreateTime int
 	ModifyTime int
 
@@ -211,7 +211,7 @@ func (col *Collection) Inheritance() (bool, error) {
 
 	var (
 		enabled C.int
-		err    *C.char
+		err     *C.char
 	)
 
 	collName := C.CString(col.Path)
@@ -230,7 +230,6 @@ func (col *Collection) Inheritance() (bool, error) {
 
 	return false, nil
 }
-
 
 // GetACL retuns a slice of ACL structs. Example of slice in string format:
 // [rods#tempZone:own
@@ -265,11 +264,11 @@ func (col *Collection) GetACL() (ACLs, error) {
 
 	for _, acl := range slice {
 
-		response = append(response, &ACL {
-			Name: C.GoString(acl.name),
-			Zone: C.GoString(acl.zone),
+		response = append(response, &ACL{
+			Name:       C.GoString(acl.name),
+			Zone:       C.GoString(acl.zone),
 			DataAccess: C.GoString(acl.dataAccess),
-			ACLType: C.GoString(acl.acltype),
+			ACLType:    C.GoString(acl.acltype),
 		})
 
 	}
@@ -278,7 +277,6 @@ func (col *Collection) GetACL() (ACLs, error) {
 
 	return response, nil
 }
-
 
 // Type gets the type
 func (col *Collection) GetType() int {
@@ -349,7 +347,7 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 	defer C.free(unsafe.Pointer(path))
 
 	var (
-		cForce C.int
+		cForce     C.int
 		cRecursive C.int
 	)
 
