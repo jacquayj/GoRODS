@@ -213,35 +213,10 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 
 }
 
+// Chmod changes the permissions/ACL of a data object
+// accessLevel: "null" | "read" | "write" | "own"
 func (obj *DataObj) Chmod(user string, accessLevel string, recursive bool) error {
-	var (
-		err         *C.char
-		cRecursive   C.int
-	)
-
-	cUser := C.CString(user)
-	cPath := C.CString(obj.Path)
-	cZone := C.CString("tempZone")
-	cAccessLevel := C.CString(accessLevel)
-	defer C.free(unsafe.Pointer(cUser))
-	defer C.free(unsafe.Pointer(cPath))
-	defer C.free(unsafe.Pointer(cZone))
-	defer C.free(unsafe.Pointer(cAccessLevel))
-
-	if recursive {
-		cRecursive = C.int(1)
-	} else {
-		cRecursive = C.int(0)
-	}
-
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
-
-	if status := C.gorods_chmod(ccon, cPath, cZone, cUser, cAccessLevel, cRecursive, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: %v", C.GoString(err)))
-	}
-
-	return nil
+	return Chmod(obj, user, accessLevel, recursive)
 }
 
 // Type gets the type

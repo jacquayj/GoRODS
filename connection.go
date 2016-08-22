@@ -85,6 +85,8 @@ type IRodsObj interface {
 	// irm {-r} {-f}
 	Rm(bool, bool) error
 
+	Chmod(string, string, bool) error
+
 	Meta() (*MetaCollection, error)
 	Attribute(string) (Metas, error)
 	AddMeta(Meta) (*Meta, error)
@@ -186,6 +188,38 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 				return subCol
 			}
 		}
+	}
+
+	return nil
+}
+
+
+func Chmod(obj IRodsObj, user string, accessLevel string, recursive bool) error {
+	var (
+		err         *C.char
+		cRecursive   C.int
+	)
+
+	cUser := C.CString(user)
+	cPath := C.CString(obj.GetPath())
+	cZone := C.CString("tempZone")
+	cAccessLevel := C.CString(accessLevel)
+	defer C.free(unsafe.Pointer(cUser))
+	defer C.free(unsafe.Pointer(cPath))
+	defer C.free(unsafe.Pointer(cZone))
+	defer C.free(unsafe.Pointer(cAccessLevel))
+
+	if recursive {
+		cRecursive = C.int(1)
+	} else {
+		cRecursive = C.int(0)
+	}
+
+	ccon := obj.GetCon().GetCcon()
+	defer obj.GetCon().ReturnCcon(ccon)
+
+	if status := C.gorods_chmod(ccon, cPath, cZone, cUser, cAccessLevel, cRecursive, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: %v", C.GoString(err)))
 	}
 
 	return nil
