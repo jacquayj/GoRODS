@@ -288,21 +288,15 @@ int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err) {
         return status;
     } 
 
-	result->size = genQueryOut->rowCnt;
-	result->grpArr = gorods_malloc(result->size * sizeof(char*));
-
     gorods_build_group_result(genQueryOut, result);
 
-
-    // Need to figure this out, reallocate array
-    // while ( status == 0 && genQueryOut->continueInx > 0 ) {
-    //     genQueryInp.continueInx = genQueryOut->continueInx;
-    //     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
-    //     if ( status == 0 ) {
-
-    //         gorods_build_group_result(genQueryOut, result);
-    //     }
-    // }
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        if ( status == 0 ) {
+            gorods_build_group_result(genQueryOut, result);
+        }
+    }
 
     return 0;
 }
@@ -316,6 +310,15 @@ void gorods_free_group_result(goRodsGroupResult_t* result) {
 }
 
 void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
+    
+    if ( result->size == 0 ) {
+    	result->size = genQueryOut->rowCnt;
+		result->grpArr = gorods_malloc(result->size * sizeof(char*));
+    } else {
+    	result->size += genQueryOut->rowCnt;
+    	result->grpArr = realloc(result->grpArr, result->size * sizeof(char*));
+    }
+
     int i, j;
     for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
         char *tResult;

@@ -497,6 +497,8 @@ func (con *Connection) GetGroups() (Groups, error) {
 		err    *C.char
 	)
 
+	result.size = C.int(0)
+
 	ccon := con.GetCcon()
 	defer con.ReturnCcon(ccon)
 
