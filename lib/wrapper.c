@@ -307,7 +307,13 @@ int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err) {
     return 0;
 }
 
-
+void gorods_free_group_result(goRodsGroupResult_t* result) {
+	int i;
+	for ( i = 0; i < result->size; i++ ) {
+		free(result->grpArr[i]);
+	}
+	free(result->grpArr);
+}
 
 void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
     int i, j;
@@ -316,24 +322,10 @@ void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* 
         for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
             tResult = genQueryOut->sqlResult[j].value;
             tResult += i * genQueryOut->sqlResult[j].len;
-            
-            // if ( j > 0 ) {
-            //     printf( "#%s", tResult );
-            // } else {
-            //     printf( "%s", tResult );
-            // }
-
         }
-
-        
         result->grpArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
-
-
-        //printf( "\n" );
     }
 }
-
-
 
 int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err) {
 

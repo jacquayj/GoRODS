@@ -520,7 +520,7 @@ func (con *Connection) GetGroups() (Groups, error) {
 
 	}
 
-	//C.gorods_free_acl_result(&result)
+	C.gorods_free_group_result(&result)
 
 	return response, nil
 

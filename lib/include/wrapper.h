@@ -53,6 +53,7 @@ int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, ch
 
 int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err);
 void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result);
+void gorods_free_group_result(goRodsGroupResult_t* result);
 
 int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
