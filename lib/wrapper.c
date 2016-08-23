@@ -360,6 +360,111 @@ int gorods_get_group(rcComm_t *conn, goRodsGroupResult_t* result, char* groupNam
     return 0;
 }
 
+int gorods_add_user_to_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err) {
+	int status;
+
+	status = gorods_general_admin(1, "modify", "group", groupName, "add", userName, zoneName, "", "", "", "", 0, conn, err);
+
+
+	return status;
+}
+
+int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
+              char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
+              rodsArguments_t* _rodsArgs, rcComm_t *conn, char** err) {
+    /* If userOption is 1, try userAdmin if generalAdmin gets a permission
+     * failure */
+
+	//_rodsArgs = 0;
+
+    generalAdminInp_t generalAdminInp;
+    userAdminInp_t userAdminInp;
+    int status;
+    char *funcName;
+
+    if ( _rodsArgs && _rodsArgs->dryrun ) {
+        arg3 = "--dryrun";
+    }
+
+    // where arg[0] == "modify" && arg[1] == "group"
+    // args[0] = userAdminInp->arg2; /* groupname */
+    // args[1] = userAdminInp->arg3; /* option */
+    // args[2] = userAdminInp->arg4; /* username */
+    // args[3] = userAdminInp->arg5; /* zonename */
+
+    generalAdminInp.arg0 = arg0;
+    generalAdminInp.arg1 = arg1;
+    generalAdminInp.arg2 = arg2;
+    generalAdminInp.arg3 = arg3;
+    generalAdminInp.arg4 = arg4;
+    generalAdminInp.arg5 = arg5;
+    generalAdminInp.arg6 = arg6;
+    generalAdminInp.arg7 = arg7;
+    generalAdminInp.arg8 = arg8;
+    generalAdminInp.arg9 = arg9;
+
+    status = rcGeneralAdmin(conn, &generalAdminInp);
+    //lastCommandStatus = status;
+    funcName = "rcGeneralAdmin";
+
+    if ( userOption == 1 && status == SYS_NO_API_PRIV ) {
+        userAdminInp.arg0 = arg0;
+        userAdminInp.arg1 = arg1;
+        userAdminInp.arg2 = arg2;
+        userAdminInp.arg3 = arg3;
+        userAdminInp.arg4 = arg4;
+        userAdminInp.arg5 = arg5;
+        userAdminInp.arg6 = arg6;
+        userAdminInp.arg7 = arg7;
+        userAdminInp.arg8 = arg8;
+        userAdminInp.arg9 = arg9;
+        status = rcUserAdmin(conn, &userAdminInp);
+        funcName = "rcGeneralAdmin and rcUserAdmin";
+    }
+
+    // =-=-=-=-=-=-=-
+    // JMC :: for 'dryrun' option on rmresc we need to capture the
+    //     :: return value and simply output either SUCCESS or FAILURE
+    // rm resource dryrun BOOYA
+    if ( _rodsArgs &&
+            _rodsArgs->dryrun == 1 &&
+            0 == strcmp( arg0, "rm" ) &&
+            0 == strcmp( arg1, "resource" ) ) {
+        if ( 0 == status ) {
+            printf( "DRYRUN REMOVING RESOURCE [%s - %d] :: SUCCESS\n", arg2, status );
+        }
+        else {
+            printf( "DRYRUN REMOVING RESOURCE [%s - %d] :: FAILURE\n", arg2, status );
+        } // else
+    }
+    else if ( status == USER_INVALID_USERNAME_FORMAT ) {
+        *err = "Invalid username format";
+    }
+    else if ( status < 0 && status != CAT_SUCCESS_BUT_WITH_NO_INFO ) {
+       // char *mySubName = NULL;
+        //const char *myName = rodsErrorName(status, &mySubName);
+        //rodsLog( LOG_ERROR, "%s failed with error %d %s %s", funcName, status, myName, mySubName );
+        
+    	// Need to change error msg depending on the args, since this is a general purpose func
+        *err = "General failure, does the user already belong to the group?";
+
+        if ( status == CAT_INVALID_USER_TYPE ) {
+
+        	*err = "Invalid user type specified";
+            //fprintf( stderr, "See 'lt user_type' for a list of valid user types.\n" );
+        }
+        
+        //	free(mySubName);
+
+        
+    } // else if status < 0
+
+    //printErrorStack( Conn->rError );
+    //freeRErrorContent( Conn->rError );
+
+    return status;
+}
+
 
 void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
     

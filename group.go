@@ -22,7 +22,7 @@ type Group struct {
 
 type Groups []*Group
 
-func (grp Group) String() string {
+func (grp *Group) String() string {
 	return fmt.Sprintf("%v", grp.Name)
 }
 
@@ -60,6 +60,7 @@ func (grp *Group) GetUsers() (Users, error) {
 		response = append(response, &User{
 			Name: usrFrags[0],
 			Zone: usrFrags[1],
+			Con:  grp.Con,
 		})
 
 	}

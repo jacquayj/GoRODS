@@ -57,6 +57,11 @@ void gorods_free_group_result(goRodsGroupResult_t* result);
 void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result);
 int gorods_get_group(rcComm_t *conn, goRodsGroupResult_t* result, char* groupName, char** err);
 
+int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
+              char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
+              rodsArguments_t* _rodsArgs, rcComm_t *conn, char** err);
+int gorods_add_user_to_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err);
+
 int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
 int gorods_close_collection(int handleInx, rcComm_t* conn, char** err);
