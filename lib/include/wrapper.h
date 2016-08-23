@@ -27,8 +27,8 @@ typedef struct {
 
 typedef struct {
 	int size;
-	char** grpArr;
-} goRodsGroupResult_t;
+	char** strArr;
+} goRodsStringResult_t;
 
 typedef struct {
 	char* name;
@@ -51,11 +51,11 @@ void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char* password, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
 
-int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err);
-void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result);
-void gorods_free_group_result(goRodsGroupResult_t* result);
-void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result);
-int gorods_get_group(rcComm_t *conn, goRodsGroupResult_t* result, char* groupName, char** err);
+int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err);
+void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
+void gorods_free_group_result(goRodsStringResult_t* result);
+void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
+int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupName, char** err);
 
 int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
               char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,

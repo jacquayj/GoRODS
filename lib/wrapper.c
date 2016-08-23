@@ -230,7 +230,7 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
-int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err) {
+int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) {
     genQueryInp_t  genQueryInp;
     genQueryOut_t *genQueryOut = 0;
     int selectIndexes[10];
@@ -301,7 +301,7 @@ int gorods_get_groups(rcComm_t *conn, goRodsGroupResult_t* result, char** err) {
     return 0;
 }
 
-int gorods_get_group(rcComm_t *conn, goRodsGroupResult_t* result, char* groupName, char** err) {
+int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupName, char** err) {
     genQueryInp_t  genQueryInp;
     genQueryOut_t *genQueryOut = 0;
     int selectIndexes[10];
@@ -466,14 +466,14 @@ int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, cha
 }
 
 
-void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
+void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
     
 	if ( result->size == 0 ) {
     	result->size = genQueryOut->rowCnt;
-		result->grpArr = gorods_malloc(result->size * sizeof(char*));
+		result->strArr = gorods_malloc(result->size * sizeof(char*));
     } else {
     	result->size += genQueryOut->rowCnt;
-    	result->grpArr = realloc(result->grpArr, result->size * sizeof(char*));
+    	result->strArr = realloc(result->strArr, result->size * sizeof(char*));
     }
 
     int i, j;
@@ -494,27 +494,27 @@ void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsGroupResul
             }
         }
 
-        result->grpArr[i] = strcpy(gorods_malloc(strlen(resultStr) + 1), resultStr);
+        result->strArr[i] = strcpy(gorods_malloc(strlen(resultStr) + 1), resultStr);
     }
 }
 
 
-void gorods_free_group_result(goRodsGroupResult_t* result) {
+void gorods_free_group_result(goRodsStringResult_t* result) {
 	int i;
 	for ( i = 0; i < result->size; i++ ) {
-		free(result->grpArr[i]);
+		free(result->strArr[i]);
 	}
-	free(result->grpArr);
+	free(result->strArr);
 }
 
-void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* result) {
+void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
     
     if ( result->size == 0 ) {
     	result->size = genQueryOut->rowCnt;
-		result->grpArr = gorods_malloc(result->size * sizeof(char*));
+		result->strArr = gorods_malloc(result->size * sizeof(char*));
     } else {
     	result->size += genQueryOut->rowCnt;
-    	result->grpArr = realloc(result->grpArr, result->size * sizeof(char*));
+    	result->strArr = realloc(result->strArr, result->size * sizeof(char*));
     }
 
     int i, j;
@@ -524,7 +524,7 @@ void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsGroupResult_t* 
             tResult = genQueryOut->sqlResult[j].value;
             tResult += i * genQueryOut->sqlResult[j].len;
         }
-        result->grpArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+        result->strArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
     }
 }
 

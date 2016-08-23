@@ -493,7 +493,7 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 func (con *Connection) GetGroups() (Groups, error) {
 
 	var (
-		result C.goRodsGroupResult_t
+		result C.goRodsStringResult_t
 		err    *C.char
 	)
 
@@ -506,7 +506,7 @@ func (con *Connection) GetGroups() (Groups, error) {
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Groups Failed: %v", C.GoString(err)))
 	}
 
-	unsafeArr := unsafe.Pointer(result.grpArr)
+	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
 
 	// Convert C array to slice, backed by arr *C.char
@@ -528,6 +528,10 @@ func (con *Connection) GetGroups() (Groups, error) {
 	return response, nil
 
 }
+
+// func (con *Connection) GetUsers() (Users, error) {
+
+// }
 
 // func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
 

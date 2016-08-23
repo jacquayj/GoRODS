@@ -29,7 +29,7 @@ func (grp *Group) String() string {
 func (grp *Group) GetUsers() (Users, error) {
 
 	var (
-		result C.goRodsGroupResult_t
+		result C.goRodsStringResult_t
 		err    *C.char
 	)
 
@@ -45,7 +45,7 @@ func (grp *Group) GetUsers() (Users, error) {
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Group %v Failed: %v", grp.Name, C.GoString(err)))
 	}
 
-	unsafeArr := unsafe.Pointer(result.grpArr)
+	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
 
 	// Convert C array to slice, backed by arr *C.char
@@ -69,4 +69,58 @@ func (grp *Group) GetUsers() (Users, error) {
 
 	return response, nil
 
+}
+
+func (grp *Group) AddUser(usr interface{}) error {
+
+	// Need to lookup user by string in cache
+
+	switch usr.(type) {
+	case string:
+		return AddToGroup((usr.(*User)).Name, (usr.(*User)).Zone, grp.Name, (usr.(*User)).Con)
+	case *User:
+		return AddToGroup((usr.(*User)).Name, (usr.(*User)).Zone, grp.Name, (usr.(*User)).Con)
+	default:
+	}
+
+	return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: unknown type passed"))
+}
+
+// func (grp *Group) RemoveUser(usr interface{}) error {
+// 	switch grp.(type) {
+// 	case string:
+// 		return RemoveFromGroup(usr.Name, usr.Zone, grp.(string), usr.Con)
+// 	case *Group:
+// 		return RemoveFromGroup(usr.Name, usr.Zone, (grp.(*Group)).Name, usr.Con)
+// 	default:
+// 	}
+
+// 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
+// }
+
+func AddToGroup(userName string, zoneName string, groupName string, con *Connection) error {
+
+	var (
+		err *C.char
+	)
+
+	cUserName := C.CString(userName)
+	cZoneName := C.CString(zoneName)
+	cGroupName := C.CString(groupName)
+	defer C.free(unsafe.Pointer(cUserName))
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cGroupName))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_add_user_to_group(cUserName, cZoneName, cGroupName, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods AddToGroup %v Failed: %v", groupName, C.GoString(err)))
+	}
+
+	return nil
+}
+
+func RemoveFromGroup(userName string, zoneName string, groupName string, con *Connection) error {
+	return newError(Fatal, fmt.Sprintf(""))
 }
