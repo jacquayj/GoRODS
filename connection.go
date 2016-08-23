@@ -523,15 +523,59 @@ func (con *Connection) GetGroups() (Groups, error) {
 
 	}
 
-	C.gorods_free_group_result(&result)
+	C.gorods_free_string_result(&result)
 
 	return response, nil
 
 }
 
-// func (con *Connection) GetUsers() (Users, error) {
+func (con *Connection) GetUsers() (Users, error) {
+	var (
+		result C.goRodsStringResult_t
+		err    *C.char
+	)
 
-// }
+	result.size = C.int(0)
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_get_users(ccon, &result, &err); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Users Failed: %v", C.GoString(err)))
+	}
+
+	unsafeArr := unsafe.Pointer(result.strArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.char
+	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
+
+	response := make(Users, 0)
+
+	for _, userNames := range slice {
+
+		nameZone := strings.Split(strings.Trim(C.GoString(userNames), " \n"), "\n")
+
+		for _, name := range nameZone {
+
+			split := strings.Split(name, "#")
+
+			user := split[0]
+			zone := split[1]
+
+			response = append(response, &User{
+				Name: user,
+				Zone: zone,
+				Con:  con,
+			})
+		}
+
+	}
+
+	C.gorods_free_string_result(&result)
+
+	return response, nil
+}
 
 // func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
 

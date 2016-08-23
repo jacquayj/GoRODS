@@ -53,9 +53,14 @@ int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, ch
 
 int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err);
 void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
-void gorods_free_group_result(goRodsStringResult_t* result);
+void gorods_free_string_result(goRodsStringResult_t* result);
 void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
 int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupName, char** err);
+
+int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* result, rcComm_t* conn, char** err);
+
 
 int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
               char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,

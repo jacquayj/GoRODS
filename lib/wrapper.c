@@ -230,6 +230,86 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+
+int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+    simpleQueryInp.control = 0;
+    
+    simpleQueryInp.form = 2;
+    simpleQueryInp.sql = "select * from R_USER_MAIN where user_name=?";
+    simpleQueryInp.arg1 = user;
+    simpleQueryInp.maxBufSize = 1024;
+    
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+    simpleQueryInp.control = 0;
+   
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select user_name||'#'||zone_name from R_USER_MAIN where user_type_name != 'rodsgroup'";
+    simpleQueryInp.maxBufSize = 1024;
+    
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+
+int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* result, rcComm_t* conn, char** err) {
+   
+    int status;
+    simpleQueryOut_t *simpleQueryOut;
+    status = rcSimpleQuery(conn, &simpleQueryInp, &simpleQueryOut);
+
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "No rows found";
+        return status;
+    }
+
+    if ( status < 0 ) {
+        *err = "rcSimpleQuery failed with error";
+        return status;
+    }
+
+    result->size++;
+    result->strArr = gorods_malloc(result->size * sizeof(char*));
+
+    result->strArr[0] = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+
+
+    if ( simpleQueryOut->control > 0 ) {
+
+        simpleQueryInp.control = simpleQueryOut->control;
+
+        for ( ; simpleQueryOut->control > 0 && status == 0; ) {
+            status = rcSimpleQuery(conn, &simpleQueryInp, &simpleQueryOut);
+            
+            if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
+                *err = "rcSimpleQuery failed with error";
+                return status;
+            }
+
+            if ( status == 0 ) {
+
+            	int sz = result->size;
+
+            	result->size++;
+    			result->strArr = realloc(result->strArr, result->size * sizeof(char*));
+
+    			result->strArr[sz] = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+            }
+        }
+    }
+    return status;
+}
+
+
+
+
 int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) {
     genQueryInp_t  genQueryInp;
     genQueryOut_t *genQueryOut = 0;
@@ -499,7 +579,7 @@ void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResu
 }
 
 
-void gorods_free_group_result(goRodsStringResult_t* result) {
+void gorods_free_string_result(goRodsStringResult_t* result) {
 	int i;
 	for ( i = 0; i < result->size; i++ ) {
 		free(result->strArr[i]);

@@ -65,7 +65,7 @@ func (grp *Group) GetUsers() (Users, error) {
 
 	}
 
-	C.gorods_free_group_result(&result)
+	C.gorods_free_string_result(&result)
 
 	return response, nil
 

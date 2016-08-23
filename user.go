@@ -10,6 +10,8 @@ import "C"
 
 import (
 	"fmt"
+	"strings"
+	"unsafe"
 )
 
 type User struct {
@@ -25,8 +27,53 @@ func (usr *User) String() string {
 	return fmt.Sprintf("%v#%v", usr.Name, usr.Zone)
 }
 
-func (usr *User) Info() string {
-	return ""
+func (usr *User) GetInfo() (map[string]string, error) {
+	var (
+		result C.goRodsStringResult_t
+		err    *C.char
+	)
+
+	result.size = C.int(0)
+
+	cUser := C.CString(usr.Name)
+	defer C.free(unsafe.Pointer(cUser))
+
+	ccon := usr.Con.GetCcon()
+	defer usr.Con.ReturnCcon(ccon)
+
+	if status := C.gorods_get_user(cUser, ccon, &result, &err); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Users Failed: %v", C.GoString(err)))
+	}
+
+	unsafeArr := unsafe.Pointer(result.strArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.char
+	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
+
+	//response := make(Users, 0)
+	response := make(map[string]string)
+
+	for _, userInfo := range slice {
+
+		userAttributes := strings.Split(strings.Trim(C.GoString(userInfo), " \n"), "\n")
+
+		for _, attr := range userAttributes {
+
+			split := strings.Split(attr, ": ")
+
+			attrName := split[0]
+			attrVal := split[1]
+
+			response[attrName] = attrVal
+
+		}
+
+	}
+
+	C.gorods_free_string_result(&result)
+
+	return response, nil
 }
 
 func (usr *User) AddToGroup(grp interface{}) error {
