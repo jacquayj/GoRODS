@@ -242,6 +242,8 @@ type ConnectionOptions struct {
 	Username string
 	Password string
 	Ticket   string
+
+	FastInit bool
 }
 
 type Connection struct {
@@ -252,6 +254,8 @@ type Connection struct {
 	Connected  bool
 	Options    *ConnectionOptions
 	OpenedObjs IRodsObjs
+	Users      Users
+	Groups     Groups
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
@@ -309,7 +313,37 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		}
 	}
 
+	if !con.Options.FastInit {
+		if err := con.RefreshUsers(); err != nil {
+			return nil, err
+		}
+
+		if err := con.RefreshGroups(); err != nil {
+			return nil, err
+		}
+	}
+
 	return con, nil
+}
+
+func (con *Connection) RefreshUsers() error {
+	if users, err := con.GetUsers(); err != nil {
+		return err
+	} else {
+		con.Users = users
+	}
+
+	return nil
+}
+
+func (con *Connection) RefreshGroups() error {
+	if groups, err := con.GetGroups(); err != nil {
+		return err
+	} else {
+		con.Groups = groups
+	}
+
+	return nil
 }
 
 func (con *Connection) GetCcon() *C.rcComm_t {
