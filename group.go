@@ -73,13 +73,27 @@ func (grp *Group) GetUsers() (Users, error) {
 
 func (grp *Group) AddUser(usr interface{}) error {
 
-	// Need to lookup user by string in cache
-
 	switch usr.(type) {
 	case string:
-		return AddToGroup((usr.(*User)).Name, (usr.(*User)).Zone, grp.Name, (usr.(*User)).Con)
+		// Need to lookup user by string in cache for zone info
+
+		// ensure users are loaded
+		if len(grp.Con.Users) == 0 {
+			grp.Con.RefreshUsers()
+		}
+
+		usrName := usr.(string)
+
+		if existingUsr := grp.Con.Users.FindByName(usrName); existingUsr != nil {
+			zoneName := existingUsr.Zone
+			return AddToGroup(usrName, zoneName, grp.Name, grp.Con)
+		} else {
+			return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: can't find iRODS user by string"))
+		}
+
 	case *User:
-		return AddToGroup((usr.(*User)).Name, (usr.(*User)).Zone, grp.Name, (usr.(*User)).Con)
+		aUsr := usr.(*User)
+		return AddToGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
 	default:
 	}
 

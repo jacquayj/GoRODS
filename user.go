@@ -23,6 +23,15 @@ type User struct {
 
 type Users []*User
 
+func (usrs Users) FindByName(name string) *User {
+	for _, usr := range usrs {
+		if usr.Name == name {
+			return usr
+		}
+	}
+	return nil
+}
+
 func (usr *User) String() string {
 	return fmt.Sprintf("%v#%v", usr.Name, usr.Zone)
 }
