@@ -240,17 +240,33 @@ func (grp *Group) AddUser(usr interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: unknown type passed"))
 }
 
-// func (grp *Group) RemoveUser(usr interface{}) error {
-// 	switch grp.(type) {
-// 	case string:
-// 		return RemoveFromGroup(usr.Name, usr.Zone, grp.(string), usr.Con)
-// 	case *Group:
-// 		return RemoveFromGroup(usr.Name, usr.Zone, (grp.(*Group)).Name, usr.Con)
-// 	default:
-// 	}
+func (grp *Group) RemoveUser(usr interface{}) error {
+	switch usr.(type) {
+	case string:
+		// Need to lookup user by string in cache for zone info
 
-// 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
-// }
+		// ensure users are loaded
+		if len(grp.Con.Users) == 0 {
+			grp.Con.RefreshUsers()
+		}
+
+		usrName := usr.(string)
+
+		if existingUsr := grp.Con.Users.FindByName(usrName); existingUsr != nil {
+			zoneName := existingUsr.Zone
+			return RemoveFromGroup(usrName, zoneName, grp.Name, grp.Con)
+		} else {
+			return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: can't find iRODS user by string"))
+		}
+
+	case *User:
+		aUsr := usr.(*User)
+		return RemoveFromGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
+	default:
+	}
+
+	return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: unknown type passed"))
+}
 
 func AddToGroup(userName string, zoneName string, groupName string, con *Connection) error {
 
@@ -276,7 +292,23 @@ func AddToGroup(userName string, zoneName string, groupName string, con *Connect
 }
 
 func RemoveFromGroup(userName string, zoneName string, groupName string, con *Connection) error {
-	// Implement me!
+	var (
+		err *C.char
+	)
 
-	return newError(Fatal, fmt.Sprintf(""))
+	cUserName := C.CString(userName)
+	cZoneName := C.CString(zoneName)
+	cGroupName := C.CString(groupName)
+	defer C.free(unsafe.Pointer(cUserName))
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cGroupName))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_remove_user_from_group(cUserName, cZoneName, cGroupName, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods AddToGroup %v Failed: %v", groupName, C.GoString(err)))
+	}
+
+	return nil
 }

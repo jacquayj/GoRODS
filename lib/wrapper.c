@@ -544,6 +544,15 @@ int gorods_add_user_to_group(char* userName, char* zoneName, char* groupName, rc
 	return status;
 }
 
+int gorods_remove_user_from_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(1, "modify", "group", groupName, "remove", userName, zoneName, "", "", "", "", 0, conn, err);
+
+
+    return status;
+}
+
 int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
               char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
               rodsArguments_t* _rodsArgs, rcComm_t *conn, char** err) {
