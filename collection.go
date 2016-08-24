@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -29,8 +29,8 @@ type Collection struct {
 	ACLInheritance bool
 
 	OwnerName  string
-	CreateTime int
-	ModifyTime int
+	CreateTime time.Time
+	ModifyTime time.Time
 
 	chandle C.int
 }
@@ -72,8 +72,8 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	col.Path = C.GoString(data.collName)
 
 	col.OwnerName = C.GoString(data.ownerName)
-	col.CreateTime, _ = strconv.Atoi(C.GoString(data.createTime))
-	col.ModifyTime, _ = strconv.Atoi(C.GoString(data.modifyTime))
+	col.CreateTime = cTimeToTime(data.createTime)
+	col.ModifyTime = cTimeToTime(data.modifyTime)
 
 	pathSlice := strings.Split(col.Path, "/")
 
@@ -315,12 +315,12 @@ func (col *Collection) GetOwnerName() string {
 }
 
 // GetCreateTime returns the create time of the collection
-func (col *Collection) GetCreateTime() int {
+func (col *Collection) GetCreateTime() time.Time {
 	return col.CreateTime
 }
 
 // GetModifyTime returns the modify time of the collection
-func (col *Collection) GetModifyTime() int {
+func (col *Collection) GetModifyTime() time.Time {
 	return col.ModifyTime
 }
 

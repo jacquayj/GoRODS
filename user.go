@@ -15,13 +15,71 @@ import (
 )
 
 type User struct {
-	Name   string
-	Zone   string
+	Name string
+	Zone string // need to convert to zone obj
+
+	Init bool
+
 	Groups Groups
 	Con    *Connection
 }
 
 type Users []*User
+
+// initUser
+func initUser(name string, zone string, con *Connection) (*User, error) {
+
+	usr := new(User)
+
+	usr.Name = name
+	usr.Zone = zone
+	usr.Con = con
+
+	if err := usr.init(); err != nil {
+		return nil, err
+	}
+
+	return usr, nil
+}
+
+func (usr *User) init() error {
+	if !usr.Init {
+		if err := usr.RefreshInfo(); err != nil {
+			return err
+		}
+		// Need to implement getgroups
+		// if err := usr.RefreshGroups(); err != nil {
+		// 	return err
+		// }
+		usr.Init = true
+	}
+
+	return nil
+}
+
+func (usr *User) RefreshInfo() error {
+	// r_comment:
+	// create_ts:01471444167
+	// modify_ts:01471444167
+	// user_id:10019
+	// user_name:designers
+	// user_type_name:rodsgroup
+	// zone_name:tempZone
+	// user_info:
+	if _, err := usr.GetInfo(); err == nil {
+		// usr.Comment = infoMap["r_comment"]
+		// usr.CreateTime = TimeStringToTime(infoMap["create_ts"])
+		// usr.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
+		// usr.Id, _ = strconv.Atoi(infoMap["user_id"])
+		// usr.Type = infoMap["user_type_name"]
+		// //usr.Zone = infoMap["zone_name"]
+		// usr.Info = infoMap["user_info"]
+	} else {
+		return err
+	}
+
+	return nil
+}
 
 func (usrs Users) FindByName(name string) *User {
 	for _, usr := range usrs {

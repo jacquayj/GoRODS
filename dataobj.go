@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -30,8 +30,8 @@ type DataObj struct {
 	OpenedAs C.int
 
 	OwnerName  string
-	CreateTime int
-	ModifyTime int
+	CreateTime time.Time
+	ModifyTime time.Time
 
 	MetaCol *MetaCollection
 
@@ -78,8 +78,8 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.OpenedAs = C.int(-1)
 
 	dataObj.OwnerName = C.GoString(data.ownerName)
-	dataObj.CreateTime, _ = strconv.Atoi(C.GoString(data.createTime))
-	dataObj.ModifyTime, _ = strconv.Atoi(C.GoString(data.modifyTime))
+	dataObj.CreateTime = cTimeToTime(data.createTime)
+	dataObj.ModifyTime = cTimeToTime(data.modifyTime)
 
 	return dataObj
 }
@@ -250,12 +250,12 @@ func (obj *DataObj) GetOwnerName() string {
 }
 
 // GetCreateTime returns the create time of the data object
-func (obj *DataObj) GetCreateTime() int {
+func (obj *DataObj) GetCreateTime() time.Time {
 	return obj.CreateTime
 }
 
 // GetModifyTime returns the modify time of the data object
-func (obj *DataObj) GetModifyTime() int {
+func (obj *DataObj) GetModifyTime() time.Time {
 	return obj.ModifyTime
 }
 

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -36,31 +37,6 @@ const (
 	UserType
 )
 
-func getTypeString(t int) string {
-	switch t {
-	case DataObjType:
-		return "d"
-	case CollectionType:
-		return "C"
-	case ResourceType:
-		return "R"
-	case UserType:
-		return "u"
-	default:
-		panic(newError(Fatal, "unrecognized meta type constant"))
-	}
-}
-
-func isString(obj interface{}) bool {
-	switch obj.(type) {
-	case string:
-		return true
-	default:
-	}
-
-	return false
-}
-
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
 	GetType() int
@@ -71,8 +47,8 @@ type IRodsObj interface {
 	//GetACL() map[string]string
 
 	GetOwnerName() string
-	GetCreateTime() int
-	GetModifyTime() int
+	GetCreateTime() time.Time
+	GetModifyTime() time.Time
 
 	// irm -rf
 	Destroy() error
@@ -534,11 +510,13 @@ func (con *Connection) GetGroups() (Groups, error) {
 	result.size = C.int(0)
 
 	ccon := con.GetCcon()
-	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_groups(ccon, &result, &err); status != 0 {
+		con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Groups Failed: %v", C.GoString(err)))
 	}
+
+	con.ReturnCcon(ccon)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
@@ -549,11 +527,11 @@ func (con *Connection) GetGroups() (Groups, error) {
 	response := make(Groups, 0)
 
 	for _, groupName := range slice {
-
-		response = append(response, &Group{
-			Name: C.GoString(groupName),
-			Con:  con,
-		})
+		if grp, err := initGroup(C.GoString(groupName), con); err == nil {
+			response = append(response, grp)
+		} else {
+			return nil, err
+		}
 
 	}
 
@@ -572,11 +550,13 @@ func (con *Connection) GetUsers() (Users, error) {
 	result.size = C.int(0)
 
 	ccon := con.GetCcon()
-	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_users(ccon, &result, &err); status != 0 {
+		con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Users Failed: %v", C.GoString(err)))
 	}
+
+	con.ReturnCcon(ccon)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
@@ -597,16 +577,25 @@ func (con *Connection) GetUsers() (Users, error) {
 			user := split[0]
 			zone := split[1]
 
-			response = append(response, &User{
-				Name: user,
-				Zone: zone,
-				Con:  con,
-			})
+			// need to use user init here instead
+			if usr, err := initUser(user, zone, con); err == nil {
+				response = append(response, usr)
+			} else {
+				return nil, err
+			}
+
 		}
 
 	}
 
 	C.gorods_free_string_result(&result)
+
+	return response, nil
+}
+
+func (con *Connection) GetZones() (Zones, error) {
+
+	response := make(Zones, 0)
 
 	return response, nil
 }
