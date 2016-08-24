@@ -10,13 +10,21 @@ import "C"
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
 type User struct {
-	Name string
-	Zone string // need to convert to zone obj
+	Name       string
+	Zone       string // need to convert to zone obj
+	CreateTime time.Time
+	ModifyTime time.Time
+	Id         int
+	Type       string
+	Info       string
+	Comment    string
 
 	Init bool
 
@@ -58,22 +66,24 @@ func (usr *User) init() error {
 }
 
 func (usr *User) RefreshInfo() error {
-	// r_comment:
-	// create_ts:01471444167
-	// modify_ts:01471444167
-	// user_id:10019
-	// user_name:designers
-	// user_type_name:rodsgroup
+
+	// create_ts:01471441907
+	// modify_ts:01471441907
+	// user_id:10011
+	// user_name:john
+	// user_type_name:rodsuser
 	// zone_name:tempZone
 	// user_info:
-	if _, err := usr.GetInfo(); err == nil {
-		// usr.Comment = infoMap["r_comment"]
-		// usr.CreateTime = TimeStringToTime(infoMap["create_ts"])
-		// usr.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
-		// usr.Id, _ = strconv.Atoi(infoMap["user_id"])
-		// usr.Type = infoMap["user_type_name"]
-		// //usr.Zone = infoMap["zone_name"]
-		// usr.Info = infoMap["user_info"]
+	// r_comment:
+
+	if infoMap, err := usr.GetInfo(); err == nil {
+		usr.Comment = infoMap["r_comment"]
+		usr.CreateTime = TimeStringToTime(infoMap["create_ts"])
+		usr.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
+		usr.Id, _ = strconv.Atoi(infoMap["user_id"])
+		usr.Type = infoMap["user_type_name"]
+		//usr.Zone = infoMap["zone_name"]
+		usr.Info = infoMap["user_info"]
 	} else {
 		return err
 	}
