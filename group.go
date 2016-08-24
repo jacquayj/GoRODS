@@ -63,6 +63,15 @@ func (grp *Group) init() error {
 	return nil
 }
 
+func (grps Groups) FindByName(name string) *Group {
+	for _, grp := range grps {
+		if grp.Name == name {
+			return grp
+		}
+	}
+	return nil
+}
+
 func (grp *Group) String() string {
 	return fmt.Sprintf("%v", grp.Name)
 }
