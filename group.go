@@ -42,9 +42,9 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	grp.Name = name
 	grp.Con = con
 
-	if err := grp.init(); err != nil {
-		return nil, err
-	}
+	// if err := grp.init(); err != nil {
+	// 	return nil, err
+	// }
 
 	return grp, nil
 }
@@ -122,11 +122,13 @@ func (grp *Group) GetInfo() (map[string]string, error) {
 	defer C.free(unsafe.Pointer(cGroup))
 
 	ccon := grp.Con.GetCcon()
-	defer grp.Con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_user(cGroup, ccon, &result, &err); status != 0 {
+		grp.Con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Group Info Failed: %v", C.GoString(err)))
 	}
+
+	grp.Con.ReturnCcon(ccon)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)

@@ -43,9 +43,9 @@ func initUser(name string, zone string, con *Connection) (*User, error) {
 	usr.Zone = zone
 	usr.Con = con
 
-	if err := usr.init(); err != nil {
-		return nil, err
-	}
+	// if err := usr.init(); err != nil {
+	// 	return nil, err
+	// }
 
 	return usr, nil
 }
@@ -55,10 +55,9 @@ func (usr *User) init() error {
 		if err := usr.RefreshInfo(); err != nil {
 			return err
 		}
-		// Need to implement getgroups
-		// if err := usr.RefreshGroups(); err != nil {
-		// 	return err
-		// }
+		if err := usr.RefreshGroups(); err != nil {
+			return err
+		}
 		usr.Init = true
 	}
 
@@ -84,6 +83,17 @@ func (usr *User) RefreshInfo() error {
 		usr.Type = infoMap["user_type_name"]
 		//usr.Zone = infoMap["zone_name"]
 		usr.Info = infoMap["user_info"]
+	} else {
+		return err
+	}
+
+	return nil
+}
+
+func (usr *User) RefreshGroups() error {
+
+	if grps, err := usr.GetGroups(); err == nil {
+		usr.Groups = grps
 	} else {
 		return err
 	}
@@ -169,11 +179,13 @@ func (usr *User) GetInfo() (map[string]string, error) {
 	defer C.free(unsafe.Pointer(cUser))
 
 	ccon := usr.Con.GetCcon()
-	defer usr.Con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_user(cUser, ccon, &result, &err); status != 0 {
+		usr.Con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Users Failed: %v", C.GoString(err)))
 	}
+
+	usr.Con.ReturnCcon(ccon)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
