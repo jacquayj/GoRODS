@@ -39,11 +39,13 @@ func (grp *Group) GetUsers() (Users, error) {
 	defer C.free(unsafe.Pointer(cGroupName))
 
 	ccon := grp.Con.GetCcon()
-	defer grp.Con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_group(ccon, &result, cGroupName, &err); status != 0 {
+		grp.Con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Group %v Failed: %v", grp.Name, C.GoString(err)))
 	}
+
+	grp.Con.ReturnCcon(ccon)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
@@ -51,17 +53,22 @@ func (grp *Group) GetUsers() (Users, error) {
 	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
+	// ensure users are loaded
+	if len(grp.Con.Users) == 0 {
+		grp.Con.RefreshUsers()
+	}
+
 	response := make(Users, 0)
 
 	for _, userNames := range slice {
 
 		usrFrags := strings.Split(C.GoString(userNames), "#")
 
-		response = append(response, &User{
-			Name: usrFrags[0],
-			Zone: usrFrags[1],
-			Con:  grp.Con,
-		})
+		if usr := grp.Con.Users.FindByName(usrFrags[0]); usr != nil {
+			response = append(response, usr)
+		} else {
+			return nil, newError(Fatal, fmt.Sprintf("iRods GetUsers Failed: User in response not found in cache"))
+		}
 
 	}
 
@@ -136,5 +143,7 @@ func AddToGroup(userName string, zoneName string, groupName string, con *Connect
 }
 
 func RemoveFromGroup(userName string, zoneName string, groupName string, con *Connection) error {
+	// Implement me!
+
 	return newError(Fatal, fmt.Sprintf(""))
 }
