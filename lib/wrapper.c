@@ -765,14 +765,12 @@ int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabl
     return status;
 }
 
-
-
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
     int i;
-    sqlResult_t *userName, *userZone, *dataAccess;
-    char *userNameStr, *userZoneStr, *dataAccessStr;
+    sqlResult_t *userName, *userZone, *dataAccess, *userType;
+    char *userNameStr, *userZoneStr, *dataAccessStr, *userTypeStr;
 
     /* First try a specific-query.  If this is defined, it should be
         used as it returns the group names without expanding them to
@@ -789,7 +787,6 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
             char *tResult[10];
             char empty = 0;
-            char typeStr[8];
             tResult[3] = 0;
 
             for ( j = 0; j < 10; j++ ) {
@@ -799,22 +796,13 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
                     tResult[j] += i * genQueryOut->sqlResult[j].len;
                 }
             }
-            typeStr[0] = '\0';
-            if ( tResult[3] != 0 && strncmp(tResult[3], "rodsgroup", 9) == 0 ) {
-                strncpy( typeStr, "g:", 3 );
-            }
 
             goRodsACL_t* acl = &(result->aclArr[i]);
 
 	        acl->name = strcpy(gorods_malloc(strlen(tResult[0]) + 1), tResult[0]);
 	        acl->zone = strcpy(gorods_malloc(strlen(tResult[1]) + 1), tResult[1]);
 	        acl->dataAccess = strcpy(gorods_malloc(strlen(tResult[2]) + 1), tResult[2]);
-
-	        if ( typeStr[0] == '\0' ) {
-	        	acl->acltype = "user";
-	        } else {
-	        	acl->acltype = "group";
-	        }
+            acl->acltype =  strcpy(gorods_malloc(strlen(tResult[3]) + 1), tResult[3]);
         }
 
         freeGenQueryOut(&genQueryOut);
@@ -846,7 +834,11 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         return UNMATCHED_KEY_OR_INDEX;
     }
 
-    // Need to add one for type here
+    if ( ( userType = getSqlResultByInx( genQueryOut, COL_COLL_ACCESS_TYPE ) ) == NULL ) {
+        *err = "printCollAcl: getSqlResultByInx for COL_COLL_ACCESS_TYPE failed";
+        freeGenQueryOut(&genQueryOut);
+        return UNMATCHED_KEY_OR_INDEX;
+    }
 
     result->size = genQueryOut->rowCnt;
     result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
@@ -855,14 +847,14 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         userNameStr = &userName->value[userName->len * i];
         userZoneStr = &userZone->value[userZone->len * i];
         dataAccessStr = &dataAccess->value[dataAccess->len * i];
+        userTypeStr = &dataAccess->value[userType->len * i];
 
         goRodsACL_t* acl = &(result->aclArr[i]);
 
         acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
-        
-        acl->acltype = "unknown"; // FIXME
+        acl->acltype = strcpy(gorods_malloc(strlen(userTypeStr) + 1), userTypeStr);
     }
 
     freeGenQueryOut(&genQueryOut);
@@ -960,7 +952,7 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
         acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
-        acl->acltype = userTypeStr;
+        acl->acltype = strcpy(gorods_malloc(strlen(userTypeStr) + 1), userTypeStr);
     }
 
     freeGenQueryOut(&genQueryOut);
@@ -977,6 +969,7 @@ void gorods_free_acl_result(goRodsACLResult_t* result) {
         free(acl->name);
         free(acl->zone);
         free(acl->dataAccess);
+        free(acl->acltype);
     }
 
     free(result->aclArr);

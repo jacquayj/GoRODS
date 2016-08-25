@@ -190,78 +190,7 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 
 	obj.Con.ReturnCcon(ccon)
 
-	unsafeArr := unsafe.Pointer(result.aclArr)
-	arrLen := int(result.size)
-
-	// Convert C array to slice, backed by arr *C.goRodsACL_t
-	slice := (*[1 << 30]C.goRodsACL_t)(unsafeArr)[:arrLen:arrLen]
-
-	response := make([]*ACL, 0)
-
-	for _, acl := range slice {
-
-		typeString := C.GoString(acl.acltype)
-
-		var aclType int
-		if typeString == "group" || typeString == "rodsgroup" {
-			aclType = GroupType
-		} else if typeString == "user" || typeString == "rodsadmin" {
-			aclType = UserType
-		} else {
-			fmt.Printf("'%v'\n", typeString)
-			aclType = UnknownType
-		}
-
-		var accessLevel int
-		if dA := C.GoString(acl.dataAccess); dA == "own" {
-			accessLevel = Own
-		} else if dA == "modify object" {
-			accessLevel = Write
-		} else if dA == "read object" {
-			accessLevel = Read
-		} else {
-			accessLevel = Null
-		}
-
-		var accessObject AccessObject
-		if aclType == UserType {
-			// ensure users are loaded
-			if len(obj.Con.Users) == 0 {
-				obj.Con.RefreshUsers()
-			}
-
-			if existingUsr := obj.Con.Users.FindByName(C.GoString(acl.name)); existingUsr != nil {
-				accessObject = existingUsr
-			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: can't find iRODS user by string"))
-			}
-		} else if aclType == GroupType {
-			// ensure users are loaded
-			if len(obj.Con.Groups) == 0 {
-				obj.Con.RefreshGroups()
-			}
-
-			if existingGrp := obj.Con.Groups.FindByName(C.GoString(acl.name)); existingGrp != nil {
-				accessObject = existingGrp
-			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: can't find iRODS group by string"))
-			}
-
-		} else if aclType == UnknownType {
-			return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: Unknown Type"))
-		}
-
-		response = append(response, &ACL{
-			AccessObject: accessObject,
-			AccessLevel:  accessLevel,
-			Type:         aclType,
-		})
-
-	}
-
-	C.gorods_free_acl_result(&result)
-
-	return response, nil
+	return aclSliceToResponse(&result, obj.Con)
 
 }
 
