@@ -10,11 +10,18 @@ import "C"
 
 import (
 	"fmt"
+	"time"
 )
 
 type AccessObject interface {
 	GetName() string
 	GetZone() string
+	GetComment() string
+	GetCreateTime() time.Time
+	GetModifyTime() time.Time
+	GetId() int
+	GetType() int
+	GetCon() *Connection
 }
 
 type ACL struct {

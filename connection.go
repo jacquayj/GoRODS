@@ -43,6 +43,8 @@ const (
 	Read
 	Write
 	Own
+	Local
+	Remote
 )
 
 // IRodsObj is a generic interface used to detect the object type and access common fields

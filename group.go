@@ -21,7 +21,7 @@ type Group struct {
 	CreateTime time.Time
 	ModifyTime time.Time
 	Id         int
-	Type       string
+	Type       int
 	Zone       string // Need to convert
 	Info       string
 	Comment    string
@@ -53,6 +53,35 @@ func (grp *Group) GetZone() string {
 	grp.init()
 
 	return grp.Zone
+}
+
+func (grp *Group) GetComment() string {
+	grp.init()
+	return grp.Comment
+}
+
+func (grp *Group) GetCreateTime() time.Time {
+	grp.init()
+	return grp.CreateTime
+}
+
+func (grp *Group) GetModifyTime() time.Time {
+	grp.init()
+	return grp.ModifyTime
+}
+
+func (grp *Group) GetId() int {
+	grp.init()
+	return grp.Id
+}
+
+func (grp *Group) GetType() int {
+	grp.init()
+	return grp.Type
+}
+
+func (grp *Group) GetCon() *Connection {
+	return grp.Con
 }
 
 func (grp *Group) GetUsers() (Users, error) {
@@ -111,12 +140,13 @@ func (grp *Group) RefreshInfo() error {
 	// user_type_name:rodsgroup
 	// zone_name:tempZone
 	// user_info:
-	if infoMap, err := grp.GetInfo(); err == nil {
+
+	if infoMap, err := grp.FetchInfo(); err == nil {
 		grp.Comment = infoMap["r_comment"]
 		grp.CreateTime = TimeStringToTime(infoMap["create_ts"])
 		grp.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
 		grp.Id, _ = strconv.Atoi(infoMap["user_id"])
-		grp.Type = infoMap["user_type_name"]
+		grp.Type = GroupType
 		grp.Zone = infoMap["zone_name"]
 		grp.Info = infoMap["user_info"]
 	} else {
@@ -136,7 +166,7 @@ func (grp *Group) RefreshUsers() error {
 	return nil
 }
 
-func (grp *Group) GetInfo() (map[string]string, error) {
+func (grp *Group) FetchInfo() (map[string]string, error) {
 	var (
 		result C.goRodsStringResult_t
 		err    *C.char

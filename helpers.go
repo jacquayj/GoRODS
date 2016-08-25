@@ -51,6 +51,10 @@ func getTypeString(typ int) string {
 		return "write"
 	case Own:
 		return "own"
+	case Local:
+		return "local"
+	case Remote:
+		return "remote"
 	default:
 		panic(newError(Fatal, "unrecognized type constant"))
 	}
@@ -70,17 +74,15 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 	for _, acl := range slice {
 
 		typeString := C.GoString(acl.acltype)
-		var aclType int
-		switch typeString {
-		case "rodsgroup":
-			aclType = GroupType
-		case "rodsadmin":
-			aclType = AdminType
-		case "groupadmin":
-			aclType = GroupAdminType
-		case "rodsuser":
-			aclType = UserType
-		default:
+
+		typeMap := map[string]int{
+			"rodsgroup":  GroupType,
+			"rodsuser":   UserType,
+			"rodsadmin":  AdminType,
+			"groupadmin": GroupAdminType,
+		}
+		var aclType int = typeMap[typeString]
+		if aclType == 0 {
 			aclType = UnknownType
 		}
 

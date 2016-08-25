@@ -22,7 +22,7 @@ type User struct {
 	CreateTime time.Time
 	ModifyTime time.Time
 	Id         int
-	Type       string
+	Type       int
 	Info       string
 	Comment    string
 
@@ -56,6 +56,35 @@ func (usr *User) GetName() string {
 
 func (usr *User) GetZone() string {
 	return usr.Zone
+}
+
+func (usr *User) GetComment() string {
+	usr.init()
+	return usr.Comment
+}
+
+func (usr *User) GetCreateTime() time.Time {
+	usr.init()
+	return usr.CreateTime
+}
+
+func (usr *User) GetModifyTime() time.Time {
+	usr.init()
+	return usr.ModifyTime
+}
+
+func (usr *User) GetId() int {
+	usr.init()
+	return usr.Id
+}
+
+func (usr *User) GetType() int {
+	usr.init()
+	return usr.Type
+}
+
+func (usr *User) GetCon() *Connection {
+	return usr.Con
 }
 
 func (usr *User) GetGroups() (Groups, error) {
@@ -102,12 +131,18 @@ func (usr *User) RefreshInfo() error {
 	// user_info:
 	// r_comment:
 
-	if infoMap, err := usr.GetInfo(); err == nil {
+	typeMap := map[string]int{
+		"rodsuser":   UserType,
+		"rodsadmin":  AdminType,
+		"groupadmin": GroupAdminType,
+	}
+
+	if infoMap, err := usr.FetchInfo(); err == nil {
 		usr.Comment = infoMap["r_comment"]
 		usr.CreateTime = TimeStringToTime(infoMap["create_ts"])
 		usr.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
 		usr.Id, _ = strconv.Atoi(infoMap["user_id"])
-		usr.Type = infoMap["user_type_name"]
+		usr.Type = typeMap[infoMap["user_type_name"]]
 		//usr.Zone = infoMap["zone_name"]
 		usr.Info = infoMap["user_info"]
 	} else {
@@ -138,7 +173,8 @@ func (usrs Users) FindByName(name string) *User {
 }
 
 func (usr *User) String() string {
-	return fmt.Sprintf("%v#%v", usr.Name, usr.Zone)
+	usr.init()
+	return fmt.Sprintf("%v:%v#%v", getTypeString(usr.Type), usr.Name, usr.Zone)
 }
 
 func (usr *User) FetchGroups() (Groups, error) {
@@ -194,7 +230,7 @@ func (usr *User) FetchGroups() (Groups, error) {
 
 }
 
-func (usr *User) GetInfo() (map[string]string, error) {
+func (usr *User) FetchInfo() (map[string]string, error) {
 	var (
 		result C.goRodsStringResult_t
 		err    *C.char
