@@ -25,8 +25,8 @@ func TimeStringToTime(ts string) time.Time {
 	return time.Unix(unixStamp, 0)
 }
 
-func getTypeString(t int) string {
-	switch t {
+func getTypeString(typ int) string {
+	switch typ {
 	case DataObjType:
 		return "d"
 	case CollectionType:
@@ -35,8 +35,24 @@ func getTypeString(t int) string {
 		return "R"
 	case UserType:
 		return "u"
+	case AdminType:
+		return "a"
+	case GroupAdminType:
+		return "ga"
+	case GroupType:
+		return "g"
+	case UnknownType:
+		return "?"
+	case Null:
+		return "null"
+	case Read:
+		return "read"
+	case Write:
+		return "write"
+	case Own:
+		return "own"
 	default:
-		panic(newError(Fatal, "unrecognized meta type constant"))
+		panic(newError(Fatal, "unrecognized type constant"))
 	}
 }
 
@@ -59,7 +75,9 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 		case "rodsgroup":
 			aclType = GroupType
 		case "rodsadmin":
-			aclType = UserType
+			aclType = AdminType
+		case "groupadmin":
+			aclType = GroupAdminType
 		case "rodsuser":
 			aclType = UserType
 		default:
@@ -80,7 +98,7 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 		}
 
 		var accessObject AccessObject
-		if aclType == UserType {
+		if aclType == UserType || aclType == AdminType || aclType == GroupAdminType {
 			if usrs, err := con.GetUsers(); err == nil {
 				if existingUsr := usrs.FindByName(C.GoString(acl.name)); existingUsr != nil {
 					accessObject = existingUsr

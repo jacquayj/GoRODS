@@ -35,6 +35,8 @@ const (
 	ResourceType
 	ResourceGroupType
 	UserType
+	AdminType
+	GroupAdminType
 	GroupType
 	UnknownType
 	Null

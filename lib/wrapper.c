@@ -577,6 +577,31 @@ int gorods_create_group(char* groupName, char* zoneName, rcComm_t *conn, char** 
     return status;
 }
 
+int gorods_delete_user(char* userName, char* zoneName, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(0, "rm", "user", userName,
+        zoneName, "", "", "", "", "", "", 0, conn, err);
+
+    // generalAdmin( 0, "rm", "user", cmdToken[1],
+    //                  myEnv.rodsZone, "", "", "", "", "", "" );
+
+    return status;
+}
+
+int gorods_create_user(char* userName, char* zoneName, char* type, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(0, "add", "user", userName, type,
+        zoneName, "", "", "", "", "", 0, conn, err);
+
+    // generalAdmin( 0, "add", "user", cmdToken[1], "rodsgroup",
+    //                   myEnv.rodsZone, "", "", "", "", "" );
+
+    return status;
+}
+
+
 
 int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
               char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,

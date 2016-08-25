@@ -73,6 +73,9 @@ gorods_queryDataObjAcl (rcComm_t *conn, char *dataId, char *zoneHint,
 int gorods_delete_group(char* groupName, char* zoneName, rcComm_t *conn, char** err);
 int gorods_create_group(char* groupName, char* zoneName, rcComm_t *conn, char** err);
 
+int gorods_create_user(char* userName, char* zoneName, char* type, rcComm_t *conn, char** err);
+int gorods_delete_user(char* userName, char* zoneName, rcComm_t *conn, char** err);
+
 int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
               char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
               rodsArguments_t* _rodsArgs, rcComm_t *conn, char** err);

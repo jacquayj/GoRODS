@@ -25,27 +25,6 @@ type ACL struct {
 
 type ACLs []*ACL
 
-func (acl ACL) GetTypeString(typ int) string {
-	switch typ {
-	case UserType:
-		return "u"
-	case GroupType:
-		return "g"
-	case UnknownType:
-		return "?"
-	case Null:
-		return "null"
-	case Read:
-		return "read"
-	case Write:
-		return "write"
-	case Own:
-		return "own"
-	default:
-		return ""
-	}
-}
-
 func (acl *ACL) User() *User {
 	if acl.Type == UserType {
 		return acl.AccessObject.(*User)
@@ -63,7 +42,7 @@ func (acl *ACL) Group() *Group {
 }
 
 func (acl *ACL) String() string {
-	typeString := acl.GetTypeString(acl.Type)
+	typeString := getTypeString(acl.Type)
 
-	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone(), acl.GetTypeString(acl.AccessLevel))
+	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone(), getTypeString(acl.AccessLevel))
 }

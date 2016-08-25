@@ -257,3 +257,56 @@ func (usr *User) RemoveFromGroup(grp interface{}) error {
 
 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
 }
+
+func DeleteUser(userName string, zoneName string, con *Connection) error {
+	var (
+		err *C.char
+	)
+
+	cZoneName := C.CString(zoneName)
+	cUserName := C.CString(userName)
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cUserName))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_delete_user(cUserName, cZoneName, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods DeleteUser %v Failed: %v", userName, C.GoString(err)))
+	}
+
+	return nil
+}
+
+func CreateUser(userName string, zoneName string, typ int, con *Connection) error {
+	var (
+		err   *C.char
+		cType *C.char
+	)
+
+	switch typ {
+	case AdminType:
+		cType = C.CString("rodsadmin")
+	case UserType:
+		cType = C.CString("rodsuser")
+	case GroupAdminType:
+		cType = C.CString("groupadmin")
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods CreateUser Failed: Unknown user type passed"))
+	}
+
+	cZoneName := C.CString(zoneName)
+	cUserName := C.CString(userName)
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cUserName))
+	defer C.free(unsafe.Pointer(cType))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_create_user(cUserName, cZoneName, cType, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods CreateUser %v Failed: %v", userName, C.GoString(err)))
+	}
+
+	return nil
+}
