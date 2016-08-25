@@ -527,6 +527,19 @@ func (con *Connection) CreateGroup(name string) error {
 	return nil
 }
 
+func (con *Connection) CreateUser(name string, typ int) error {
+	// Need to fix hard coded zones
+	if err := CreateUser(name, "tempZone", typ, con); err != nil {
+		return err
+	}
+
+	if err := con.RefreshUsers(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (con *Connection) RefreshUsers() error {
 	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
 	if users, err := con.FetchUsers(); err != nil {

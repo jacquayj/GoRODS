@@ -65,6 +65,18 @@ func (usr *User) GetGroups() (Groups, error) {
 	return usr.Groups, nil
 }
 
+func (usr *User) Delete() error {
+	if err := DeleteUser(usr.GetName(), usr.GetZone(), usr.Con); err != nil {
+		return err
+	}
+
+	if err := usr.Con.RefreshUsers(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (usr *User) init() error {
 	if !usr.Init {
 		if err := usr.RefreshInfo(); err != nil {
