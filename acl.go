@@ -46,7 +46,23 @@ func (acl ACL) GetTypeString(typ int) string {
 	}
 }
 
-func (acl ACL) String() string {
+func (acl *ACL) User() *User {
+	if acl.Type == UserType {
+		return acl.AccessObject.(*User)
+	}
+
+	return nil
+}
+
+func (acl *ACL) Group() *Group {
+	if acl.Type == GroupType {
+		return acl.AccessObject.(*Group)
+	}
+
+	return nil
+}
+
+func (acl *ACL) String() string {
 	typeString := acl.GetTypeString(acl.Type)
 
 	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone(), acl.GetTypeString(acl.AccessLevel))
