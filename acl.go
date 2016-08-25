@@ -12,23 +12,42 @@ import (
 	"fmt"
 )
 
+type AccessObject interface {
+	GetName() string
+	GetZone() string
+}
+
 type ACL struct {
-	Name       string
-	Zone       string
-	DataAccess string
-	ACLType    string
+	AccessObject AccessObject
+	AccessLevel  int
+	Type         int
 }
 
 type ACLs []*ACL
 
-func (acl ACL) String() string {
-	typeString := ""
-
-	if acl.ACLType == "group" {
-		typeString = "g:"
-	} else if acl.ACLType == "user" {
-		typeString = "u:"
+func (acl ACL) GetTypeString(typ int) string {
+	switch typ {
+	case UserType:
+		return "u"
+	case GroupType:
+		return "g"
+	case UnknownType:
+		return "?"
+	case Null:
+		return "null"
+	case Read:
+		return "read"
+	case Write:
+		return "write"
+	case Own:
+		return "own"
+	default:
+		return ""
 	}
+}
 
-	return fmt.Sprintf("%v%v#%v:%v", typeString, acl.Name, acl.Zone, acl.DataAccess)
+func (acl ACL) String() string {
+	typeString := acl.GetTypeString(acl.Type)
+
+	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone(), acl.GetTypeString(acl.AccessLevel))
 }

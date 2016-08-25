@@ -846,6 +846,8 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         return UNMATCHED_KEY_OR_INDEX;
     }
 
+    // Need to add one for type here
+
     result->size = genQueryOut->rowCnt;
     result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
 
@@ -869,14 +871,55 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
 }
 
 
+int
+gorods_queryDataObjAcl (rcComm_t *conn, char *dataId, char *zoneHint,
+                 genQueryOut_t **genQueryOut)
+{
+    genQueryInp_t genQueryInp;
+    int status;
+    char tmpStr[MAX_NAME_LEN];
+
+    if (dataId == NULL || genQueryOut == NULL) {
+        return (USER__NULL_INPUT_ERR);
+    }
+
+    memset (&genQueryInp, 0, sizeof (genQueryInp_t));
+
+    if (zoneHint != NULL) {
+       addKeyVal (&genQueryInp.condInput, ZONE_KW, zoneHint);
+    }
+
+    addInxIval (&genQueryInp.selectInp, COL_USER_NAME, 1);
+    addInxIval (&genQueryInp.selectInp, COL_USER_ZONE, 1);
+    addInxIval (&genQueryInp.selectInp, COL_DATA_ACCESS_NAME, 1);
+    addInxIval (&genQueryInp.selectInp, COL_USER_TYPE, 1);
+
+    snprintf (tmpStr, MAX_NAME_LEN, " = '%s'", dataId);
+
+    addInxVal (&genQueryInp.sqlCondInp, COL_DATA_ACCESS_DATA_ID, tmpStr);
+
+    snprintf (tmpStr, MAX_NAME_LEN, "='%s'", "access_type");
+
+    /* Currently necessary since other namespaces exist in the token table */
+    addInxVal (&genQueryInp.sqlCondInp, COL_DATA_TOKEN_NAMESPACE, tmpStr);
+
+    genQueryInp.maxRows = MAX_SQL_ROWS;
+
+    status =  rcGenQuery (conn, &genQueryInp, genQueryOut);
+
+    return (status);
+
+}
+
+
 int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
     int i;
-    sqlResult_t *userName, *userZone, *dataAccess;
-    char *userNameStr, *userZoneStr, *dataAccessStr;
+    sqlResult_t *userName, *userZone, *dataAccess, *userType;
+    char *userNameStr, *userZoneStr, *dataAccessStr, *userTypeStr;
 
-    status = queryDataObjAcl(conn, dataId, zoneHint, &genQueryOut);
+    status = gorods_queryDataObjAcl(conn, dataId, zoneHint, &genQueryOut);
 
     if ( status < 0 ) {
     	*err = "Error in queryDataObjAcl";
@@ -898,6 +941,11 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
         return UNMATCHED_KEY_OR_INDEX;
     }
 
+    if ( ( userType = getSqlResultByInx( genQueryOut, COL_USER_TYPE ) ) == NULL ) {
+        *err = "printDataAcl: getSqlResultByInx for COL_USER_TYPE failed";
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
     result->size = genQueryOut->rowCnt;
     result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
 
@@ -905,13 +953,14 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
         userNameStr = &userName->value[userName->len * i];
         userZoneStr = &userZone->value[userZone->len * i];
         dataAccessStr = &dataAccess->value[dataAccess->len * i];
+        userTypeStr = &userType->value[userType->len * i];
 
         goRodsACL_t* acl = &(result->aclArr[i]);
 
         acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
-        acl->acltype = "unknown";
+        acl->acltype = userTypeStr;
     }
 
     freeGenQueryOut(&genQueryOut);

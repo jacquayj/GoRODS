@@ -35,6 +35,12 @@ const (
 	ResourceType
 	ResourceGroupType
 	UserType
+	GroupType
+	UnknownType
+	Null
+	Read
+	Write
+	Own
 )
 
 // IRodsObj is a generic interface used to detect the object type and access common fields

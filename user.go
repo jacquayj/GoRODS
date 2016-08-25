@@ -50,6 +50,14 @@ func initUser(name string, zone string, con *Connection) (*User, error) {
 	return usr, nil
 }
 
+func (usr *User) GetName() string {
+	return usr.Name
+}
+
+func (usr *User) GetZone() string {
+	return usr.Zone
+}
+
 func (usr *User) init() error {
 	if !usr.Init {
 		if err := usr.RefreshInfo(); err != nil {

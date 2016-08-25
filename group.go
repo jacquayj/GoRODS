@@ -22,7 +22,7 @@ type Group struct {
 	ModifyTime time.Time
 	Id         int
 	Type       string
-	Zone       Zone
+	Zone       string // need to convert
 	Info       string
 	Comment    string
 
@@ -47,6 +47,14 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	// }
 
 	return grp, nil
+}
+
+func (grp *Group) GetName() string {
+	return grp.Name
+}
+
+func (grp *Group) GetZone() string {
+	return grp.Zone
 }
 
 func (grp *Group) init() error {
