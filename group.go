@@ -46,8 +46,6 @@ func initGroup(name string, con *Connection) (*Group, error) {
 }
 
 func (grp *Group) GetName() string {
-	grp.init()
-
 	return grp.Name
 }
 
@@ -63,6 +61,18 @@ func (grp *Group) GetUsers() (Users, error) {
 	}
 
 	return grp.Users, nil
+}
+
+func (grp *Group) Delete() error {
+	if err := DeleteGroup(grp.GetName(), grp.GetZone(), grp.Con); err != nil {
+		return err
+	}
+
+	if err := grp.Con.RefreshGroups(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (grp *Group) init() error {
@@ -320,6 +330,46 @@ func RemoveFromGroup(userName string, zoneName string, groupName string, con *Co
 
 	if status := C.gorods_remove_user_from_group(cUserName, cZoneName, cGroupName, ccon, &err); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods AddToGroup %v Failed: %v", groupName, C.GoString(err)))
+	}
+
+	return nil
+}
+
+func DeleteGroup(groupName string, zoneName string, con *Connection) error {
+	var (
+		err *C.char
+	)
+
+	cZoneName := C.CString(zoneName)
+	cGroupName := C.CString(groupName)
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cGroupName))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_delete_group(cGroupName, cZoneName, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods DeleteGroup %v Failed: %v", groupName, C.GoString(err)))
+	}
+
+	return nil
+}
+
+func CreateGroup(groupName string, zoneName string, con *Connection) error {
+	var (
+		err *C.char
+	)
+
+	cZoneName := C.CString(zoneName)
+	cGroupName := C.CString(groupName)
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cGroupName))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_create_group(cGroupName, cZoneName, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods CreateGroup %v Failed: %v", groupName, C.GoString(err)))
 	}
 
 	return nil

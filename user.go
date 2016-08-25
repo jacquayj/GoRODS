@@ -51,12 +51,10 @@ func initUser(name string, zone string, con *Connection) (*User, error) {
 }
 
 func (usr *User) GetName() string {
-	usr.init()
 	return usr.Name
 }
 
 func (usr *User) GetZone() string {
-	usr.init()
 	return usr.Zone
 }
 

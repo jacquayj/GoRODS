@@ -512,7 +512,21 @@ func (con *Connection) GetUsers() (Users, error) {
 	return con.Users, nil
 }
 
+func (con *Connection) CreateGroup(name string) error {
+	// Need to fix hard coded zones
+	if err := CreateGroup(name, "tempZone", con); err != nil {
+		return err
+	}
+
+	if err := con.RefreshGroups(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (con *Connection) RefreshUsers() error {
+	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
 	if users, err := con.FetchUsers(); err != nil {
 		return err
 	} else {
@@ -523,6 +537,7 @@ func (con *Connection) RefreshUsers() error {
 }
 
 func (con *Connection) RefreshGroups() error {
+	// This function should attempt to refresh smart, modifying existing con.Groups so pointers aren't broken
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
 	} else {
