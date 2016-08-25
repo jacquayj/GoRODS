@@ -234,6 +234,7 @@ type Connection struct {
 	cconBuffer chan *C.rcComm_t
 
 	Connected  bool
+	Init       bool
 	Options    *ConnectionOptions
 	OpenedObjs IRodsObjs
 	Users      Users
@@ -296,36 +297,12 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	}
 
 	if !con.Options.FastInit {
-		if err := con.RefreshUsers(); err != nil {
-			return nil, err
-		}
-
-		if err := con.RefreshGroups(); err != nil {
+		if err := con.init(); err != nil {
 			return nil, err
 		}
 	}
 
 	return con, nil
-}
-
-func (con *Connection) RefreshUsers() error {
-	if users, err := con.GetUsers(); err != nil {
-		return err
-	} else {
-		con.Users = users
-	}
-
-	return nil
-}
-
-func (con *Connection) RefreshGroups() error {
-	if groups, err := con.GetGroups(); err != nil {
-		return err
-	} else {
-		con.Groups = groups
-	}
-
-	return nil
 }
 
 func (con *Connection) GetCcon() *C.rcComm_t {
@@ -506,7 +483,56 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 	return
 }
 
+func (con *Connection) init() error {
+	if !con.Init {
+		if err := con.RefreshUsers(); err != nil {
+			return err
+		}
+
+		if err := con.RefreshGroups(); err != nil {
+			return err
+		}
+		con.Init = true
+	}
+
+	return nil
+}
+
 func (con *Connection) GetGroups() (Groups, error) {
+	if err := con.init(); err != nil {
+		return nil, err
+	}
+	return con.Groups, nil
+}
+
+func (con *Connection) GetUsers() (Users, error) {
+	if err := con.init(); err != nil {
+		return nil, err
+	}
+	return con.Users, nil
+}
+
+func (con *Connection) RefreshUsers() error {
+	if users, err := con.FetchUsers(); err != nil {
+		return err
+	} else {
+		con.Users = users
+	}
+
+	return nil
+}
+
+func (con *Connection) RefreshGroups() error {
+	if groups, err := con.FetchGroups(); err != nil {
+		return err
+	} else {
+		con.Groups = groups
+	}
+
+	return nil
+}
+
+func (con *Connection) FetchGroups() (Groups, error) {
 
 	var (
 		result C.goRodsStringResult_t
@@ -547,7 +573,7 @@ func (con *Connection) GetGroups() (Groups, error) {
 
 }
 
-func (con *Connection) GetUsers() (Users, error) {
+func (con *Connection) FetchUsers() (Users, error) {
 	var (
 		result C.goRodsStringResult_t
 		err    *C.char

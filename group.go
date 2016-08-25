@@ -42,19 +42,27 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	grp.Name = name
 	grp.Con = con
 
-	// if err := grp.init(); err != nil {
-	// 	return nil, err
-	// }
-
 	return grp, nil
 }
 
 func (grp *Group) GetName() string {
+	grp.init()
+
 	return grp.Name
 }
 
 func (grp *Group) GetZone() string {
+	grp.init()
+
 	return grp.Zone
+}
+
+func (grp *Group) GetUsers() (Users, error) {
+	if err := grp.init(); err != nil {
+		return nil, err
+	}
+
+	return grp.Users, nil
 }
 
 func (grp *Group) init() error {
@@ -99,7 +107,7 @@ func (grp *Group) RefreshInfo() error {
 		grp.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
 		grp.Id, _ = strconv.Atoi(infoMap["user_id"])
 		grp.Type = infoMap["user_type_name"]
-		//grp.Zone = infoMap["zone_name"]
+		grp.Zone = infoMap["zone_name"]
 		grp.Info = infoMap["user_info"]
 	} else {
 		return err
@@ -109,7 +117,7 @@ func (grp *Group) RefreshInfo() error {
 }
 
 func (grp *Group) RefreshUsers() error {
-	if usrs, err := grp.GetUsers(); err != nil {
+	if usrs, err := grp.FetchUsers(); err != nil {
 		grp.Users = usrs
 	} else {
 		return err
@@ -167,7 +175,7 @@ func (grp *Group) GetInfo() (map[string]string, error) {
 	return response, nil
 }
 
-func (grp *Group) GetUsers() (Users, error) {
+func (grp *Group) FetchUsers() (Users, error) {
 
 	var (
 		result C.goRodsStringResult_t
@@ -187,6 +195,7 @@ func (grp *Group) GetUsers() (Users, error) {
 	}
 
 	grp.Con.ReturnCcon(ccon)
+	defer C.gorods_free_string_result(&result)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
@@ -194,28 +203,25 @@ func (grp *Group) GetUsers() (Users, error) {
 	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
-	// ensure users are loaded
-	if len(grp.Con.Users) == 0 {
-		grp.Con.RefreshUsers()
-	}
+	if usrs, err := grp.Con.GetUsers(); err == nil {
+		response := make(Users, 0)
 
-	response := make(Users, 0)
+		for _, userNames := range slice {
 
-	for _, userNames := range slice {
+			usrFrags := strings.Split(C.GoString(userNames), "#")
 
-		usrFrags := strings.Split(C.GoString(userNames), "#")
+			if usr := usrs.FindByName(usrFrags[0]); usr != nil {
+				response = append(response, usr)
+			} else {
+				return nil, newError(Fatal, fmt.Sprintf("iRods FetchUsers Failed: User in response not found in cache"))
+			}
 
-		if usr := grp.Con.Users.FindByName(usrFrags[0]); usr != nil {
-			response = append(response, usr)
-		} else {
-			return nil, newError(Fatal, fmt.Sprintf("iRods GetUsers Failed: User in response not found in cache"))
 		}
 
+		return response, nil
+	} else {
+		return nil, err
 	}
-
-	C.gorods_free_string_result(&result)
-
-	return response, nil
 
 }
 
@@ -225,18 +231,17 @@ func (grp *Group) AddUser(usr interface{}) error {
 	case string:
 		// Need to lookup user by string in cache for zone info
 
-		// ensure users are loaded
-		if len(grp.Con.Users) == 0 {
-			grp.Con.RefreshUsers()
-		}
+		if usrs, err := grp.Con.GetUsers(); err == nil {
+			usrName := usr.(string)
 
-		usrName := usr.(string)
-
-		if existingUsr := grp.Con.Users.FindByName(usrName); existingUsr != nil {
-			zoneName := existingUsr.Zone
-			return AddToGroup(usrName, zoneName, grp.Name, grp.Con)
+			if existingUsr := usrs.FindByName(usrName); existingUsr != nil {
+				zoneName := existingUsr.Zone
+				return AddToGroup(usrName, zoneName, grp.Name, grp.Con)
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: can't find iRODS user by string"))
+			}
 		} else {
-			return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: can't find iRODS user by string"))
+			return err
 		}
 
 	case *User:
@@ -253,18 +258,17 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	case string:
 		// Need to lookup user by string in cache for zone info
 
-		// ensure users are loaded
-		if len(grp.Con.Users) == 0 {
-			grp.Con.RefreshUsers()
-		}
+		if usrs, err := grp.Con.GetUsers(); err == nil {
+			usrName := usr.(string)
 
-		usrName := usr.(string)
-
-		if existingUsr := grp.Con.Users.FindByName(usrName); existingUsr != nil {
-			zoneName := existingUsr.Zone
-			return RemoveFromGroup(usrName, zoneName, grp.Name, grp.Con)
+			if existingUsr := usrs.FindByName(usrName); existingUsr != nil {
+				zoneName := existingUsr.Zone
+				return RemoveFromGroup(usrName, zoneName, grp.Name, grp.Con)
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: can't find iRODS user by string"))
+			}
 		} else {
-			return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: can't find iRODS user by string"))
+			return err
 		}
 
 	case *User:

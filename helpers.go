@@ -41,6 +41,8 @@ func getTypeString(t int) string {
 }
 
 func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, error) {
+	defer C.gorods_free_acl_result(result)
+
 	unsafeArr := unsafe.Pointer(result.aclArr)
 	arrLen := int(result.size)
 
@@ -79,28 +81,25 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 
 		var accessObject AccessObject
 		if aclType == UserType {
-			// ensure users are loaded
-			if len(con.Users) == 0 {
-				con.RefreshUsers()
-			}
-
-			if existingUsr := con.Users.FindByName(C.GoString(acl.name)); existingUsr != nil {
-				accessObject = existingUsr
+			if usrs, err := con.GetUsers(); err == nil {
+				if existingUsr := usrs.FindByName(C.GoString(acl.name)); existingUsr != nil {
+					accessObject = existingUsr
+				} else {
+					return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: can't find iRODS user by string"))
+				}
 			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: can't find iRODS user by string"))
+				return nil, err
 			}
 		} else if aclType == GroupType {
-			// ensure users are loaded
-			if len(con.Groups) == 0 {
-				con.RefreshGroups()
-			}
-
-			if existingGrp := con.Groups.FindByName(C.GoString(acl.name)); existingGrp != nil {
-				accessObject = existingGrp
+			if grps, err := con.GetGroups(); err == nil {
+				if existingGrp := grps.FindByName(C.GoString(acl.name)); existingGrp != nil {
+					accessObject = existingGrp
+				} else {
+					return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: can't find iRODS group by string"))
+				}
 			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: can't find iRODS group by string"))
+				return nil, err
 			}
-
 		} else if aclType == UnknownType {
 			return nil, newError(Fatal, fmt.Sprintf("iRods GetACL Failed: Unknown Type"))
 		}
@@ -112,8 +111,6 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 		})
 
 	}
-
-	C.gorods_free_acl_result(result)
 
 	return response, nil
 }

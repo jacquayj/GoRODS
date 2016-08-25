@@ -51,11 +51,20 @@ func initUser(name string, zone string, con *Connection) (*User, error) {
 }
 
 func (usr *User) GetName() string {
+	usr.init()
 	return usr.Name
 }
 
 func (usr *User) GetZone() string {
+	usr.init()
 	return usr.Zone
+}
+
+func (usr *User) GetGroups() (Groups, error) {
+	if err := usr.init(); err != nil {
+		return nil, err
+	}
+	return usr.Groups, nil
 }
 
 func (usr *User) init() error {
@@ -100,7 +109,7 @@ func (usr *User) RefreshInfo() error {
 
 func (usr *User) RefreshGroups() error {
 
-	if grps, err := usr.GetGroups(); err == nil {
+	if grps, err := usr.FetchGroups(); err == nil {
 		usr.Groups = grps
 	} else {
 		return err
@@ -122,7 +131,7 @@ func (usr *User) String() string {
 	return fmt.Sprintf("%v#%v", usr.Name, usr.Zone)
 }
 
-func (usr *User) GetGroups() (Groups, error) {
+func (usr *User) FetchGroups() (Groups, error) {
 	var (
 		result C.goRodsStringResult_t
 		err    *C.char
@@ -142,37 +151,37 @@ func (usr *User) GetGroups() (Groups, error) {
 
 	usr.Con.ReturnCcon(ccon)
 
+	defer C.gorods_free_string_result(&result)
+
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
 
 	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
-	// ensure groups are loaded
-	if len(usr.Con.Groups) == 0 {
-		usr.Con.RefreshGroups()
-	}
+	if grps, err := usr.Con.GetGroups(); err == nil {
+		response := make(Groups, 0)
 
-	response := make(Groups, 0)
+		for _, groupName := range slice {
 
-	for _, groupName := range slice {
+			gName := C.GoString(groupName)
 
-		gName := C.GoString(groupName)
+			if gName != usr.Name {
+				grp := grps.FindByName(gName)
 
-		if gName != usr.Name {
-			grp := usr.Con.Groups.FindByName(gName)
-
-			if grp != nil {
-				response = append(response, grp)
-			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods GetGroups Failed: Group in response not found in cache"))
+				if grp != nil {
+					response = append(response, grp)
+				} else {
+					return nil, newError(Fatal, fmt.Sprintf("iRods FetchGroups Failed: Group in response not found in cache"))
+				}
 			}
 		}
+
+		return response, nil
+	} else {
+		return nil, err
 	}
 
-	C.gorods_free_string_result(&result)
-
-	return response, nil
 }
 
 func (usr *User) GetInfo() (map[string]string, error) {
