@@ -22,7 +22,7 @@ type Group struct {
 	ModifyTime time.Time
 	Id         int
 	Type       string
-	Zone       string // need to convert
+	Zone       string // Need to convert
 	Info       string
 	Comment    string
 
@@ -156,6 +156,8 @@ func (grp *Group) GetInfo() (map[string]string, error) {
 
 	grp.Con.ReturnCcon(ccon)
 
+	defer C.gorods_free_string_result(&result)
+
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
 
@@ -179,8 +181,6 @@ func (grp *Group) GetInfo() (map[string]string, error) {
 
 		}
 	}
-
-	C.gorods_free_string_result(&result)
 
 	return response, nil
 }

@@ -70,7 +70,7 @@ type IRodsObj interface {
 	// irm {-r} {-f}
 	Rm(bool, bool) error
 
-	Chmod(string, string, bool) error
+	Chmod(string, int, bool) error
 
 	Meta() (*MetaCollection, error)
 	Attribute(string) (Metas, error)
@@ -178,22 +178,25 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	return nil
 }
 
-func Chmod(obj IRodsObj, user string, accessLevel string, recursive bool) error {
+func Chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 	var (
 		err        *C.char
 		cRecursive C.int
 	)
 
-	accessLevel = strings.ToLower(accessLevel)
+	if accessLevel != Null && accessLevel != Read && accessLevel != Write && accessLevel != Own {
+		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be Null | Read | Write | Own"))
+	}
 
-	if accessLevel != "null" && accessLevel != "read" && accessLevel != "write" && accessLevel != "own" {
-		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be \"null\" | \"read\" | \"write\" | \"own\""))
+	zone, zErr := obj.GetCon().GetLocalZone()
+	if zErr != nil {
+		return zErr
 	}
 
 	cUser := C.CString(user)
 	cPath := C.CString(obj.GetPath())
-	cZone := C.CString("tempZone")
-	cAccessLevel := C.CString(accessLevel)
+	cZone := C.CString(zone.GetName())
+	cAccessLevel := C.CString(getTypeString(accessLevel))
 	defer C.free(unsafe.Pointer(cUser))
 	defer C.free(unsafe.Pointer(cPath))
 	defer C.free(unsafe.Pointer(cZone))
@@ -241,6 +244,7 @@ type Connection struct {
 	OpenedObjs IRodsObjs
 	Users      Users
 	Groups     Groups
+	Zones      Zones
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
@@ -494,6 +498,10 @@ func (con *Connection) init() error {
 		if err := con.RefreshGroups(); err != nil {
 			return err
 		}
+
+		if err := con.RefreshZones(); err != nil {
+			return err
+		}
 		con.Init = true
 	}
 
@@ -515,26 +523,34 @@ func (con *Connection) GetUsers() (Users, error) {
 }
 
 func (con *Connection) CreateGroup(name string) error {
-	// Need to fix hard coded zones
-	if err := CreateGroup(name, "tempZone", con); err != nil {
-		return err
-	}
 
-	if err := con.RefreshGroups(); err != nil {
+	if z, err := con.GetLocalZone(); err != nil {
 		return err
+	} else {
+		if err := CreateGroup(name, z.GetName(), con); err != nil {
+			return err
+		}
+
+		if err := con.RefreshGroups(); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (con *Connection) CreateUser(name string, typ int) error {
-	// Need to fix hard coded zones
-	if err := CreateUser(name, "tempZone", typ, con); err != nil {
-		return err
-	}
 
-	if err := con.RefreshUsers(); err != nil {
+	if z, err := con.GetLocalZone(); err != nil {
 		return err
+	} else {
+		if err := CreateUser(name, z.GetName(), typ, con); err != nil {
+			return err
+		}
+
+		if err := con.RefreshUsers(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -580,6 +596,8 @@ func (con *Connection) FetchGroups() (Groups, error) {
 
 	con.ReturnCcon(ccon)
 
+	defer C.gorods_free_string_result(&result)
+
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
 
@@ -596,8 +614,6 @@ func (con *Connection) FetchGroups() (Groups, error) {
 		}
 
 	}
-
-	C.gorods_free_string_result(&result)
 
 	return response, nil
 
@@ -619,6 +635,8 @@ func (con *Connection) FetchUsers() (Users, error) {
 	}
 
 	con.ReturnCcon(ccon)
+
+	defer C.gorods_free_string_result(&result)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
@@ -650,18 +668,101 @@ func (con *Connection) FetchUsers() (Users, error) {
 
 	}
 
-	C.gorods_free_string_result(&result)
-
 	return response, nil
 }
 
-func (con *Connection) GetZones() (Zones, error) {
+func (con *Connection) FetchZones() (Zones, error) {
+	var (
+		result C.goRodsStringResult_t
+		err    *C.char
+	)
+
+	result.size = C.int(0)
+
+	ccon := con.GetCcon()
+
+	if status := C.gorods_get_zones(ccon, &result, &err); status != 0 {
+		con.ReturnCcon(ccon)
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Zones Failed: %v", C.GoString(err)))
+	}
+
+	con.ReturnCcon(ccon)
+
+	defer C.gorods_free_string_result(&result)
+
+	unsafeArr := unsafe.Pointer(result.strArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.char
+	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
 	response := make(Zones, 0)
 
+	for _, cZoneName := range slice {
+
+		zoneNames := strings.Split(strings.Trim(C.GoString(cZoneName), " \n"), "\n")
+
+		for _, name := range zoneNames {
+
+			if zne, err := initZone(name, con); err == nil {
+				response = append(response, zne)
+			} else {
+				return nil, err
+			}
+
+		}
+
+	}
+
 	return response, nil
 }
 
-// func (con *Connection) QueryMeta(query string) (collection *Collection, err error) {
+func (con *Connection) GetLocalZone() (*Zone, error) {
 
-// }
+	var (
+		cZoneName *C.char
+		err       *C.char
+	)
+
+	ccon := con.GetCcon()
+
+	if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
+		con.ReturnCcon(ccon)
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: %v", C.GoString(err)))
+	}
+
+	con.ReturnCcon(ccon)
+
+	defer C.free(unsafe.Pointer(cZoneName))
+
+	zoneName := strings.Trim(C.GoString(cZoneName), " \n")
+
+	if znes, err := con.GetZones(); err != nil {
+		return nil, err
+	} else {
+		if zne := znes.FindByName(zoneName); zne == nil {
+			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: Local zone not found in cache"))
+		} else {
+			return zne, nil
+		}
+	}
+
+}
+
+func (con *Connection) GetZones() (Zones, error) {
+	if err := con.init(); err != nil {
+		return nil, err
+	}
+	return con.Zones, nil
+}
+
+func (con *Connection) RefreshZones() error {
+	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
+	if zones, err := con.FetchZones(); err != nil {
+		return err
+	} else {
+		con.Zones = zones
+	}
+
+	return nil
+}

@@ -18,7 +18,7 @@ import (
 
 type User struct {
 	Name       string
-	Zone       string // need to convert to zone obj
+	Zone       string
 	CreateTime time.Time
 	ModifyTime time.Time
 	Id         int
@@ -214,6 +214,8 @@ func (usr *User) GetInfo() (map[string]string, error) {
 
 	usr.Con.ReturnCcon(ccon)
 
+	defer C.gorods_free_string_result(&result)
+
 	unsafeArr := unsafe.Pointer(result.strArr)
 	arrLen := int(result.size)
 
@@ -239,8 +241,6 @@ func (usr *User) GetInfo() (map[string]string, error) {
 		}
 
 	}
-
-	C.gorods_free_string_result(&result)
 
 	return response, nil
 }

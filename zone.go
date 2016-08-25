@@ -5,6 +5,17 @@
 // GoRods uses cgo to call iRods client functions.
 package gorods
 
+// #include "wrapper.h"
+import "C"
+
+import (
+	"fmt"
+	//"strconv"
+	//"strings"
+	//"time"
+	//"unsafe"
+)
+
 type Zone struct {
 	Name string
 
@@ -12,3 +23,29 @@ type Zone struct {
 }
 
 type Zones []*Zone
+
+func (znes Zones) FindByName(name string) *Zone {
+	for _, zne := range znes {
+		if zne.Name == name {
+			return zne
+		}
+	}
+	return nil
+}
+
+func initZone(name string, con *Connection) (*Zone, error) {
+	zne := new(Zone)
+
+	zne.Con = con
+	zne.Name = name
+
+	return zne, nil
+}
+
+func (zne *Zone) String() string {
+	return fmt.Sprintf("%v", zne.Name)
+}
+
+func (zne *Zone) GetName() string {
+	return zne.Name
+}

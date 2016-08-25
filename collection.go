@@ -232,8 +232,8 @@ func (col *Collection) Inheritance() (bool, error) {
 }
 
 // Chmod changes the permissions/ACL of the collection
-// accessLevel: "null" | "read" | "write" | "own"
-func (col *Collection) Chmod(userOrGroup string, accessLevel string, recursive bool) error {
+// accessLevel: Null | Read | Write | Own
+func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
 	return Chmod(col, userOrGroup, accessLevel, recursive)
 }
 
@@ -248,7 +248,12 @@ func (col *Collection) GetACL() (ACLs, error) {
 		err    *C.char
 	)
 
-	zoneHint := C.CString("tempZone")
+	zone, zErr := col.Con.GetLocalZone()
+	if zErr != nil {
+		return nil, zErr
+	}
+
+	zoneHint := C.CString(zone.GetName())
 	collName := C.CString(col.Path)
 	defer C.free(unsafe.Pointer(collName))
 	defer C.free(unsafe.Pointer(zoneHint))

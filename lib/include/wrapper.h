@@ -73,6 +73,10 @@ gorods_queryDataObjAcl (rcComm_t *conn, char *dataId, char *zoneHint,
 int gorods_delete_group(char* groupName, char* zoneName, rcComm_t *conn, char** err);
 int gorods_create_group(char* groupName, char* zoneName, rcComm_t *conn, char** err);
 
+int gorods_get_zones(rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_zone(char* zoneName, rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_local_zone(rcComm_t* conn, char** zoneName, char** err);
+
 int gorods_create_user(char* userName, char* zoneName, char* type, rcComm_t *conn, char** err);
 int gorods_delete_user(char* userName, char* zoneName, rcComm_t *conn, char** err);
 

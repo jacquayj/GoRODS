@@ -176,7 +176,12 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 		err    *C.char
 	)
 
-	zoneHint := C.CString("tempZone")
+	zone, zErr := obj.Con.GetLocalZone()
+	if zErr != nil {
+		return nil, zErr
+	}
+
+	zoneHint := C.CString(zone.GetName())
 	cDataId := C.CString(obj.DataId)
 	defer C.free(unsafe.Pointer(cDataId))
 	defer C.free(unsafe.Pointer(zoneHint))
@@ -195,8 +200,8 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 }
 
 // Chmod changes the permissions/ACL of a data object
-// accessLevel: "null" | "read" | "write" | "own"
-func (obj *DataObj) Chmod(userOrGroup string, accessLevel string, recursive bool) error {
+// accessLevel: Null | Read | Write | Own
+func (obj *DataObj) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
 	return Chmod(obj, userOrGroup, accessLevel, recursive)
 }
 

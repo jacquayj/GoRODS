@@ -230,6 +230,69 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_get_local_zone(rcComm_t* conn, char** zoneName, char** err) {
+    int status, i;
+    simpleQueryInp_t simpleQueryInp;
+    simpleQueryOut_t *simpleQueryOut;
+    
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select zone_name from R_ZONE_MAIN where zone_type_name=?";
+    simpleQueryInp.arg1 = "local";
+    simpleQueryInp.maxBufSize = 1024;
+
+    status = rcSimpleQuery(conn, &simpleQueryInp, &simpleQueryOut);
+    if ( status < 0 ) {
+        *err = "Error getting local zone";
+        return status;
+    }
+
+    *zoneName = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+
+    i = strlen(*zoneName);
+    
+    for ( ; i > 1; i-- ) {
+        if ( *zoneName[i] == '\n' ) {
+            *zoneName[i] = '\0';
+            if ( *zoneName[i - 1] == ' ' ) {
+                *zoneName[i - 1] = '\0';
+            }
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int gorods_get_zones(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    
+    simpleQueryInp_t simpleQueryInp;
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+
+    simpleQueryInp.control = 0;
+
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select zone_name from R_ZONE_MAIN";
+    simpleQueryInp.maxBufSize = 1024;
+
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_zone(char* zoneName, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+
+    simpleQueryInp_t simpleQueryInp;
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+
+    simpleQueryInp.control = 0;
+    simpleQueryInp.form = 2;
+    simpleQueryInp.sql = "select * from R_ZONE_MAIN where zone_name=?";
+    simpleQueryInp.arg1 = zoneName;
+    simpleQueryInp.maxBufSize = 1024;
+
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
 
 int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
     simpleQueryInp_t simpleQueryInp;
