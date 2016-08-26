@@ -25,7 +25,7 @@ type User struct {
 	Type       int
 	Info       string
 	Comment    string
-	N          int
+	Parent     *Users
 
 	Init bool
 
@@ -36,20 +36,30 @@ type User struct {
 type Users []*User
 
 // initUser
-func initUser(name string, zone string, con *Connection, n int) (*User, error) {
+func initUser(name string, zone string, con *Connection) (*User, error) {
 
 	usr := new(User)
 
 	usr.Name = name
 	usr.Zone = zone
 	usr.Con = con
-	usr.N = n
 
 	// if err := usr.init(); err != nil {
 	// 	return nil, err
 	// }
 
 	return usr, nil
+}
+
+func (usr *User) Remove() bool {
+	for n, p := range *usr.Parent {
+		if p.Name == usr.Name {
+			usr.Parent.Remove(n)
+			return true
+		}
+	}
+
+	return false
 }
 
 func (usr *User) GetName() string {

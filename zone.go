@@ -47,12 +47,11 @@ func (znes *Zones) Remove(index int) {
 	*znes = append((*znes)[:index], (*znes)[index+1:]...)
 }
 
-func initZone(name string, con *Connection, n int) (*Zone, error) {
+func initZone(name string, con *Connection) (*Zone, error) {
 	zne := new(Zone)
 
 	zne.Con = con
 	zne.Name = name
-	zne.N = n
 
 	return zne, nil
 }

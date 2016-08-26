@@ -25,7 +25,6 @@ type Group struct {
 	Zone       string // Need to convert
 	Info       string
 	Comment    string
-	N          int
 
 	Init bool
 
@@ -36,13 +35,12 @@ type Group struct {
 type Groups []*Group
 
 // initGroup
-func initGroup(name string, con *Connection, n int) (*Group, error) {
+func initGroup(name string, con *Connection) (*Group, error) {
 
 	grp := new(Group)
 
 	grp.Name = name
 	grp.Con = con
-	grp.N = n
 
 	return grp, nil
 }
@@ -163,13 +161,12 @@ func (grp *Group) RefreshInfo() error {
 }
 
 func (grp *Group) RefreshUsers() error {
-	if usrs, err := grp.FetchUsers(); err != nil {
+
+	if usrs, err := grp.FetchUsers(); err == nil {
+
 		if len(grp.Users) == 0 {
 			grp.Users = usrs
 		} else {
-
-			// This is broke.com, need to reindex when removing from slice
-			// or pass parent slice to user structs during init, so a User.Remove function can be created
 
 			// loop new, add to old if not found
 			for _, u := range usrs {
@@ -178,13 +175,11 @@ func (grp *Group) RefreshUsers() error {
 				}
 			}
 
-			oldCopy := make(Users, len(grp.Users))
-			copy(oldCopy, grp.Users)
-
 			// loop old, remove from self if not found in new
-			for _, u := range oldCopy {
+			for _, u := range grp.Users {
 				if found := usrs.FindByName(u.GetName()); found == nil {
-					grp.Users.Remove(u.N)
+					u.Parent = &grp.Users
+					u.Remove()
 				}
 			}
 		}
