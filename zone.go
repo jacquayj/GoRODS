@@ -25,6 +25,7 @@ type Zone struct {
 	CreateTime time.Time
 	ModifyTime time.Time
 	Id         int
+	N          int
 
 	Init bool
 
@@ -42,11 +43,16 @@ func (znes Zones) FindByName(name string) *Zone {
 	return nil
 }
 
-func initZone(name string, con *Connection) (*Zone, error) {
+func (znes *Zones) Remove(index int) {
+	*znes = append((*znes)[:index], (*znes)[index+1:]...)
+}
+
+func initZone(name string, con *Connection, n int) (*Zone, error) {
 	zne := new(Zone)
 
 	zne.Con = con
 	zne.Name = name
+	zne.N = n
 
 	return zne, nil
 }

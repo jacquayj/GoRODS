@@ -25,6 +25,7 @@ type Group struct {
 	Zone       string // Need to convert
 	Info       string
 	Comment    string
+	N          int
 
 	Init bool
 
@@ -35,12 +36,13 @@ type Group struct {
 type Groups []*Group
 
 // initGroup
-func initGroup(name string, con *Connection) (*Group, error) {
+func initGroup(name string, con *Connection, n int) (*Group, error) {
 
 	grp := new(Group)
 
 	grp.Name = name
 	grp.Con = con
+	grp.N = n
 
 	return grp, nil
 }
@@ -127,6 +129,10 @@ func (grps Groups) FindByName(name string) *Group {
 	return nil
 }
 
+func (grps *Groups) Remove(index int) {
+	*grps = append((*grps)[:index], (*grps)[index+1:]...)
+}
+
 func (grp *Group) String() string {
 	return fmt.Sprintf("%v", grp.Name)
 }
@@ -158,7 +164,30 @@ func (grp *Group) RefreshInfo() error {
 
 func (grp *Group) RefreshUsers() error {
 	if usrs, err := grp.FetchUsers(); err != nil {
-		grp.Users = usrs
+		if len(grp.Users) == 0 {
+			grp.Users = usrs
+		} else {
+
+			// This is broke.com, need to reindex when removing from slice
+			// or pass parent slice to user structs during init, so a User.Remove function can be created
+
+			// loop new, add to old if not found
+			for _, u := range usrs {
+				if found := grp.Users.FindByName(u.GetName()); found == nil {
+					grp.Users = append(grp.Users, u)
+				}
+			}
+
+			oldCopy := make(Users, len(grp.Users))
+			copy(oldCopy, grp.Users)
+
+			// loop old, remove from self if not found in new
+			for _, u := range oldCopy {
+				if found := usrs.FindByName(u.GetName()); found == nil {
+					grp.Users.Remove(u.N)
+				}
+			}
+		}
 	} else {
 		return err
 	}

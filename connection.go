@@ -608,8 +608,8 @@ func (con *Connection) FetchGroups() (Groups, error) {
 
 	response := make(Groups, 0)
 
-	for _, groupName := range slice {
-		if grp, err := initGroup(C.GoString(groupName), con); err == nil {
+	for n, groupName := range slice {
+		if grp, err := initGroup(C.GoString(groupName), con, n); err == nil {
 			response = append(response, grp)
 		} else {
 			return nil, err
@@ -648,6 +648,7 @@ func (con *Connection) FetchUsers() (Users, error) {
 
 	response := make(Users, 0)
 
+	n := 0
 	for _, userNames := range slice {
 
 		nameZone := strings.Split(strings.Trim(C.GoString(userNames), " \n"), "\n")
@@ -660,8 +661,9 @@ func (con *Connection) FetchUsers() (Users, error) {
 			zone := split[1]
 
 			// need to use user init here instead
-			if usr, err := initUser(user, zone, con); err == nil {
+			if usr, err := initUser(user, zone, con, n); err == nil {
 				response = append(response, usr)
+				n++
 			} else {
 				return nil, err
 			}
@@ -700,14 +702,16 @@ func (con *Connection) FetchZones() (Zones, error) {
 
 	response := make(Zones, 0)
 
+	n := 0
 	for _, cZoneName := range slice {
 
 		zoneNames := strings.Split(strings.Trim(C.GoString(cZoneName), " \n"), "\n")
 
 		for _, name := range zoneNames {
 
-			if zne, err := initZone(name, con); err == nil {
+			if zne, err := initZone(name, con, n); err == nil {
 				response = append(response, zne)
+				n++
 			} else {
 				return nil, err
 			}

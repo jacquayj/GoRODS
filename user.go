@@ -25,6 +25,7 @@ type User struct {
 	Type       int
 	Info       string
 	Comment    string
+	N          int
 
 	Init bool
 
@@ -35,13 +36,14 @@ type User struct {
 type Users []*User
 
 // initUser
-func initUser(name string, zone string, con *Connection) (*User, error) {
+func initUser(name string, zone string, con *Connection, n int) (*User, error) {
 
 	usr := new(User)
 
 	usr.Name = name
 	usr.Zone = zone
 	usr.Con = con
+	usr.N = n
 
 	// if err := usr.init(); err != nil {
 	// 	return nil, err
@@ -170,6 +172,10 @@ func (usrs Users) FindByName(name string) *User {
 		}
 	}
 	return nil
+}
+
+func (usrs *Users) Remove(index int) {
+	*usrs = append((*usrs)[:index], (*usrs)[index+1:]...)
 }
 
 func (usr *User) String() string {
