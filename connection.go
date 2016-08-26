@@ -563,7 +563,53 @@ func (con *Connection) RefreshUsers() error {
 	if users, err := con.FetchUsers(); err != nil {
 		return err
 	} else {
-		con.Users = users
+		if len(con.Users) == 0 {
+			con.Users = users
+		} else {
+			// loop new, add to old if not found
+			for _, u := range users {
+				if found := con.Users.FindByName(u.GetName()); found == nil {
+					con.Users = append(con.Users, u)
+				}
+			}
+
+			// loop old, remove from self if not found in new
+			for _, u := range con.Users {
+				if found := users.FindByName(u.GetName()); found == nil {
+					u.Parent = &con.Users
+					u.Remove()
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (con *Connection) RefreshZones() error {
+	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
+	if zones, err := con.FetchZones(); err != nil {
+		return err
+	} else {
+		if len(con.Zones) == 0 {
+			con.Zones = zones
+		} else {
+			// loop new, add to old if not found
+			for _, z := range zones {
+				if found := con.Zones.FindByName(z.GetName()); found == nil {
+					con.Zones = append(con.Zones, z)
+				}
+			}
+
+			// loop old, remove from self if not found in new
+			for _, z := range con.Zones {
+				if found := zones.FindByName(z.GetName()); found == nil {
+					z.Parent = &con.Zones
+					z.Remove()
+				}
+			}
+		}
 	}
 
 	return nil
@@ -574,7 +620,24 @@ func (con *Connection) RefreshGroups() error {
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
 	} else {
-		con.Groups = groups
+		if len(con.Groups) == 0 {
+			con.Groups = groups
+		} else {
+			// loop new, add to old if not found
+			for _, g := range groups {
+				if found := con.Groups.FindByName(g.GetName()); found == nil {
+					con.Groups = append(con.Groups, g)
+				}
+			}
+
+			// loop old, remove from self if not found in new
+			for _, g := range con.Groups {
+				if found := groups.FindByName(g.GetName()); found == nil {
+					g.Parent = &con.Groups
+					g.Remove()
+				}
+			}
+		}
 	}
 
 	return nil
@@ -756,15 +819,4 @@ func (con *Connection) GetZones() (Zones, error) {
 		return nil, err
 	}
 	return con.Zones, nil
-}
-
-func (con *Connection) RefreshZones() error {
-	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
-	if zones, err := con.FetchZones(); err != nil {
-		return err
-	} else {
-		con.Zones = zones
-	}
-
-	return nil
 }

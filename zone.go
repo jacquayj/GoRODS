@@ -25,7 +25,7 @@ type Zone struct {
 	CreateTime time.Time
 	ModifyTime time.Time
 	Id         int
-	N          int
+	Parent     *Zones
 
 	Init bool
 
@@ -65,6 +65,17 @@ func (zne *Zone) init() error {
 	}
 
 	return nil
+}
+
+func (zne *Zone) Remove() bool {
+	for n, p := range *zne.Parent {
+		if p.Name == zne.Name {
+			zne.Parent.Remove(n)
+			return true
+		}
+	}
+
+	return false
 }
 
 func (zne *Zone) String() string {

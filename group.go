@@ -25,6 +25,7 @@ type Group struct {
 	Zone       string // Need to convert
 	Info       string
 	Comment    string
+	Parent     *Groups
 
 	Init bool
 
@@ -131,6 +132,17 @@ func (grps *Groups) Remove(index int) {
 	*grps = append((*grps)[:index], (*grps)[index+1:]...)
 }
 
+func (grp *Group) Remove() bool {
+	for n, p := range *grp.Parent {
+		if p.Name == grp.Name {
+			grp.Parent.Remove(n)
+			return true
+		}
+	}
+
+	return false
+}
+
 func (grp *Group) String() string {
 	return fmt.Sprintf("%v", grp.Name)
 }
@@ -163,26 +175,7 @@ func (grp *Group) RefreshInfo() error {
 func (grp *Group) RefreshUsers() error {
 
 	if usrs, err := grp.FetchUsers(); err == nil {
-
-		if len(grp.Users) == 0 {
-			grp.Users = usrs
-		} else {
-
-			// loop new, add to old if not found
-			for _, u := range usrs {
-				if found := grp.Users.FindByName(u.GetName()); found == nil {
-					grp.Users = append(grp.Users, u)
-				}
-			}
-
-			// loop old, remove from self if not found in new
-			for _, u := range grp.Users {
-				if found := usrs.FindByName(u.GetName()); found == nil {
-					u.Parent = &grp.Users
-					u.Remove()
-				}
-			}
-		}
+		grp.Users = usrs
 	} else {
 		return err
 	}
