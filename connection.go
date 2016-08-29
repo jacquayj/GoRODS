@@ -247,6 +247,7 @@ type Connection struct {
 	Users      Users
 	Groups     Groups
 	Zones      Zones
+	Resources  Resources
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
@@ -513,6 +514,10 @@ func (con *Connection) init() error {
 		if err := con.RefreshZones(); err != nil {
 			return err
 		}
+
+		if err := con.RefreshResources(); err != nil {
+			return err
+		}
 		con.Init = true
 	}
 
@@ -561,6 +566,34 @@ func (con *Connection) CreateUser(name string, typ int) error {
 
 		if err := con.RefreshUsers(); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (con *Connection) RefreshResources() error {
+	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
+	if resources, err := con.FetchResources(); err != nil {
+		return err
+	} else {
+		if len(con.Resources) == 0 {
+			con.Resources = resources
+		} else {
+			// loop new, add to old if not found
+			for _, r := range resources {
+				if found := con.Resources.FindByName(r.GetName()); found == nil {
+					con.Resources = append(con.Resources, r)
+				}
+			}
+
+			// loop old, remove from self if not found in new
+			for _, r := range con.Resources {
+				if found := resources.FindByName(r.GetName()); found == nil {
+					r.Parent = &con.Resources
+					r.Remove()
+				}
+			}
 		}
 	}
 
@@ -734,6 +767,52 @@ func (con *Connection) FetchUsers() (Users, error) {
 			// need to use user init here instead
 			if usr, err := initUser(user, zone, con); err == nil {
 				response = append(response, usr)
+			} else {
+				return nil, err
+			}
+
+		}
+
+	}
+
+	return response, nil
+}
+
+func (con *Connection) FetchResources() (Resources, error) {
+	var (
+		result C.goRodsStringResult_t
+		err    *C.char
+	)
+
+	result.size = C.int(0)
+
+	ccon := con.GetCcon()
+
+	if status := C.gorods_get_resources(ccon, &result, &err); status != 0 {
+		con.ReturnCcon(ccon)
+		return nil, newError(Fatal, fmt.Sprintf("iRods Get Resources Failed: %v", C.GoString(err)))
+	}
+
+	con.ReturnCcon(ccon)
+
+	defer C.gorods_free_string_result(&result)
+
+	unsafeArr := unsafe.Pointer(result.strArr)
+	arrLen := int(result.size)
+
+	// Convert C array to slice, backed by arr *C.char
+	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
+
+	response := make(Resources, 0)
+
+	for _, cResourceName := range slice {
+
+		resourceNames := strings.Split(strings.Trim(C.GoString(cResourceName), " \n"), "\n")
+
+		for _, name := range resourceNames {
+
+			if resc, err := initResource(name, con); err == nil {
+				response = append(response, resc)
 			} else {
 				return nil, err
 			}

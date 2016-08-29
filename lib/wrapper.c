@@ -298,6 +298,33 @@ int gorods_get_zone(char* zoneName, rcComm_t* conn, goRodsStringResult_t* result
     return gorods_simple_query(simpleQueryInp, result, conn, err);
 }
 
+int gorods_get_resources(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+    simpleQueryInp.control = 0;
+
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select resc_name from R_RESC_MAIN";
+    simpleQueryInp.maxBufSize = 1024;
+    
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_resource(char* rescName, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset( &simpleQueryInp, 0, sizeof( simpleQueryInp_t ) );
+    simpleQueryInp.control = 0;
+
+    simpleQueryInp.form = 2;
+    simpleQueryInp.sql = "select * from R_RESC_MAIN where resc_name=?";
+    simpleQueryInp.arg1 = rescName;
+    simpleQueryInp.maxBufSize = 1024;
+    
+   return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
 
 int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
     simpleQueryInp_t simpleQueryInp;
