@@ -15,7 +15,7 @@ import (
 
 type AccessObject interface {
 	GetName() string
-	GetZone() string
+	GetZone() *Zone
 	GetComment() string
 	GetCreateTime() time.Time
 	GetModifyTime() time.Time
@@ -51,5 +51,5 @@ func (acl *ACL) Group() *Group {
 func (acl *ACL) String() string {
 	typeString := getTypeString(acl.Type)
 
-	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone(), getTypeString(acl.AccessLevel))
+	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone().GetName(), getTypeString(acl.AccessLevel))
 }

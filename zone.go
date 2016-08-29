@@ -19,13 +19,13 @@ import (
 type Zone struct {
 	Name string
 
-	Type       int
-	ConString  string
-	Comment    string
-	CreateTime time.Time
-	ModifyTime time.Time
-	Id         int
-	Parent     *Zones
+	Type        int
+	ConString   string
+	Comment     string
+	CreateTime  time.Time
+	ModifyTime  time.Time
+	Id          int
+	ParentSlice *Zones
 
 	Init bool
 
@@ -68,9 +68,9 @@ func (zne *Zone) init() error {
 }
 
 func (zne *Zone) Remove() bool {
-	for n, p := range *zne.Parent {
+	for n, p := range *zne.ParentSlice {
 		if p.Name == zne.Name {
-			zne.Parent.Remove(n)
+			zne.ParentSlice.Remove(n)
 			return true
 		}
 	}
@@ -84,7 +84,6 @@ func (zne *Zone) String() string {
 }
 
 func (zne *Zone) GetName() string {
-	zne.init()
 	return zne.Name
 }
 

@@ -17,15 +17,15 @@ import (
 )
 
 type Group struct {
-	Name       string
-	CreateTime time.Time
-	ModifyTime time.Time
-	Id         int
-	Type       int
-	Zone       string // Need to convert
-	Info       string
-	Comment    string
-	Parent     *Groups
+	Name        string
+	CreateTime  time.Time
+	ModifyTime  time.Time
+	Id          int
+	Type        int
+	Zone        *Zone
+	Info        string
+	Comment     string
+	ParentSlice *Groups
 
 	Init bool
 
@@ -50,7 +50,7 @@ func (grp *Group) GetName() string {
 	return grp.Name
 }
 
-func (grp *Group) GetZone() string {
+func (grp *Group) GetZone() *Zone {
 	grp.init()
 
 	return grp.Zone
@@ -133,9 +133,9 @@ func (grps *Groups) Remove(index int) {
 }
 
 func (grp *Group) Remove() bool {
-	for n, p := range *grp.Parent {
+	for n, p := range *grp.ParentSlice {
 		if p.Name == grp.Name {
-			grp.Parent.Remove(n)
+			grp.ParentSlice.Remove(n)
 			return true
 		}
 	}
@@ -163,8 +163,17 @@ func (grp *Group) RefreshInfo() error {
 		grp.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
 		grp.Id, _ = strconv.Atoi(infoMap["user_id"])
 		grp.Type = GroupType
-		grp.Zone = infoMap["zone_name"]
 		grp.Info = infoMap["user_info"]
+
+		if zones, err := grp.Con.GetZones(); err != nil {
+			return err
+		} else {
+			if zne := zones.FindByName(infoMap["zone_name"]); zne != nil {
+				grp.Zone = zne
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods Refresh Group Info Failed: Unable to locate zone in cache"))
+			}
+		}
 	} else {
 		return err
 	}
@@ -337,14 +346,14 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: unknown type passed"))
 }
 
-func AddToGroup(userName string, zoneName string, groupName string, con *Connection) error {
+func AddToGroup(userName string, zone *Zone, groupName string, con *Connection) error {
 
 	var (
 		err *C.char
 	)
 
 	cUserName := C.CString(userName)
-	cZoneName := C.CString(zoneName)
+	cZoneName := C.CString(zone.GetName())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cUserName))
 	defer C.free(unsafe.Pointer(cZoneName))
@@ -360,13 +369,13 @@ func AddToGroup(userName string, zoneName string, groupName string, con *Connect
 	return nil
 }
 
-func RemoveFromGroup(userName string, zoneName string, groupName string, con *Connection) error {
+func RemoveFromGroup(userName string, zone *Zone, groupName string, con *Connection) error {
 	var (
 		err *C.char
 	)
 
 	cUserName := C.CString(userName)
-	cZoneName := C.CString(zoneName)
+	cZoneName := C.CString(zone.GetName())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cUserName))
 	defer C.free(unsafe.Pointer(cZoneName))
@@ -382,12 +391,12 @@ func RemoveFromGroup(userName string, zoneName string, groupName string, con *Co
 	return nil
 }
 
-func DeleteGroup(groupName string, zoneName string, con *Connection) error {
+func DeleteGroup(groupName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char
 	)
 
-	cZoneName := C.CString(zoneName)
+	cZoneName := C.CString(zone.GetName())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cGroupName))
@@ -402,12 +411,12 @@ func DeleteGroup(groupName string, zoneName string, con *Connection) error {
 	return nil
 }
 
-func CreateGroup(groupName string, zoneName string, con *Connection) error {
+func CreateGroup(groupName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char
 	)
 
-	cZoneName := C.CString(zoneName)
+	cZoneName := C.CString(zone.GetName())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cGroupName))

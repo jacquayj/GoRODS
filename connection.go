@@ -34,11 +34,14 @@ const (
 	CollectionType
 	ResourceType
 	ResourceGroupType
+	ZoneType
 	UserType
 	AdminType
 	GroupAdminType
 	GroupType
 	UnknownType
+	Cache
+	Archive
 	Null
 	Read
 	Write
@@ -244,10 +247,11 @@ type Connection struct {
 	Init       bool
 	Options    *ConnectionOptions
 	OpenedObjs IRodsObjs
-	Users      Users
-	Groups     Groups
-	Zones      Zones
-	Resources  Resources
+
+	users     Users
+	groups    Groups
+	zones     Zones
+	resources Resources
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
@@ -503,13 +507,7 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 
 func (con *Connection) init() error {
 	if !con.Init {
-		if err := con.RefreshUsers(); err != nil {
-			return err
-		}
-
-		if err := con.RefreshGroups(); err != nil {
-			return err
-		}
+		con.Init = true
 
 		if err := con.RefreshZones(); err != nil {
 			return err
@@ -518,7 +516,15 @@ func (con *Connection) init() error {
 		if err := con.RefreshResources(); err != nil {
 			return err
 		}
-		con.Init = true
+
+		if err := con.RefreshUsers(); err != nil {
+			return err
+		}
+
+		if err := con.RefreshGroups(); err != nil {
+			return err
+		}
+
 	}
 
 	return nil
@@ -528,14 +534,28 @@ func (con *Connection) GetGroups() (Groups, error) {
 	if err := con.init(); err != nil {
 		return nil, err
 	}
-	return con.Groups, nil
+	return con.groups, nil
 }
 
 func (con *Connection) GetUsers() (Users, error) {
 	if err := con.init(); err != nil {
 		return nil, err
 	}
-	return con.Users, nil
+	return con.users, nil
+}
+
+func (con *Connection) GetZones() (Zones, error) {
+	if err := con.init(); err != nil {
+		return nil, err
+	}
+	return con.zones, nil
+}
+
+func (con *Connection) GetResources() (Resources, error) {
+	if err := con.init(); err != nil {
+		return nil, err
+	}
+	return con.resources, nil
 }
 
 func (con *Connection) CreateGroup(name string) error {
@@ -543,7 +563,7 @@ func (con *Connection) CreateGroup(name string) error {
 	if z, err := con.GetLocalZone(); err != nil {
 		return err
 	} else {
-		if err := CreateGroup(name, z.GetName(), con); err != nil {
+		if err := CreateGroup(name, z, con); err != nil {
 			return err
 		}
 
@@ -577,20 +597,20 @@ func (con *Connection) RefreshResources() error {
 	if resources, err := con.FetchResources(); err != nil {
 		return err
 	} else {
-		if len(con.Resources) == 0 {
-			con.Resources = resources
+		if len(con.resources) == 0 {
+			con.resources = resources
 		} else {
 			// loop new, add to old if not found
 			for _, r := range resources {
-				if found := con.Resources.FindByName(r.GetName()); found == nil {
-					con.Resources = append(con.Resources, r)
+				if found := con.resources.FindByName(r.GetName()); found == nil {
+					con.resources = append(con.resources, r)
 				}
 			}
 
 			// loop old, remove from self if not found in new
-			for _, r := range con.Resources {
+			for _, r := range con.resources {
 				if found := resources.FindByName(r.GetName()); found == nil {
-					r.Parent = &con.Resources
+					r.ParentSlice = &con.resources
 					r.Remove()
 				}
 			}
@@ -605,20 +625,20 @@ func (con *Connection) RefreshUsers() error {
 	if users, err := con.FetchUsers(); err != nil {
 		return err
 	} else {
-		if len(con.Users) == 0 {
-			con.Users = users
+		if len(con.users) == 0 {
+			con.users = users
 		} else {
 			// loop new, add to old if not found
 			for _, u := range users {
-				if found := con.Users.FindByName(u.GetName()); found == nil {
-					con.Users = append(con.Users, u)
+				if found := con.users.FindByName(u.GetName()); found == nil {
+					con.users = append(con.users, u)
 				}
 			}
 
 			// loop old, remove from self if not found in new
-			for _, u := range con.Users {
+			for _, u := range con.users {
 				if found := users.FindByName(u.GetName()); found == nil {
-					u.Parent = &con.Users
+					u.ParentSlice = &con.users
 					u.Remove()
 				}
 			}
@@ -634,20 +654,20 @@ func (con *Connection) RefreshZones() error {
 	if zones, err := con.FetchZones(); err != nil {
 		return err
 	} else {
-		if len(con.Zones) == 0 {
-			con.Zones = zones
+		if len(con.zones) == 0 {
+			con.zones = zones
 		} else {
 			// loop new, add to old if not found
 			for _, z := range zones {
-				if found := con.Zones.FindByName(z.GetName()); found == nil {
-					con.Zones = append(con.Zones, z)
+				if found := con.zones.FindByName(z.GetName()); found == nil {
+					con.zones = append(con.zones, z)
 				}
 			}
 
 			// loop old, remove from self if not found in new
-			for _, z := range con.Zones {
+			for _, z := range con.zones {
 				if found := zones.FindByName(z.GetName()); found == nil {
-					z.Parent = &con.Zones
+					z.ParentSlice = &con.zones
 					z.Remove()
 				}
 			}
@@ -662,20 +682,20 @@ func (con *Connection) RefreshGroups() error {
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
 	} else {
-		if len(con.Groups) == 0 {
-			con.Groups = groups
+		if len(con.groups) == 0 {
+			con.groups = groups
 		} else {
 			// loop new, add to old if not found
 			for _, g := range groups {
-				if found := con.Groups.FindByName(g.GetName()); found == nil {
-					con.Groups = append(con.Groups, g)
+				if found := con.groups.FindByName(g.GetName()); found == nil {
+					con.groups = append(con.groups, g)
 				}
 			}
 
 			// loop old, remove from self if not found in new
-			for _, g := range con.Groups {
+			for _, g := range con.groups {
 				if found := groups.FindByName(g.GetName()); found == nil {
-					g.Parent = &con.Groups
+					g.ParentSlice = &con.groups
 					g.Remove()
 				}
 			}
@@ -762,7 +782,18 @@ func (con *Connection) FetchUsers() (Users, error) {
 			split := strings.Split(name, "#")
 
 			user := split[0]
-			zone := split[1]
+			zonename := split[1]
+			var zone *Zone
+
+			if zones, err := con.GetZones(); err != nil {
+				return nil, err
+			} else {
+				if zne := zones.FindByName(zonename); zne != nil {
+					zone = zne
+				} else {
+					return nil, newError(Fatal, fmt.Sprintf("iRods Fetch Users Failed: Unable to locate zone in cache"))
+				}
+			}
 
 			// need to use user init here instead
 			if usr, err := initUser(user, zone, con); err == nil {
@@ -900,11 +931,4 @@ func (con *Connection) GetLocalZone() (*Zone, error) {
 		}
 	}
 
-}
-
-func (con *Connection) GetZones() (Zones, error) {
-	if err := con.init(); err != nil {
-		return nil, err
-	}
-	return con.Zones, nil
 }

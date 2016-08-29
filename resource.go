@@ -19,12 +19,24 @@ import (
 type Resource struct {
 	Name string
 
-	Type       int
-	Comment    string
-	CreateTime time.Time
-	ModifyTime time.Time
-	Id         int
-	Parent     *Resources
+	Type          int
+	Comment       string
+	CreateTime    time.Time
+	ModifyTime    time.Time
+	Id            int
+	Context       string
+	Zone          *Zone
+	Class         int
+	Children      string
+	FreeSpace     int
+	Info          string
+	Status        string
+	ParentStr     string
+	Net           string
+	FreeSpaceTime time.Time
+	ObjCount      int
+	StorageType   string
+	PhysPath      string
 
 	//map[
 	// resc_context:
@@ -47,7 +59,8 @@ type Resource struct {
 	// create_ts: 01471614567
 	// ]
 
-	Init bool
+	ParentSlice *Resources
+	Init        bool
 
 	Con *Connection
 }
@@ -88,9 +101,9 @@ func (resc *Resource) init() error {
 }
 
 func (resc *Resource) Remove() bool {
-	for n, p := range *resc.Parent {
+	for n, p := range *resc.ParentSlice {
 		if p.Name == resc.Name {
-			resc.Parent.Remove(n)
+			resc.ParentSlice.Remove(n)
 			return true
 		}
 	}
@@ -99,12 +112,10 @@ func (resc *Resource) Remove() bool {
 }
 
 func (resc *Resource) String() string {
-	//resc.init()
-	return fmt.Sprintf("%v", resc.Name)
+	return fmt.Sprintf("%v#%v", resc.GetName(), resc.GetZone().GetName())
 }
 
 func (resc *Resource) GetName() string {
-	resc.init()
 	return resc.Name
 }
 
@@ -133,6 +144,71 @@ func (resc *Resource) GetType() int {
 	return resc.Type
 }
 
+func (resc *Resource) GetContext() string {
+	resc.init()
+	return resc.Context
+}
+
+func (resc *Resource) GetClass() int {
+	resc.init()
+	return resc.Class
+}
+
+func (resc *Resource) GetChildren() string {
+	resc.init()
+	return resc.Children
+}
+
+func (resc *Resource) GetFreeSpace() int {
+	resc.init()
+	return resc.FreeSpace
+}
+
+func (resc *Resource) GetInfo() string {
+	resc.init()
+	return resc.Info
+}
+
+func (resc *Resource) GetStatus() string {
+	resc.init()
+	return resc.Status
+}
+
+func (resc *Resource) GetParentStr() string {
+	resc.init()
+	return resc.ParentStr
+}
+
+func (resc *Resource) GetNet() string {
+	resc.init()
+	return resc.Net
+}
+
+func (resc *Resource) GetFreeSpaceTime() time.Time {
+	resc.init()
+	return resc.FreeSpaceTime
+}
+
+func (resc *Resource) GetObjCount() int {
+	resc.init()
+	return resc.ObjCount
+}
+
+func (resc *Resource) GetStorageType() string {
+	resc.init()
+	return resc.StorageType
+}
+
+func (resc *Resource) GetPhysPath() string {
+	resc.init()
+	return resc.PhysPath
+}
+
+func (resc *Resource) GetZone() *Zone {
+	resc.init()
+	return resc.Zone
+}
+
 func (resc *Resource) RefreshInfo() error {
 
 	//map[
@@ -156,12 +232,41 @@ func (resc *Resource) RefreshInfo() error {
 	// create_ts: 01471614567
 	// ]
 
+	typeMap := map[string]int{
+		"cache":   Cache,
+		"archive": Archive,
+	}
+
 	if infoMap, err := resc.FetchInfo(); err == nil {
 		resc.Comment = infoMap["r_comment"]
 		resc.CreateTime = TimeStringToTime(infoMap["create_ts"])
 		resc.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
 		resc.Id, _ = strconv.Atoi(infoMap["resc_id"])
-		resc.Type = ZoneType
+		resc.Type = ResourceType
+
+		resc.Context = infoMap["resc_context"]
+		resc.Class = typeMap[infoMap["resc_class_name"]]
+		resc.Children = infoMap["resc_children"]
+		resc.FreeSpace, _ = strconv.Atoi(infoMap["free_space"])
+		resc.Info = infoMap["resc_info"]
+		resc.Status = infoMap["resc_status"]
+		resc.ParentStr = infoMap["resc_parent"]
+		resc.Net = infoMap["resc_net"]
+		resc.FreeSpaceTime = TimeStringToTime(infoMap["free_space_ts"])
+		resc.ObjCount, _ = strconv.Atoi(infoMap["resc_objcount"])
+		resc.StorageType = infoMap["resc_type_name"]
+		resc.PhysPath = infoMap["resc_def_path"]
+
+		if zones, err := resc.Con.GetZones(); err != nil {
+			return err
+		} else {
+			if zne := zones.FindByName(infoMap["zone_name"]); zne != nil {
+				resc.Zone = zne
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods Refresh Resource Info Failed: Unable to locate zone in cache"))
+			}
+		}
+
 	} else {
 		return err
 	}

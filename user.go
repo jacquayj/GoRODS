@@ -17,15 +17,15 @@ import (
 )
 
 type User struct {
-	Name       string
-	Zone       string
-	CreateTime time.Time
-	ModifyTime time.Time
-	Id         int
-	Type       int
-	Info       string
-	Comment    string
-	Parent     *Users
+	Name        string
+	Zone        *Zone
+	CreateTime  time.Time
+	ModifyTime  time.Time
+	Id          int
+	Type        int
+	Info        string
+	Comment     string
+	ParentSlice *Users
 
 	Init bool
 
@@ -36,7 +36,7 @@ type User struct {
 type Users []*User
 
 // initUser
-func initUser(name string, zone string, con *Connection) (*User, error) {
+func initUser(name string, zone *Zone, con *Connection) (*User, error) {
 
 	usr := new(User)
 
@@ -52,9 +52,9 @@ func initUser(name string, zone string, con *Connection) (*User, error) {
 }
 
 func (usr *User) Remove() bool {
-	for n, p := range *usr.Parent {
+	for n, p := range *usr.ParentSlice {
 		if p.Name == usr.Name {
-			usr.Parent.Remove(n)
+			usr.ParentSlice.Remove(n)
 			return true
 		}
 	}
@@ -66,7 +66,7 @@ func (usr *User) GetName() string {
 	return usr.Name
 }
 
-func (usr *User) GetZone() string {
+func (usr *User) GetZone() *Zone {
 	return usr.Zone
 }
 
@@ -155,8 +155,17 @@ func (usr *User) RefreshInfo() error {
 		usr.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
 		usr.Id, _ = strconv.Atoi(infoMap["user_id"])
 		usr.Type = typeMap[infoMap["user_type_name"]]
-		//usr.Zone = infoMap["zone_name"]
 		usr.Info = infoMap["user_info"]
+
+		if zones, err := usr.Con.GetZones(); err != nil {
+			return err
+		} else {
+			if zne := zones.FindByName(infoMap["zone_name"]); zne != nil {
+				usr.Zone = zne
+			} else {
+				return newError(Fatal, fmt.Sprintf("iRods Refresh User Info Failed: Unable to locate zone in cache"))
+			}
+		}
 	} else {
 		return err
 	}
@@ -322,12 +331,12 @@ func (usr *User) RemoveFromGroup(grp interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
 }
 
-func DeleteUser(userName string, zoneName string, con *Connection) error {
+func DeleteUser(userName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char
 	)
 
-	cZoneName := C.CString(zoneName)
+	cZoneName := C.CString(zone.GetName())
 	cUserName := C.CString(userName)
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cUserName))

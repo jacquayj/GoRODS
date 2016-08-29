@@ -31,6 +31,8 @@ func getTypeString(typ int) string {
 		return "d"
 	case CollectionType:
 		return "C"
+	case ZoneType:
+		return "Z"
 	case ResourceType:
 		return "R"
 	case UserType:
@@ -55,6 +57,10 @@ func getTypeString(typ int) string {
 		return "local"
 	case Remote:
 		return "remote"
+	case Cache:
+		return "cache"
+	case Archive:
+		return "archive"
 	default:
 		panic(newError(Fatal, "unrecognized type constant"))
 	}
