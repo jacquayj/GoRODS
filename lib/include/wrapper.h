@@ -96,7 +96,7 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err);
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err);
 
-int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn, char** err);
+int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int openFlag, int* handle, rcComm_t* conn, char** err);
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err);
 int gorods_lseek_dataobject(int handleInx, rodsLong_t offset, rcComm_t* conn, char** err);
 int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err);

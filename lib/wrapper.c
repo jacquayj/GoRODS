@@ -189,7 +189,7 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err) {
 	return 0;
 }
 
-int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn, char** err) {
+int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int openFlag, int* handle, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 	
 	bzero(&dataObjInp, sizeof(dataObjInp)); 
@@ -198,6 +198,9 @@ int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn
 	// O_RDONLY, O_WRONLY, O_RDWR, O_TRUNC
 	dataObjInp.openFlags = openFlag; 
 	
+    addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resourceName); 
+    addKeyVal(&dataObjInp.condInput, REPL_NUM_KW, replNum);
+
 	*handle = rcDataObjOpen(conn, &dataObjInp); 
 	if ( *handle < 0 ) { 
 		*err = "rcDataObjOpen failed";

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -29,7 +30,7 @@ type DataObj struct {
 	ReplStatus int
 
 	DataId   string
-	Resource string
+	Resource *Resource
 	PhyPath  string
 
 	OpenedAs C.int
@@ -78,7 +79,6 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.chandle = C.int(-1)
 	dataObj.Checksum = C.GoString(data.chksum)
 	dataObj.DataId = C.GoString(data.dataId)
-	dataObj.Resource = C.GoString(data.resource)
 	dataObj.PhyPath = C.GoString(data.phyPath)
 	dataObj.OpenedAs = C.int(-1)
 
@@ -89,6 +89,14 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.OwnerName = C.GoString(data.ownerName)
 	dataObj.CreateTime = cTimeToTime(data.createTime)
 	dataObj.ModifyTime = cTimeToTime(data.modifyTime)
+
+	if rsrcs, err := col.Con.GetResources(); err != nil {
+		return nil
+	} else {
+		if r := rsrcs.FindByName(C.GoString(data.resource)); r != nil {
+			dataObj.Resource = r
+		}
+	}
 
 	return dataObj
 }
@@ -310,13 +318,16 @@ func (obj *DataObj) Open() error {
 	var errMsg *C.char
 
 	path := C.CString(obj.Path)
-
+	resourceName := C.CString(obj.Resource.GetName())
+	replNum := C.CString(strconv.Itoa(obj.ReplNum))
 	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(resourceName))
+	defer C.free(unsafe.Pointer(replNum))
 
 	ccon := obj.Con.GetCcon()
 	defer obj.Con.ReturnCcon(ccon)
 
-	if status := C.gorods_open_dataobject(path, C.O_RDONLY, &obj.chandle, ccon, &errMsg); status != 0 {
+	if status := C.gorods_open_dataobject(path, resourceName, replNum, C.O_RDONLY, &obj.chandle, ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
 
@@ -330,13 +341,16 @@ func (obj *DataObj) OpenRW() error {
 	var errMsg *C.char
 
 	path := C.CString(obj.Path)
-
+	resourceName := C.CString(obj.Resource.GetName())
+	replNum := C.CString(strconv.Itoa(obj.ReplNum))
 	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(resourceName))
+	defer C.free(unsafe.Pointer(replNum))
 
 	ccon := obj.Con.GetCcon()
 	defer obj.Con.ReturnCcon(ccon)
 
-	if status := C.gorods_open_dataobject(path, C.O_RDWR, &obj.chandle, ccon, &errMsg); status != 0 {
+	if status := C.gorods_open_dataobject(path, resourceName, replNum, C.O_RDWR, &obj.chandle, ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods OpenRW DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
 	}
 
