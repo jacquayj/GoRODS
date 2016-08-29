@@ -23,6 +23,11 @@ type DataObj struct {
 	Size     int64
 	Offset   int64
 	Type     int
+
+	ReplNum    int
+	RescHier   string
+	ReplStatus int
+
 	DataId   string
 	Resource string
 	PhyPath  string
@@ -77,6 +82,10 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.PhyPath = C.GoString(data.phyPath)
 	dataObj.OpenedAs = C.int(-1)
 
+	dataObj.ReplNum = int(data.replNum)
+	dataObj.RescHier = C.GoString(data.resc_hier)
+	dataObj.ReplStatus = int(data.replStatus)
+
 	dataObj.OwnerName = C.GoString(data.ownerName)
 	dataObj.CreateTime = cTimeToTime(data.createTime)
 	dataObj.ModifyTime = cTimeToTime(data.modifyTime)
@@ -91,7 +100,12 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 	collectionDir := filepath.Dir(startPath)
 	dataObjName := filepath.Base(startPath)
 
-	if col, err := con.Collection(collectionDir, false); err == nil {
+	opts := CollectionOptions{
+		Path:      collectionDir,
+		Recursive: false,
+	}
+
+	if col, err := con.Collection(opts); err == nil {
 		if obj := col.FindObj(dataObjName); obj != nil {
 			return obj, nil
 		} else {
@@ -777,8 +791,12 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 
 			destinationCollection.Refresh()
 		} else {
+			opts := CollectionOptions{
+				Path:      destinationCollectionString,
+				Recursive: false,
+			}
 			// Can't find, load collection into memory
-			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
+			destinationCollection, _ = obj.Con.Collection(opts)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))

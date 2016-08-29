@@ -93,13 +93,18 @@ int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, ch
     return 0;
 }
 
-int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) {
+int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* conn, char** err) {
 	collInp_t collOpenInp; 
 
 	bzero(&collOpenInp, sizeof(collOpenInp)); 
-	rstrcpy(collOpenInp.collName, path, MAX_NAME_LEN);
+	
+    rstrcpy(collOpenInp.collName, path, MAX_NAME_LEN);
 
-	collOpenInp.flags = VERY_LONG_METADATA_FG; 
+	collOpenInp.flags = VERY_LONG_METADATA_FG;
+
+    if ( trimRepls == 0 ) {
+        collOpenInp.flags |= NO_TRIM_REPL_FG;;
+    }
 
 	*handle = rcOpenCollection(conn, &collOpenInp); 
 	if ( *handle < 0 ) { 
@@ -1262,7 +1267,9 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 			elem->resource = strcpy(gorods_malloc(strlen(elem->resource) + 1), elem->resource);
 			//elem->rescGrp = strcpy(gorods_malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
 			elem->phyPath = strcpy(gorods_malloc(strlen(elem->phyPath) + 1), elem->phyPath);
-		}
+            elem->resc_hier = strcpy(gorods_malloc(strlen(elem->resc_hier) + 1), elem->resc_hier);
+        
+        }
 
 		elem->ownerName = strcpy(gorods_malloc(strlen(elem->ownerName) + 1), elem->ownerName);
 		elem->collName = strcpy(gorods_malloc(strlen(elem->collName) + 1), elem->collName);

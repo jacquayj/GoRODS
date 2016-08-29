@@ -17,6 +17,8 @@ import (
 
 // Collection structs contain information about single collections in an iRods zone.
 type Collection struct {
+	Options        *CollectionOptions
+	TrimRepls      bool
 	Path           string
 	Name           string
 	DataObjects    IRodsObjs
@@ -27,12 +29,19 @@ type Collection struct {
 	Init           bool
 	Type           int
 	ACLInheritance bool
+	Parent         *Collection
 
 	OwnerName  string
 	CreateTime time.Time
 	ModifyTime time.Time
 
 	chandle C.int
+}
+
+type CollectionOptions struct {
+	Path      string
+	Recursive bool
+	TrimRepls bool
 }
 
 // String shows the contents of the collection.
@@ -70,6 +79,10 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	col.Col = acol
 	col.Con = col.Col.Con
 	col.Path = C.GoString(data.collName)
+	col.Options = acol.Options
+	col.Recursive = acol.Recursive
+	col.TrimRepls = acol.TrimRepls
+	col.Parent = acol
 
 	col.OwnerName = C.GoString(data.ownerName)
 	col.CreateTime = cTimeToTime(data.createTime)
@@ -79,8 +92,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 
 	col.Name = pathSlice[len(pathSlice)-1]
 
-	if acol.Recursive {
-		col.Recursive = true
+	if col.Recursive {
 
 		if er := col.init(); er != nil {
 			return nil, er
@@ -92,14 +104,17 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 
 // getCollection initializes specified collection located at startPath using gorods.Connection.
 // Could be considered alias of Connection.Collection()
-func getCollection(startPath string, recursive bool, con *Connection) (*Collection, error) {
+func getCollection(opts CollectionOptions, con *Connection) (*Collection, error) {
 	col := new(Collection)
+
+	col.Options = &opts
 
 	col.chandle = C.int(-1)
 	col.Type = CollectionType
 	col.Con = con
-	col.Path = startPath
-	col.Recursive = recursive
+	col.Path = opts.Path
+	col.Recursive = opts.Recursive
+	col.TrimRepls = opts.TrimRepls
 
 	if col.Path[len(col.Path)-1] == '/' {
 		col.Path = col.Path[:len(col.Path)-1]
@@ -414,16 +429,25 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 // Usually called by Collection.init()
 func (col *Collection) Open() error {
 	if int(col.chandle) < 0 {
-		var errMsg *C.char
+		var (
+			errMsg     *C.char
+			cTrimRepls C.int
+		)
 
 		path := C.CString(col.Path)
+
+		if col.TrimRepls {
+			cTrimRepls = C.int(1)
+		} else {
+			cTrimRepls = C.int(0)
+		}
 
 		defer C.free(unsafe.Pointer(path))
 
 		ccon := col.Con.GetCcon()
 		defer col.Con.ReturnCcon(ccon)
 
-		if status := C.gorods_open_collection(path, &col.chandle, ccon, &errMsg); status != 0 {
+		if status := C.gorods_open_collection(path, cTrimRepls, &col.chandle, ccon, &errMsg); status != 0 {
 			return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
 		}
 	}

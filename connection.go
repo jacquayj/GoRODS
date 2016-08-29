@@ -384,14 +384,17 @@ func (obj *Connection) String() string {
 }
 
 // Collection initializes and returns an existing iRods collection using the specified path
-func (con *Connection) Collection(startPath string, recursive bool) (*Collection, error) {
+func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
+
+	startPath := opts.Path
+	recursive := opts.Recursive
 
 	// Check the cache
 	//if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
 	if collection := con.OpenedObjs.FindRecursive(startPath); true {
 
 		// Load collection, no cache found
-		if col, err := getCollection(startPath, recursive, con); err == nil {
+		if col, err := getCollection(opts, con); err == nil {
 			con.OpenedObjs = append(con.OpenedObjs, col)
 
 			return col, nil
@@ -455,7 +458,13 @@ func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error)
 		slice := (*[1 << 30]*C.char)(unsafe.Pointer(colresult.pathArr))[:size:size]
 
 		for _, colString := range slice {
-			if c, er := con.Collection(C.GoString(colString), false); er == nil {
+
+			opts := CollectionOptions{
+				Path:      C.GoString(colString),
+				Recursive: false,
+			}
+
+			if c, er := con.Collection(opts); er == nil {
 				response = append(response, c)
 			} else {
 				err = er
