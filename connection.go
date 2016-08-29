@@ -597,24 +597,24 @@ func (con *Connection) RefreshResources() error {
 	if resources, err := con.FetchResources(); err != nil {
 		return err
 	} else {
-		if len(con.resources) == 0 {
-			con.resources = resources
-		} else {
-			// loop new, add to old if not found
-			for _, r := range resources {
-				if found := con.resources.FindByName(r.GetName()); found == nil {
-					con.resources = append(con.resources, r)
-				}
-			}
+		//if len(con.resources) == 0 {
+		con.resources = resources
+		// } else {
+		// 	// loop new, add to old if not found
+		// 	for _, r := range resources {
+		// 		if found := con.resources.FindByName(r.GetName()); found == nil {
+		// 			con.resources = append(con.resources, r)
+		// 		}
+		// 	}
 
-			// loop old, remove from self if not found in new
-			for _, r := range con.resources {
-				if found := resources.FindByName(r.GetName()); found == nil {
-					r.ParentSlice = &con.resources
-					r.Remove()
-				}
-			}
-		}
+		// 	// loop old, remove from self if not found in new
+		// 	for _, r := range con.resources {
+		// 		if found := resources.FindByName(r.GetName()); found == nil {
+		// 			r.ParentSlice = &con.resources
+		// 			r.Remove()
+		// 		}
+		// 	}
+		// }
 	}
 
 	return nil
@@ -625,24 +625,24 @@ func (con *Connection) RefreshUsers() error {
 	if users, err := con.FetchUsers(); err != nil {
 		return err
 	} else {
-		if len(con.users) == 0 {
-			con.users = users
-		} else {
-			// loop new, add to old if not found
-			for _, u := range users {
-				if found := con.users.FindByName(u.GetName()); found == nil {
-					con.users = append(con.users, u)
-				}
-			}
+		//if len(con.users) == 0 {
+		con.users = users
+		// } else {
+		// 	// loop new, add to old if not found
+		// 	for _, u := range users {
+		// 		if found := con.users.FindByName(u.GetName()); found == nil {
+		// 			con.users = append(con.users, u)
+		// 		}
+		// 	}
 
-			// loop old, remove from self if not found in new
-			for _, u := range con.users {
-				if found := users.FindByName(u.GetName()); found == nil {
-					u.ParentSlice = &con.users
-					u.Remove()
-				}
-			}
-		}
+		// 	// loop old, remove from self if not found in new
+		// 	for _, u := range con.users {
+		// 		if found := users.FindByName(u.GetName()); found == nil {
+		// 			u.ParentSlice = &con.users
+		// 			u.Remove()
+		// 		}
+		// 	}
+		// }
 
 	}
 
@@ -654,24 +654,24 @@ func (con *Connection) RefreshZones() error {
 	if zones, err := con.FetchZones(); err != nil {
 		return err
 	} else {
-		if len(con.zones) == 0 {
-			con.zones = zones
-		} else {
-			// loop new, add to old if not found
-			for _, z := range zones {
-				if found := con.zones.FindByName(z.GetName()); found == nil {
-					con.zones = append(con.zones, z)
-				}
-			}
+		//if len(con.zones) == 0 {
+		con.zones = zones
+		// } else {
+		// 	// loop new, add to old if not found
+		// 	for _, z := range zones {
+		// 		if found := con.zones.FindByName(z.GetName()); found == nil {
+		// 			con.zones = append(con.zones, z)
+		// 		}
+		// 	}
 
-			// loop old, remove from self if not found in new
-			for _, z := range con.zones {
-				if found := zones.FindByName(z.GetName()); found == nil {
-					z.ParentSlice = &con.zones
-					z.Remove()
-				}
-			}
-		}
+		// 	// loop old, remove from self if not found in new
+		// 	for _, z := range con.zones {
+		// 		if found := zones.FindByName(z.GetName()); found == nil {
+		// 			z.ParentSlice = &con.zones
+		// 			z.Remove()
+		// 		}
+		// 	}
+		// }
 	}
 
 	return nil
@@ -682,24 +682,24 @@ func (con *Connection) RefreshGroups() error {
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
 	} else {
-		if len(con.groups) == 0 {
-			con.groups = groups
-		} else {
-			// loop new, add to old if not found
-			for _, g := range groups {
-				if found := con.groups.FindByName(g.GetName()); found == nil {
-					con.groups = append(con.groups, g)
-				}
-			}
+		//if len(con.groups) == 0 {
+		con.groups = groups
+		// } else {
+		// 	// loop new, add to old if not found
+		// 	for _, g := range groups {
+		// 		if found := con.groups.FindByName(g.GetName()); found == nil {
+		// 			con.groups = append(con.groups, g)
+		// 		}
+		// 	}
 
-			// loop old, remove from self if not found in new
-			for _, g := range con.groups {
-				if found := groups.FindByName(g.GetName()); found == nil {
-					g.ParentSlice = &con.groups
-					g.Remove()
-				}
-			}
-		}
+		// 	// loop old, remove from self if not found in new
+		// 	for _, g := range con.groups {
+		// 		if found := groups.FindByName(g.GetName()); found == nil {
+		// 			g.ParentSlice = &con.groups
+		// 			g.Remove()
+		// 		}
+		// 	}
+		// }
 	}
 
 	return nil
@@ -795,7 +795,6 @@ func (con *Connection) FetchUsers() (Users, error) {
 				}
 			}
 
-			// need to use user init here instead
 			if usr, err := initUser(user, zone, con); err == nil {
 				response = append(response, usr)
 			} else {
