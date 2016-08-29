@@ -132,8 +132,8 @@ func (zne *Zone) RefreshInfo() error {
 
 	if infoMap, err := zne.FetchInfo(); err == nil {
 		zne.Comment = infoMap["r_comment"]
-		zne.CreateTime = TimeStringToTime(infoMap["create_ts"])
-		zne.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
+		zne.CreateTime = timeStringToTime(infoMap["create_ts"])
+		zne.ModifyTime = timeStringToTime(infoMap["modify_ts"])
 		zne.Id, _ = strconv.Atoi(infoMap["zone_id"])
 		zne.Type = typeMap[infoMap["zone_type_name"]]
 		zne.ConString = infoMap["zone_conn_string"]

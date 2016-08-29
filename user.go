@@ -105,7 +105,7 @@ func (usr *User) GetGroups() (Groups, error) {
 }
 
 func (usr *User) Delete() error {
-	if err := DeleteUser(usr.GetName(), usr.GetZone(), usr.Con); err != nil {
+	if err := deleteUser(usr.GetName(), usr.GetZone(), usr.Con); err != nil {
 		return err
 	}
 
@@ -149,8 +149,8 @@ func (usr *User) RefreshInfo() error {
 
 	if infoMap, err := usr.FetchInfo(); err == nil {
 		usr.Comment = infoMap["r_comment"]
-		usr.CreateTime = TimeStringToTime(infoMap["create_ts"])
-		usr.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
+		usr.CreateTime = timeStringToTime(infoMap["create_ts"])
+		usr.ModifyTime = timeStringToTime(infoMap["modify_ts"])
 		usr.Id, _ = strconv.Atoi(infoMap["user_id"])
 		usr.Type = typeMap[infoMap["user_type_name"]]
 		usr.Info = infoMap["user_info"]
@@ -308,9 +308,9 @@ func (usr *User) AddToGroup(grp interface{}) error {
 
 	switch grp.(type) {
 	case string:
-		return AddToGroup(usr.Name, usr.Zone, grp.(string), usr.Con)
+		return addToGroup(usr.Name, usr.Zone, grp.(string), usr.Con)
 	case *Group:
-		return AddToGroup(usr.Name, usr.Zone, (grp.(*Group)).Name, usr.Con)
+		return addToGroup(usr.Name, usr.Zone, (grp.(*Group)).Name, usr.Con)
 	default:
 	}
 
@@ -320,16 +320,16 @@ func (usr *User) AddToGroup(grp interface{}) error {
 func (usr *User) RemoveFromGroup(grp interface{}) error {
 	switch grp.(type) {
 	case string:
-		return RemoveFromGroup(usr.Name, usr.Zone, grp.(string), usr.Con)
+		return removeFromGroup(usr.Name, usr.Zone, grp.(string), usr.Con)
 	case *Group:
-		return RemoveFromGroup(usr.Name, usr.Zone, (grp.(*Group)).Name, usr.Con)
+		return removeFromGroup(usr.Name, usr.Zone, (grp.(*Group)).Name, usr.Con)
 	default:
 	}
 
 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
 }
 
-func DeleteUser(userName string, zone *Zone, con *Connection) error {
+func deleteUser(userName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char
 	)
@@ -349,7 +349,7 @@ func DeleteUser(userName string, zone *Zone, con *Connection) error {
 	return nil
 }
 
-func CreateUser(userName string, zoneName string, typ int, con *Connection) error {
+func createUser(userName string, zoneName string, typ int, con *Connection) error {
 	var (
 		err   *C.char
 		cType *C.char

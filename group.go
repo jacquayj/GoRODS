@@ -92,7 +92,7 @@ func (grp *Group) GetUsers() (Users, error) {
 }
 
 func (grp *Group) Delete() error {
-	if err := DeleteGroup(grp.GetName(), grp.GetZone(), grp.Con); err != nil {
+	if err := deleteGroup(grp.GetName(), grp.GetZone(), grp.Con); err != nil {
 		return err
 	}
 
@@ -157,8 +157,8 @@ func (grp *Group) RefreshInfo() error {
 
 	if infoMap, err := grp.FetchInfo(); err == nil {
 		grp.Comment = infoMap["r_comment"]
-		grp.CreateTime = TimeStringToTime(infoMap["create_ts"])
-		grp.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
+		grp.CreateTime = timeStringToTime(infoMap["create_ts"])
+		grp.ModifyTime = timeStringToTime(infoMap["modify_ts"])
 		grp.Id, _ = strconv.Atoi(infoMap["user_id"])
 		grp.Type = GroupType
 		grp.Info = infoMap["user_info"]
@@ -300,7 +300,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 
 			if existingUsr := usrs.FindByName(usrName); existingUsr != nil {
 				zoneName := existingUsr.Zone
-				return AddToGroup(usrName, zoneName, grp.Name, grp.Con)
+				return addToGroup(usrName, zoneName, grp.Name, grp.Con)
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: can't find iRODS user by string"))
 			}
@@ -310,7 +310,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 
 	case *User:
 		aUsr := usr.(*User)
-		return AddToGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
+		return addToGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
 	default:
 	}
 
@@ -327,7 +327,7 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 
 			if existingUsr := usrs.FindByName(usrName); existingUsr != nil {
 				zoneName := existingUsr.Zone
-				return RemoveFromGroup(usrName, zoneName, grp.Name, grp.Con)
+				return removeFromGroup(usrName, zoneName, grp.Name, grp.Con)
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: can't find iRODS user by string"))
 			}
@@ -337,14 +337,14 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 
 	case *User:
 		aUsr := usr.(*User)
-		return RemoveFromGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
+		return removeFromGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
 	default:
 	}
 
 	return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: unknown type passed"))
 }
 
-func AddToGroup(userName string, zone *Zone, groupName string, con *Connection) error {
+func addToGroup(userName string, zone *Zone, groupName string, con *Connection) error {
 
 	var (
 		err *C.char
@@ -367,7 +367,7 @@ func AddToGroup(userName string, zone *Zone, groupName string, con *Connection) 
 	return nil
 }
 
-func RemoveFromGroup(userName string, zone *Zone, groupName string, con *Connection) error {
+func removeFromGroup(userName string, zone *Zone, groupName string, con *Connection) error {
 	var (
 		err *C.char
 	)
@@ -389,7 +389,7 @@ func RemoveFromGroup(userName string, zone *Zone, groupName string, con *Connect
 	return nil
 }
 
-func DeleteGroup(groupName string, zone *Zone, con *Connection) error {
+func deleteGroup(groupName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char
 	)
@@ -409,7 +409,7 @@ func DeleteGroup(groupName string, zone *Zone, con *Connection) error {
 	return nil
 }
 
-func CreateGroup(groupName string, zone *Zone, con *Connection) error {
+func createGroup(groupName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char
 	)

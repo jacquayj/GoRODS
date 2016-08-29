@@ -249,7 +249,7 @@ func (col *Collection) Inheritance() (bool, error) {
 // Chmod changes the permissions/ACL of the collection
 // accessLevel: Null | Read | Write | Own
 func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
-	return Chmod(col, userOrGroup, accessLevel, recursive)
+	return chmod(col, userOrGroup, accessLevel, recursive)
 }
 
 // GetACL retuns a slice of ACL structs. Example of slice in string format:

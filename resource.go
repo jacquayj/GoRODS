@@ -237,8 +237,8 @@ func (resc *Resource) RefreshInfo() error {
 
 	if infoMap, err := resc.FetchInfo(); err == nil {
 		resc.Comment = infoMap["r_comment"]
-		resc.CreateTime = TimeStringToTime(infoMap["create_ts"])
-		resc.ModifyTime = TimeStringToTime(infoMap["modify_ts"])
+		resc.CreateTime = timeStringToTime(infoMap["create_ts"])
+		resc.ModifyTime = timeStringToTime(infoMap["modify_ts"])
 		resc.Id, _ = strconv.Atoi(infoMap["resc_id"])
 		resc.Type = ResourceType
 
@@ -250,7 +250,7 @@ func (resc *Resource) RefreshInfo() error {
 		resc.Status = infoMap["resc_status"]
 		resc.ParentStr = infoMap["resc_parent"]
 		resc.Net = infoMap["resc_net"]
-		resc.FreeSpaceTime = TimeStringToTime(infoMap["free_space_ts"])
+		resc.FreeSpaceTime = timeStringToTime(infoMap["free_space_ts"])
 		resc.ObjCount, _ = strconv.Atoi(infoMap["resc_objcount"])
 		resc.StorageType = infoMap["resc_type_name"]
 		resc.PhysPath = infoMap["resc_def_path"]

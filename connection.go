@@ -183,7 +183,7 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	return nil
 }
 
-func Chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
+func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 	var (
 		err        *C.char
 		cRecursive C.int
@@ -563,7 +563,7 @@ func (con *Connection) CreateGroup(name string) error {
 	if z, err := con.GetLocalZone(); err != nil {
 		return err
 	} else {
-		if err := CreateGroup(name, z, con); err != nil {
+		if err := createGroup(name, z, con); err != nil {
 			return err
 		}
 
@@ -580,7 +580,7 @@ func (con *Connection) CreateUser(name string, typ int) error {
 	if z, err := con.GetLocalZone(); err != nil {
 		return err
 	} else {
-		if err := CreateUser(name, z.GetName(), typ, con); err != nil {
+		if err := createUser(name, z.GetName(), typ, con); err != nil {
 			return err
 		}
 

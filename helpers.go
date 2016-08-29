@@ -18,7 +18,7 @@ func cTimeToTime(cTime *C.char) time.Time {
 	return time.Unix(unixStamp, 0)
 }
 
-func TimeStringToTime(ts string) time.Time {
+func timeStringToTime(ts string) time.Time {
 	unixStamp, _ := strconv.ParseInt(ts, 10, 64)
 	return time.Unix(unixStamp, 0)
 }
