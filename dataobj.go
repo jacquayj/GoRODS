@@ -35,7 +35,9 @@ type DataObj struct {
 
 	OpenedAs C.int
 
-	OwnerName  string
+	OwnerName string
+	Owner     *User
+
 	CreateTime time.Time
 	ModifyTime time.Time
 
@@ -98,6 +100,14 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 		}
 	}
 
+	if usrs, err := col.Con.GetUsers(); err != nil {
+		return nil
+	} else {
+		if u := usrs.FindByName(dataObj.OwnerName); u != nil {
+			dataObj.Owner = u
+		}
+	}
+
 	return dataObj
 }
 
@@ -147,27 +157,22 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 	defer C.free(unsafe.Pointer(resource))
 
 	ccon := coll.Con.GetCcon()
-	defer coll.Con.ReturnCcon(ccon)
 
 	if status := C.gorods_create_dataobject(path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, &handle, ccon, &errMsg); status != 0 {
+		coll.Con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
+	coll.Con.ReturnCcon(ccon)
 
-	dataObj := new(DataObj)
+	if err := coll.Refresh(); err != nil {
+		return nil, err
+	}
 
-	dataObj.Type = DataObjType
-	dataObj.Col = coll
-	dataObj.Con = dataObj.Col.Con
-	dataObj.Offset = 0
-	dataObj.Name = opts.Name
-	dataObj.Path = C.GoString(path)
-	dataObj.Size = opts.Size
-	dataObj.chandle = handle
-	dataObj.OpenedAs = C.int(-1)
-
-	coll.add(dataObj)
-
-	return dataObj, nil
+	if do, err := getDataObj(C.GoString(path), coll.Con); err != nil {
+		return nil, err
+	} else {
+		return do, nil
+	}
 
 }
 
@@ -255,6 +260,11 @@ func (obj *DataObj) GetCol() *Collection {
 // GetOwnerName returns the owner name of the data object
 func (obj *DataObj) GetOwnerName() string {
 	return obj.OwnerName
+}
+
+// GetOwnerName returns the owner name of the data object
+func (obj *DataObj) GetOwner() *User {
+	return obj.Owner
 }
 
 // GetCreateTime returns the create time of the data object

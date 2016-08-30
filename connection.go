@@ -225,33 +225,28 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
-	Type int
-
-	Host string
-	Port int
-	Zone string
-
+	Type     int
+	Host     string
+	Port     int
+	Zone     string
 	Username string
 	Password string
 	Ticket   string
-
 	FastInit bool
 }
 
 type Connection struct {
-	ccon *C.rcComm_t
-
+	ccon       *C.rcComm_t
 	cconBuffer chan *C.rcComm_t
+	users      Users
+	groups     Groups
+	zones      Zones
+	resources  Resources
 
 	Connected  bool
 	Init       bool
 	Options    *ConnectionOptions
 	OpenedObjs IRodsObjs
-
-	users     Users
-	groups    Groups
-	zones     Zones
-	resources Resources
 }
 
 // New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
@@ -558,38 +553,57 @@ func (con *Connection) GetResources() (Resources, error) {
 	return con.resources, nil
 }
 
-func (con *Connection) CreateGroup(name string) error {
+func (con *Connection) CreateGroup(name string) (*Group, error) {
 
 	if z, err := con.GetLocalZone(); err != nil {
-		return err
+		return nil, err
 	} else {
 		if err := createGroup(name, z, con); err != nil {
-			return err
+			return nil, err
 		}
 
 		if err := con.RefreshGroups(); err != nil {
-			return err
+			return nil, err
 		}
+
+		if grps, err := con.GetGroups(); err != nil {
+			return nil, err
+		} else {
+			if grp := grps.FindByName(name); grp != nil {
+				return grp, nil
+			} else {
+				return nil, newError(Fatal, fmt.Sprintf("iRods CreateGroup %v Failed: %v", name, "Unable to locate newly created group in cache"))
+			}
+		}
+
 	}
 
-	return nil
 }
 
-func (con *Connection) CreateUser(name string, typ int) error {
+func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 
 	if z, err := con.GetLocalZone(); err != nil {
-		return err
+		return nil, err
 	} else {
 		if err := createUser(name, z.GetName(), typ, con); err != nil {
-			return err
+			return nil, err
 		}
 
 		if err := con.RefreshUsers(); err != nil {
-			return err
+			return nil, err
+		}
+
+		if usrs, err := con.GetUsers(); err != nil {
+			return nil, err
+		} else {
+			if usr := usrs.FindByName(name); usr != nil {
+				return usr, nil
+			} else {
+				return nil, newError(Fatal, fmt.Sprintf("iRods CreateUser %v Failed: %v", name, "Unable to locate newly created user in cache"))
+			}
 		}
 	}
 
-	return nil
 }
 
 func (con *Connection) RefreshResources() error {
@@ -597,24 +611,7 @@ func (con *Connection) RefreshResources() error {
 	if resources, err := con.FetchResources(); err != nil {
 		return err
 	} else {
-		//if len(con.resources) == 0 {
 		con.resources = resources
-		// } else {
-		// 	// loop new, add to old if not found
-		// 	for _, r := range resources {
-		// 		if found := con.resources.FindByName(r.GetName()); found == nil {
-		// 			con.resources = append(con.resources, r)
-		// 		}
-		// 	}
-
-		// 	// loop old, remove from self if not found in new
-		// 	for _, r := range con.resources {
-		// 		if found := resources.FindByName(r.GetName()); found == nil {
-		// 			r.ParentSlice = &con.resources
-		// 			r.Remove()
-		// 		}
-		// 	}
-		// }
 	}
 
 	return nil
@@ -625,25 +622,7 @@ func (con *Connection) RefreshUsers() error {
 	if users, err := con.FetchUsers(); err != nil {
 		return err
 	} else {
-		//if len(con.users) == 0 {
 		con.users = users
-		// } else {
-		// 	// loop new, add to old if not found
-		// 	for _, u := range users {
-		// 		if found := con.users.FindByName(u.GetName()); found == nil {
-		// 			con.users = append(con.users, u)
-		// 		}
-		// 	}
-
-		// 	// loop old, remove from self if not found in new
-		// 	for _, u := range con.users {
-		// 		if found := users.FindByName(u.GetName()); found == nil {
-		// 			u.ParentSlice = &con.users
-		// 			u.Remove()
-		// 		}
-		// 	}
-		// }
-
 	}
 
 	return nil
@@ -654,24 +633,7 @@ func (con *Connection) RefreshZones() error {
 	if zones, err := con.FetchZones(); err != nil {
 		return err
 	} else {
-		//if len(con.zones) == 0 {
 		con.zones = zones
-		// } else {
-		// 	// loop new, add to old if not found
-		// 	for _, z := range zones {
-		// 		if found := con.zones.FindByName(z.GetName()); found == nil {
-		// 			con.zones = append(con.zones, z)
-		// 		}
-		// 	}
-
-		// 	// loop old, remove from self if not found in new
-		// 	for _, z := range con.zones {
-		// 		if found := zones.FindByName(z.GetName()); found == nil {
-		// 			z.ParentSlice = &con.zones
-		// 			z.Remove()
-		// 		}
-		// 	}
-		// }
 	}
 
 	return nil
@@ -682,24 +644,7 @@ func (con *Connection) RefreshGroups() error {
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
 	} else {
-		//if len(con.groups) == 0 {
 		con.groups = groups
-		// } else {
-		// 	// loop new, add to old if not found
-		// 	for _, g := range groups {
-		// 		if found := con.groups.FindByName(g.GetName()); found == nil {
-		// 			con.groups = append(con.groups, g)
-		// 		}
-		// 	}
-
-		// 	// loop old, remove from self if not found in new
-		// 	for _, g := range con.groups {
-		// 		if found := groups.FindByName(g.GetName()); found == nil {
-		// 			g.ParentSlice = &con.groups
-		// 			g.Remove()
-		// 		}
-		// 	}
-		// }
 	}
 
 	return nil
