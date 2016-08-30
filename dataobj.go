@@ -267,6 +267,42 @@ func (obj *DataObj) GetOwner() *User {
 	return obj.Owner
 }
 
+func (obj *DataObj) GetResource() *Resource {
+	return obj.Resource
+}
+
+func (obj *DataObj) GetDataId() string {
+	return obj.DataId
+}
+
+func (obj *DataObj) GetPhyPath() string {
+	return obj.PhyPath
+}
+
+func (obj *DataObj) GetReplNum() int {
+	return obj.ReplNum
+}
+
+func (obj *DataObj) GetRescHier() string {
+	return obj.RescHier
+}
+
+func (obj *DataObj) GetReplStatus() int {
+	return obj.ReplStatus
+}
+
+func (obj *DataObj) GetChecksum() string {
+	return obj.Checksum
+}
+
+func (obj *DataObj) GetOffset() int64 {
+	return obj.Offset
+}
+
+func (obj *DataObj) GetSize() int64 {
+	return obj.Size
+}
+
 // GetCreateTime returns the create time of the data object
 func (obj *DataObj) GetCreateTime() time.Time {
 	return obj.CreateTime
