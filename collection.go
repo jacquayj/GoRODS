@@ -32,6 +32,7 @@ type Collection struct {
 	Parent         *Collection
 
 	OwnerName  string
+	Owner      *User
 	CreateTime time.Time
 	ModifyTime time.Time
 
@@ -88,9 +89,17 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	col.CreateTime = cTimeToTime(data.createTime)
 	col.ModifyTime = cTimeToTime(data.modifyTime)
 
-	pathSlice := strings.Split(col.Path, "/")
+	col.Name = filepath.Base(col.Path)
 
-	col.Name = pathSlice[len(pathSlice)-1]
+	if usrs, err := col.Con.GetUsers(); err != nil {
+		return nil, err
+	} else {
+		if u := usrs.FindByName(col.OwnerName); u != nil {
+			col.Owner = u
+		} else {
+			return nil, newError(Fatal, fmt.Sprintf("iRods initCollection Failed: Unable to locate user in cache"))
+		}
+	}
 
 	if col.Recursive {
 
@@ -105,35 +114,48 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 // getCollection initializes specified collection located at startPath using gorods.Connection.
 // Could be considered alias of Connection.Collection()
 func getCollection(opts CollectionOptions, con *Connection) (*Collection, error) {
-	col := new(Collection)
 
-	col.Options = &opts
+	opts.Path = strings.TrimRight(opts.Path, "/")
 
-	col.chandle = C.int(-1)
-	col.Type = CollectionType
-	col.Con = con
-	col.Path = opts.Path
-	col.Recursive = opts.Recursive
-	col.TrimRepls = opts.TrimRepls
+	// Get parent collection path
+	parentColPath := filepath.Dir(opts.Path)
+	colName := filepath.Base(opts.Path)
 
-	if col.Path[len(col.Path)-1] == '/' {
-		col.Path = col.Path[:len(col.Path)-1]
-	}
+	// Setup opts for parent
+	parentOpts := opts
+	parentOpts.Path = parentColPath
+	parentOpts.Recursive = false
 
-	pathSlice := strings.Split(col.Path, "/")
-	col.Name = pathSlice[len(pathSlice)-1]
+	parentCol := new(Collection)
+	parentCol.Options = &parentOpts
+	parentCol.chandle = C.int(-1)
+	parentCol.Type = CollectionType
+	parentCol.Con = con
+	parentCol.Path = parentOpts.Path
+	parentCol.Recursive = parentOpts.Recursive
+	parentCol.TrimRepls = parentOpts.TrimRepls
 
-	if col.Recursive {
-		if er := col.init(); er != nil {
-			return nil, er
-		}
+	// Extract name
+	parentCol.Name = filepath.Base(parentCol.Path)
+
+	// Open and read parent collection
+	if er := parentCol.init(); er != nil {
+		return nil, er
 	} else {
-		if er := col.Open(); er != nil {
-			return nil, er
+		if col := parentCol.Cd(colName); col != nil {
+			if opts.Recursive {
+				col.Recursive = true
+				if er := col.init(); er != nil {
+					return nil, er
+				}
+			}
+
+			return col, nil
+		} else {
+			return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: this error should never happen"))
 		}
 	}
 
-	return col, nil
 }
 
 // CreateCollection creates a collection in the specified collection using provided options. Returns the newly created collection object.
@@ -313,6 +335,10 @@ func (col *Collection) GetPath() string {
 // GetOwnerName returns the owner name of the collection
 func (col *Collection) GetOwnerName() string {
 	return col.OwnerName
+}
+
+func (col *Collection) GetOwner() *User {
+	return col.Owner
 }
 
 // GetCreateTime returns the create time of the collection
