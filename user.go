@@ -329,6 +329,28 @@ func (usr *User) RemoveFromGroup(grp interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
 }
 
+func (usr *User) ChangePassword(newPass string) error {
+	var (
+		err *C.char
+	)
+
+	cUserName := C.CString(usr.GetName())
+	cNewPass := C.CString(newPass)
+	cMyPass := C.CString(usr.GetCon().Options.Password)
+	defer C.free(unsafe.Pointer(cUserName))
+	defer C.free(unsafe.Pointer(cNewPass))
+	defer C.free(unsafe.Pointer(cMyPass))
+
+	ccon := usr.GetCon().GetCcon()
+	defer usr.GetCon().ReturnCcon(ccon)
+
+	if status := C.gorods_change_user_password(cUserName, cNewPass, cMyPass, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods ChangePassword Failed: %v", C.GoString(err)))
+	}
+
+	return nil
+}
+
 func deleteUser(userName string, zone *Zone, con *Connection) error {
 	var (
 		err *C.char

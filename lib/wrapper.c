@@ -699,7 +699,35 @@ int gorods_create_user(char* userName, char* zoneName, char* type, rcComm_t *con
     return status;
 }
 
+int gorods_change_user_password(char* userName, char* newPassword, char* myPassword, rcComm_t *conn, char** err) {
 
+    char buf0[MAX_PASSWORD_LEN + 10];
+    char buf1[MAX_PASSWORD_LEN + 10];
+    char buf2[MAX_PASSWORD_LEN + 100];
+
+    int i, len, lcopy;
+    char *key2;
+    /* this is a random string used to pad, arbitrary, but must match
+       the server side: */
+    char rand[] = "1gCBizHWbwIYyWLoysGzTe6SyzqFKMniZX05faZHWAwQKXf6Fs";
+
+    strncpy(buf0, newPassword, MAX_PASSWORD_LEN);
+    len = strlen(newPassword);
+    lcopy = MAX_PASSWORD_LEN - 10 - len;
+    
+    if ( lcopy > 15 ) { /* server will look for 15 characters of random string */
+        strncat(buf0, rand, lcopy);
+    }
+
+    strncpy(buf1, myPassword, MAX_PASSWORD_LEN);
+
+    key2 = getSessionSignatureClientside();
+    obfEncodeByKeyV2(buf0, buf1, key2, buf2);
+    newPassword = buf2;
+        
+    return gorods_general_admin(0, "modify", "user", userName, "password", newPassword, "", "", "", "", "", 0, conn, err);
+
+}
 
 int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
               char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
@@ -718,12 +746,6 @@ int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, cha
         arg3 = "--dryrun";
     }
 
-    // where arg[0] == "modify" && arg[1] == "group"
-    // args[0] = userAdminInp->arg2; /* groupname */
-    // args[1] = userAdminInp->arg3; /* option */
-    // args[2] = userAdminInp->arg4; /* username */
-    // args[3] = userAdminInp->arg5; /* zonename */
-
     generalAdminInp.arg0 = arg0;
     generalAdminInp.arg1 = arg1;
     generalAdminInp.arg2 = arg2;
@@ -736,7 +758,7 @@ int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, cha
     generalAdminInp.arg9 = arg9;
 
     status = rcGeneralAdmin(conn, &generalAdminInp);
-    //lastCommandStatus = status;
+
     funcName = "rcGeneralAdmin";
 
     if ( userOption == 1 && status == SYS_NO_API_PRIV ) {
@@ -778,7 +800,7 @@ int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, cha
         //rodsLog( LOG_ERROR, "%s failed with error %d %s %s", funcName, status, myName, mySubName );
         
     	// Need to change error msg depending on the args, since this is a general purpose func
-        *err = "General failure, does the user already belong to the group?";
+        *err = "General failure";
 
         if ( status == CAT_INVALID_USER_TYPE ) {
 

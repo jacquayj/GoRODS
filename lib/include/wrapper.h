@@ -59,6 +59,7 @@ int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupNa
 
 int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err);
 int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_change_user_password(char* userName, char* newPassword, char* myPassword, rcComm_t *conn, char** err);
 
 int gorods_get_resources(rcComm_t* conn, goRodsStringResult_t* result, char** err);
 int gorods_get_resource(char* rescName, rcComm_t* conn, goRodsStringResult_t* result, char** err);
