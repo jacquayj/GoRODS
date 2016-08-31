@@ -12,6 +12,8 @@ import "C"
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -292,7 +294,6 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		}
 	}
 
-	freeOPass := false
 	ipassword = C.CString(con.Options.Password)
 	defer C.free(unsafe.Pointer(ipassword))
 
@@ -300,23 +301,89 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		con.Options.AuthType = PasswordAuth // Options: PasswordAuth PAMAuth
 	}
 
+	var (
+		pamPassFile *os.File
+		pamFileErr  error
+		size        int64
+	)
+
 	if con.Options.AuthType == PAMAuth {
-		if status = C.gorods_clientLoginPam(con.ccon, ipassword, 24, &opassword, &errMsg); status != 0 {
-			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginPam error, invalid password?"))
+
+		// Check to see if PAMPassFile is set
+		if con.Options.PAMPassFile == "" {
+			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Please specify PAMPassFile field, I need a place to store the temp access token"))
 		}
 
-		freeOPass = true
+		// Does the file/dir exist?
+		if finfo, err := os.Stat(con.Options.PAMPassFile); err == nil {
+			if !finfo.IsDir() {
+				// Open file here
+				pamPassFile, pamFileErr = os.Open(con.Options.PAMPassFile)
+				if pamFileErr != nil {
+					return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Problem opening PAMPassFile at %v", con.Options.PAMPassFile))
+				}
+
+				size = finfo.Size()
+			} else {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: PAMPassFile is a directory durp"))
+			}
+		} else {
+			// Create file here
+			pamPassFile, pamFileErr = os.Create(con.Options.PAMPassFile)
+			if pamFileErr != nil {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Problem creating PAMPassFile at %v", con.Options.PAMPassFile))
+			}
+
+		}
+
+		if size > 0 {
+			fileBtz := make([]byte, size)
+			if _, er := pamPassFile.Read(fileBtz); er != nil {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Problem reading PAMPassFile at %v", con.Options.PAMPassFile))
+			}
+			fileStr := string(fileBtz)
+
+			fileSplit := strings.Split(fileStr, ":")
+
+			//unixTimeStamp := fileSplit[0]
+			pamPassword := fileSplit[1]
+
+			// extract info from file, if valid and not expired, use it
+			// Need to check if valid
+			opassword = C.CString(pamPassword)
+			defer C.free(unsafe.Pointer(opassword))
+		} else {
+			if status = C.gorods_clientLoginPam(con.ccon, ipassword, 1, &opassword, &errMsg); status != 0 {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginPam error, invalid password?"))
+			}
+
+			defer C.free(unsafe.Pointer(opassword))
+
+			if er := pamPassFile.Truncate(0); er != nil {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to write new password to PAMPassFile"))
+			}
+
+			pamPassFormat := strconv.Itoa(int(time.Now().Unix())) + ":" + C.GoString(opassword)
+
+			if _, er := pamPassFile.WriteString(pamPassFormat); er != nil {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to write new password to PAMPassFile"))
+			}
+		}
 
 	} else if con.Options.AuthType == PasswordAuth {
 		opassword = ipassword
 	}
 
 	if status = C.clientLoginWithPassword(con.ccon, opassword); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, invalid password?"))
-	}
 
-	if freeOPass {
-		C.free(unsafe.Pointer(opassword))
+		// Failure, clear out file for another try
+		if con.Options.AuthType == PAMAuth {
+			if er := pamPassFile.Truncate(0); er != nil {
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to truncate PAMPassFile"))
+			}
+		}
+
+		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, invalid password?"))
 	}
 
 	con.cconBuffer = make(chan *C.rcComm_t, 1)
