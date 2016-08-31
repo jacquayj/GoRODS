@@ -48,8 +48,9 @@ typedef struct {
 } goRodsPathResult_t;
 
 void* gorods_malloc(size_t size);
-int gorods_connect(rcComm_t** conn, char* password, char** err);
-int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
+int gorods_connect(rcComm_t** conn, char** err);
+int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char** err);
+int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPass, char** err) ;
 
 int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err);
 void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);

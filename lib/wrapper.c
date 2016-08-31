@@ -15,15 +15,14 @@ void* gorods_malloc(size_t size) {
 	return mem;
 }
 
-int gorods_connect(rcComm_t** conn, char* password, char** err) {
-
+int gorods_connect(rcComm_t** conn, char** err) {
     rodsEnv myEnv;
     int status;
 
     status = getRodsEnv(&myEnv);
     if ( status != 0 ) {
         *err = "getRodsEnv failed";
-        return -1;
+        return status;
     }
 
     rErrMsg_t errMsg;
@@ -33,19 +32,78 @@ int gorods_connect(rcComm_t** conn, char* password, char** err) {
         *err = "rcConnect failed";
         return -1;
     }
-    
-    if ( password != NULL ) {
-    	status = clientLoginWithPassword(*conn, password);
-    } else {
-    	status = clientLogin(*conn, 0, 0);
-    }
-    
-    if ( status != 0 ) {
-        *err = "clientLogin failed. Invalid password?";
+
+    return 0;
+}
+
+int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char** err) {
+
+    rErrMsg_t errMsg;
+    *conn = rcConnect(host, port, username, zone, 1, &errMsg);
+
+    if ( !*conn ) {
+        *err = "rcConnect failed";
         return -1;
     }
 
     return 0;
+}
+
+int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPass, char** err) {
+
+    pamAuthRequestInp_t pamAuthReqInp;
+    pamAuthRequestOut_t *pamAuthReqOut = NULL;
+    
+    int status = 0;
+    int doStty = 0;
+    int len = 0;
+    char myPassword[MAX_PASSWORD_LEN + 2];
+    char userName[NAME_LEN * 2];
+
+    strncpy(userName, conn->proxyUser.userName, NAME_LEN);
+    
+    if ( password[0] != '\0' ) {
+        strncpy(myPassword, password, sizeof(myPassword));
+    }
+
+    len = strlen(myPassword);
+    if ( myPassword[len - 1] == '\n' ) {
+        myPassword[len - 1] = '\0'; /* remove trailing \n */
+    }
+
+    /* since PAM requires a plain text password to be sent
+    to the server, ask the server to encrypt the current
+    communication socket. */
+    status = sslStart(conn);
+    if ( status ) {
+        *err = "sslStart error";
+        return status;
+    }
+
+    memset(&pamAuthReqInp, 0, sizeof(pamAuthReqInp));
+
+    pamAuthReqInp.pamPassword = myPassword;
+    pamAuthReqInp.pamUser = userName;
+    pamAuthReqInp.timeToLive = ttl;
+
+    status = rcPamAuthRequest(conn, &pamAuthReqInp, &pamAuthReqOut);
+    if ( status ) {
+        *err = "rcPamAuthRequest error";
+        sslEnd(conn);
+        return status;
+    }
+
+    memset(myPassword, 0, sizeof(myPassword));
+
+    /* can turn off SSL now. Have to request the server to do so.
+    Will also ignore any error returns, as future socket ops
+    are probably unaffected. */
+    sslEnd(conn);
+
+
+    *pamPass = strcpy(gorods_malloc(strlen(pamAuthReqOut->irodsPamPassword) + 1), pamAuthReqOut->irodsPamPassword);
+
+    return status;
 }
 
 int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
@@ -68,30 +126,7 @@ int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
     return status;
 }
 
-int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err) {
-    int status;
 
-    rErrMsg_t errMsg;
-    *conn = rcConnect(host, port, username, zone, 1, &errMsg);
-
-    if ( !*conn ) {
-        *err = "rcConnect failed";
-        return -1;
-    }
-    
-    if ( password != NULL ) {
-    	status = clientLoginWithPassword(*conn, password);
-    } else {
-    	status = clientLogin(*conn, 0, 0);
-    }
-    
-    if ( status != 0 ) {
-        *err = "clientLogin failed. Invalid password?";
-        return -1;
-    }
-
-    return 0;
-}
 
 int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* conn, char** err) {
 	collInp_t collOpenInp; 
@@ -365,6 +400,11 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
 
     if ( status == CAT_NO_ROWS_FOUND ) {
         *err = "No rows found";
+        return status;
+    }
+
+    if ( status == SYS_NO_API_PRIV ) {
+        *err = "rcSimpleQuery permission denied";
         return status;
     }
 

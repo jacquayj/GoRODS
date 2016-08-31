@@ -48,6 +48,8 @@ const (
 	Own
 	Local
 	Remote
+	PAMAuth
+	PasswordAuth
 )
 
 // IRodsObj is a generic interface used to detect the object type and access common fields
@@ -225,14 +227,16 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 
 // ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
-	Type     int
-	Host     string
-	Port     int
-	Zone     string
-	Username string
-	Password string
-	Ticket   string
-	FastInit bool
+	Type        int
+	AuthType    int
+	PAMPassFile string
+	Host        string
+	Port        int
+	Zone        string
+	Username    string
+	Password    string
+	Ticket      string
+	FastInit    bool
 }
 
 type Connection struct {
@@ -260,16 +264,11 @@ func New(opts ConnectionOptions) (*Connection, error) {
 	con.Options = &opts
 
 	var (
-		status   C.int
-		errMsg   *C.char
-		password *C.char
+		status    C.int
+		errMsg    *C.char
+		ipassword *C.char
+		opassword *C.char
 	)
-
-	if con.Options.Password != "" {
-		password = C.CString(con.Options.Password)
-
-		defer C.free(unsafe.Pointer(password))
-	}
 
 	// Are we passing env values?
 	if con.Options.Type == UserDefined {
@@ -284,9 +283,40 @@ func New(opts ConnectionOptions) (*Connection, error) {
 
 		// BUG(jjacquay712): iRods C API code outputs errors messages, need to implement connect wrapper (gorods_connect_env) from a lower level to suppress this output
 		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
-		status = C.gorods_connect_env(&con.ccon, host, port, username, zone, password, &errMsg)
+		if status = C.gorods_connect_env(&con.ccon, host, port, username, zone, &errMsg); status != 0 {
+			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+		}
 	} else {
-		status = C.gorods_connect(&con.ccon, password, &errMsg)
+		if status = C.gorods_connect(&con.ccon, &errMsg); status != 0 {
+			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+		}
+	}
+
+	freeOPass := false
+	ipassword = C.CString(con.Options.Password)
+	defer C.free(unsafe.Pointer(ipassword))
+
+	if con.Options.AuthType == 0 {
+		con.Options.AuthType = PasswordAuth // Options: PasswordAuth PAMAuth
+	}
+
+	if con.Options.AuthType == PAMAuth {
+		if status = C.gorods_clientLoginPam(con.ccon, ipassword, 24, &opassword, &errMsg); status != 0 {
+			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginPam error, invalid password?"))
+		}
+
+		freeOPass = true
+
+	} else if con.Options.AuthType == PasswordAuth {
+		opassword = ipassword
+	}
+
+	if status = C.clientLoginWithPassword(con.ccon, opassword); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, invalid password?"))
+	}
+
+	if freeOPass {
+		C.free(unsafe.Pointer(opassword))
 	}
 
 	con.cconBuffer = make(chan *C.rcComm_t, 1)
