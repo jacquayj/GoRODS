@@ -659,9 +659,8 @@ func (con *Connection) init() error {
 			//return err
 		}
 
-		// user must be rodsadmin
 		if err := con.RefreshResources(); err != nil {
-			//return err
+			return err
 		}
 
 		// user must be rodsadmin
@@ -831,21 +830,16 @@ func (con *Connection) FetchGroups() (Groups, error) {
 
 	response := make(Groups, 0)
 
-	if z, err := con.GetLocalZone(); err != nil {
-		return nil, err
-	} else {
-
-		for _, groupName := range slice {
-			if grp, er := initGroup(C.GoString(groupName), z, con); er == nil {
-				response = append(response, grp)
-			} else {
-				return nil, er
-			}
-
+	for _, groupName := range slice {
+		if grp, er := initGroup(C.GoString(groupName), con); er == nil {
+			response = append(response, grp)
+		} else {
+			return nil, er
 		}
 
-		return response, nil
 	}
+
+	return response, nil
 
 }
 
@@ -921,9 +915,9 @@ func (con *Connection) FetchResources() (Resources, error) {
 
 	ccon := con.GetCcon()
 
-	if status := C.gorods_get_resources(ccon, &result, &err); status != 0 {
+	if status := C.gorods_get_resources_new(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Resources Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRods  Get Resources Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
@@ -940,16 +934,12 @@ func (con *Connection) FetchResources() (Resources, error) {
 
 	for _, cResourceName := range slice {
 
-		resourceNames := strings.Split(strings.Trim(C.GoString(cResourceName), " \n"), "\n")
+		name := C.GoString(cResourceName)
 
-		for _, name := range resourceNames {
-
-			if resc, err := initResource(name, con); err == nil {
-				response = append(response, resc)
-			} else {
-				return nil, err
-			}
-
+		if resc, err := initResource(name, con); err == nil {
+			response = append(response, resc)
+		} else {
+			return nil, err
 		}
 
 	}

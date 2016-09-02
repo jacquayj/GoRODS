@@ -81,8 +81,14 @@ func (rescs *Resources) Remove(index int) {
 func initResource(name string, con *Connection) (*Resource, error) {
 	resc := new(Resource)
 
+	zne, er := con.GetLocalZone()
+	if er != nil {
+		return nil, er
+	}
+
 	resc.Con = con
 	resc.Name = name
+	resc.Zone = zne
 
 	return resc, nil
 }

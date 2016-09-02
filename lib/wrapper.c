@@ -922,6 +922,98 @@ void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t*
     }
 }
 
+
+
+int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+
+    genQueryInp_t genQueryInp;
+    genQueryOut_t *genQueryOut;
+    int i1a[20];
+    int i1b[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int i2a[20];
+    char *condVal[10];
+    char v1[BIG_STR];
+    int i, status;
+
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    i = 0;
+    i1a[i++] = COL_R_RESC_NAME;
+
+    genQueryInp.selectInp.inx = i1a;
+    genQueryInp.selectInp.value = i1b;
+    genQueryInp.selectInp.len = i;
+
+    genQueryInp.sqlCondInp.inx = i2a;
+    genQueryInp.sqlCondInp.value = condVal;
+    
+    // =-=-=-=-=-=-=-
+    // JMC - backport 4629
+    i2a[0] = COL_R_RESC_NAME;
+    sprintf(v1, "!='%s'", BUNDLE_RESC); /* all but bundleResc */
+    condVal[0] = v1;
+    genQueryInp.sqlCondInp.len = 1;
+    // =-=-=-=-=-=-=-
+
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+    if ( status == CAT_NO_ROWS_FOUND ) {
+       
+        i1a[0] = COL_R_RESC_INFO;
+        genQueryInp.selectInp.len = 1;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+        if ( status == 0 ) {
+            *err = "None";
+            return -1;
+        }
+
+        if ( status == CAT_NO_ROWS_FOUND ) {
+            *err = "Resource does not exist";
+            return status;
+        }
+    }
+
+    gorods_get_resource_result(conn, genQueryOut, result);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        
+
+        gorods_get_resource_result(conn, genQueryOut, result);
+    }
+
+    return 0;
+}
+
+
+int gorods_get_resource_result(rcComm_t *Conn, genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
+
+    int i, j;
+
+    result->size = genQueryOut->rowCnt;
+    result->strArr = gorods_malloc(result->size * sizeof(char*));
+    
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+       
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            char *tResult;
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+
+            result->strArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+        }
+    }
+
+    return 0;
+}
+
+
+
 int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err) {
 
 	int status;

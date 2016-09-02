@@ -34,13 +34,18 @@ type Group struct {
 type Groups []*Group
 
 // initGroup
-func initGroup(name string, zne *Zone, con *Connection) (*Group, error) {
+func initGroup(name string, con *Connection) (*Group, error) {
 
 	grp := new(Group)
 
 	grp.Name = name
-	grp.Zone = zne
 	grp.Con = con
+
+	if z, err := con.GetLocalZone(); err != nil {
+		return nil, err
+	} else {
+		grp.Zone = z
+	}
 
 	return grp, nil
 }
@@ -127,12 +132,7 @@ func (grps Groups) FindByName(name string, con *Connection) *Group {
 		}
 	}
 
-	zne, err := con.GetLocalZone()
-	if err != nil {
-		return nil
-	}
-
-	grp, _ := initGroup(name, zne, con)
+	grp, _ := initGroup(name, con)
 
 	return grp
 }
