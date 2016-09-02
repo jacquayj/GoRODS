@@ -325,7 +325,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 			defer C.free(unsafe.Pointer(opassword))
 		} else {
 
-			// There is a file path set, save password to FS
+			// There is a file path set, save password to FS for subsequent use
 
 			// Does the file/dir exist?
 			if finfo, err := os.Stat(con.Options.PAMPassFile); err == nil {
@@ -350,6 +350,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 
 			}
 
+			// Is this an old password file?
 			if size > 0 {
 
 				fileBtz := make([]byte, size)
@@ -379,6 +380,7 @@ func New(opts ConnectionOptions) (*Connection, error) {
 
 			} else {
 
+				// Nope, it's new. Write to the file
 				opassword, pamFileErr = con.fetchAndWritePAMPass(pamPassFile, ipassword)
 				if pamFileErr != nil {
 					return nil, pamFileErr
@@ -398,9 +400,9 @@ func New(opts ConnectionOptions) (*Connection, error) {
 		// 	fmt.Printf("expired:%v\n", pamPassFile.Name())
 		// }
 
-		// Failure, clear out file for another try. We really should never get to this edge case since expired passwords are handled above
 		if con.Options.AuthType == PAMAuth {
 
+			// Failure, clear out file for another try. We really should never get to this edge case since expired passwords are handled above
 			if er := pamPassFile.Truncate(int64(0)); er != nil {
 				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to truncate PAMPassFile: %v", er))
 			}
@@ -652,16 +654,19 @@ func (con *Connection) init() error {
 	if !con.Init {
 		con.Init = true
 
+		// user must be rodsadmin
 		if err := con.RefreshZones(); err != nil {
-			return err
+			//return err
 		}
 
+		// user must be rodsadmin
 		if err := con.RefreshResources(); err != nil {
-			return err
+			//return err
 		}
 
+		// user must be rodsadmin
 		if err := con.RefreshUsers(); err != nil {
-			return err
+			//return err
 		}
 
 		if err := con.RefreshGroups(); err != nil {
@@ -717,7 +722,7 @@ func (con *Connection) CreateGroup(name string) (*Group, error) {
 		if grps, err := con.GetGroups(); err != nil {
 			return nil, err
 		} else {
-			if grp := grps.FindByName(name); grp != nil {
+			if grp := grps.FindByName(name, con); grp != nil {
 				return grp, nil
 			} else {
 				return nil, newError(Fatal, fmt.Sprintf("iRods CreateGroup %v Failed: %v", name, "Unable to locate newly created group in cache"))
@@ -744,7 +749,7 @@ func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 		if usrs, err := con.GetUsers(); err != nil {
 			return nil, err
 		} else {
-			if usr := usrs.FindByName(name); usr != nil {
+			if usr := usrs.FindByName(name, con); usr != nil {
 				return usr, nil
 			} else {
 				return nil, newError(Fatal, fmt.Sprintf("iRods CreateUser %v Failed: %v", name, "Unable to locate newly created user in cache"))
@@ -826,16 +831,21 @@ func (con *Connection) FetchGroups() (Groups, error) {
 
 	response := make(Groups, 0)
 
-	for _, groupName := range slice {
-		if grp, err := initGroup(C.GoString(groupName), con); err == nil {
-			response = append(response, grp)
-		} else {
-			return nil, err
+	if z, err := con.GetLocalZone(); err != nil {
+		return nil, err
+	} else {
+
+		for _, groupName := range slice {
+			if grp, er := initGroup(C.GoString(groupName), z, con); er == nil {
+				response = append(response, grp)
+			} else {
+				return nil, er
+			}
+
 		}
 
+		return response, nil
 	}
-
-	return response, nil
 
 }
 
@@ -881,7 +891,7 @@ func (con *Connection) FetchUsers() (Users, error) {
 			if zones, err := con.GetZones(); err != nil {
 				return nil, err
 			} else {
-				if zne := zones.FindByName(zonename); zne != nil {
+				if zne := zones.FindByName(zonename, con); zne != nil {
 					zone = zne
 				} else {
 					return nil, newError(Fatal, fmt.Sprintf("iRods Fetch Users Failed: Unable to locate zone in cache"))
@@ -1003,8 +1013,12 @@ func (con *Connection) GetLocalZone() (*Zone, error) {
 	ccon := con.GetCcon()
 
 	if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
-		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: %v", C.GoString(err)))
+		if con.Options.Zone != "" {
+			cZoneName = C.CString(con.Options.Zone)
+		} else {
+			con.ReturnCcon(ccon)
+			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: %v", C.GoString(err)))
+		}
 	}
 
 	con.ReturnCcon(ccon)
@@ -1016,7 +1030,7 @@ func (con *Connection) GetLocalZone() (*Zone, error) {
 	if znes, err := con.GetZones(); err != nil {
 		return nil, err
 	} else {
-		if zne := znes.FindByName(zoneName); zne == nil {
+		if zne := znes.FindByName(zoneName, con); zne == nil {
 			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: Local zone not found in cache"))
 		} else {
 			return zne, nil

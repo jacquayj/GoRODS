@@ -103,7 +103,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	if usrs, err := col.Con.GetUsers(); err != nil {
 		return nil
 	} else {
-		if u := usrs.FindByName(dataObj.OwnerName); u != nil {
+		if u := usrs.FindByName(dataObj.OwnerName, dataObj.Con); u != nil {
 			dataObj.Owner = u
 		}
 	}
@@ -199,16 +199,18 @@ func (obj *DataObj) initRW() error {
 func (obj *DataObj) GetACL() (ACLs, error) {
 
 	var (
-		result C.goRodsACLResult_t
-		err    *C.char
+		result   C.goRodsACLResult_t
+		err      *C.char
+		zoneHint *C.char
 	)
 
 	zone, zErr := obj.Con.GetLocalZone()
 	if zErr != nil {
 		return nil, zErr
+	} else {
+		zoneHint = C.CString(zone.GetName())
 	}
 
-	zoneHint := C.CString(zone.GetName())
 	cDataId := C.CString(obj.DataId)
 	defer C.free(unsafe.Pointer(cDataId))
 	defer C.free(unsafe.Pointer(zoneHint))

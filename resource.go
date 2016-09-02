@@ -258,7 +258,7 @@ func (resc *Resource) RefreshInfo() error {
 		if zones, err := resc.Con.GetZones(); err != nil {
 			return err
 		} else {
-			if zne := zones.FindByName(infoMap["zone_name"]); zne != nil {
+			if zne := zones.FindByName(infoMap["zone_name"], resc.Con); zne != nil {
 				resc.Zone = zne
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods Refresh Resource Info Failed: Unable to locate zone in cache"))

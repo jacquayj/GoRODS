@@ -15,7 +15,7 @@ type AccessObject interface {
 	GetName() string
 	GetZone() *Zone
 	GetComment() string
-	GetCreateTime() time.Time
+	GetCreateTime() (time.Time, error)
 	GetModifyTime() time.Time
 	GetId() int
 	GetType() int

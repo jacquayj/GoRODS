@@ -94,7 +94,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	if usrs, err := col.Con.GetUsers(); err != nil {
 		return nil, err
 	} else {
-		if u := usrs.FindByName(col.OwnerName); u != nil {
+		if u := usrs.FindByName(col.OwnerName, col.Con); u != nil {
 			col.Owner = u
 		} else {
 			return nil, newError(Fatal, fmt.Sprintf("iRods initCollection Failed: Unable to locate user in cache"))
@@ -281,17 +281,20 @@ func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool
 func (col *Collection) GetACL() (ACLs, error) {
 
 	var (
-		result C.goRodsACLResult_t
-		err    *C.char
+		result   C.goRodsACLResult_t
+		err      *C.char
+		zoneHint *C.char
+		collName *C.char
 	)
 
 	zone, zErr := col.Con.GetLocalZone()
 	if zErr != nil {
 		return nil, zErr
+	} else {
+		zoneHint = C.CString(zone.GetName())
 	}
 
-	zoneHint := C.CString(zone.GetName())
-	collName := C.CString(col.Path)
+	collName = C.CString(col.Path)
 	defer C.free(unsafe.Pointer(collName))
 	defer C.free(unsafe.Pointer(zoneHint))
 

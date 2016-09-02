@@ -32,13 +32,16 @@ type Zone struct {
 
 type Zones []*Zone
 
-func (znes Zones) FindByName(name string) *Zone {
+func (znes Zones) FindByName(name string, con *Connection) *Zone {
 	for _, zne := range znes {
 		if zne.Name == name {
 			return zne
 		}
 	}
-	return nil
+
+	zne, _ := initZone(name, con)
+
+	return zne
 }
 
 func (znes *Zones) Remove(index int) {

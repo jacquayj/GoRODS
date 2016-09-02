@@ -42,10 +42,6 @@ func initUser(name string, zone *Zone, con *Connection) (*User, error) {
 	usr.Zone = zone
 	usr.Con = con
 
-	// if err := usr.init(); err != nil {
-	// 	return nil, err
-	// }
-
 	return usr, nil
 }
 
@@ -73,9 +69,11 @@ func (usr *User) GetComment() string {
 	return usr.Comment
 }
 
-func (usr *User) GetCreateTime() time.Time {
-	usr.init()
-	return usr.CreateTime
+func (usr *User) GetCreateTime() (time.Time, error) {
+	if err := usr.init(); err != nil {
+		return usr.CreateTime, err
+	}
+	return usr.CreateTime, nil
 }
 
 func (usr *User) GetModifyTime() time.Time {
@@ -158,7 +156,7 @@ func (usr *User) RefreshInfo() error {
 		if zones, err := usr.Con.GetZones(); err != nil {
 			return err
 		} else {
-			if zne := zones.FindByName(infoMap["zone_name"]); zne != nil {
+			if zne := zones.FindByName(infoMap["zone_name"], usr.Con); zne != nil {
 				usr.Zone = zne
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods Refresh User Info Failed: Unable to locate zone in cache"))
@@ -182,13 +180,21 @@ func (usr *User) RefreshGroups() error {
 	return nil
 }
 
-func (usrs Users) FindByName(name string) *User {
+func (usrs Users) FindByName(name string, con *Connection) *User {
 	for _, usr := range usrs {
 		if usr.Name == name {
 			return usr
 		}
 	}
-	return nil
+
+	zne, err := con.GetLocalZone()
+	if err != nil {
+		return nil
+	}
+
+	usr, _ := initUser(name, zne, con)
+
+	return usr
 }
 
 func (usrs *Users) Remove(index int) {
@@ -236,7 +242,7 @@ func (usr *User) FetchGroups() (Groups, error) {
 			gName := C.GoString(groupName)
 
 			if gName != usr.Name {
-				grp := grps.FindByName(gName)
+				grp := grps.FindByName(gName, usr.Con)
 
 				if grp != nil {
 					response = append(response, grp)
