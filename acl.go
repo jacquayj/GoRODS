@@ -14,11 +14,11 @@ import (
 type AccessObject interface {
 	GetName() string
 	GetZone() *Zone
-	GetComment() string
+	GetComment() (string, error)
 	GetCreateTime() (time.Time, error)
-	GetModifyTime() time.Time
-	GetId() int
-	GetType() int
+	GetModifyTime() (time.Time, error)
+	GetId() (int, error)
+	GetType() (int, error)
 	GetCon() *Connection
 }
 

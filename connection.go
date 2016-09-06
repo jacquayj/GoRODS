@@ -759,7 +759,6 @@ func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 }
 
 func (con *Connection) RefreshResources() error {
-	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
 	if resources, err := con.FetchResources(); err != nil {
 		return err
 	} else {
@@ -770,7 +769,6 @@ func (con *Connection) RefreshResources() error {
 }
 
 func (con *Connection) RefreshUsers() error {
-	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
 	if users, err := con.FetchUsers(); err != nil {
 		return err
 	} else {
@@ -781,7 +779,6 @@ func (con *Connection) RefreshUsers() error {
 }
 
 func (con *Connection) RefreshZones() error {
-	// This function should attempt to refresh smart, modifying existing con.Users so pointers aren't broken
 	if zones, err := con.FetchZones(); err != nil {
 		return err
 	} else {
@@ -792,7 +789,6 @@ func (con *Connection) RefreshZones() error {
 }
 
 func (con *Connection) RefreshGroups() error {
-	// This function should attempt to refresh smart, modifying existing con.Groups so pointers aren't broken
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
 	} else {

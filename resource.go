@@ -123,93 +123,126 @@ func (resc *Resource) GetName() string {
 	return resc.Name
 }
 
-func (resc *Resource) GetComment() string {
-	resc.init()
-	return resc.Comment
+func (resc *Resource) GetComment() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.Comment, err
+	}
+	return resc.Comment, nil
 }
 
-func (resc *Resource) GetCreateTime() time.Time {
-	resc.init()
-	return resc.CreateTime
+func (resc *Resource) GetCreateTime() (time.Time, error) {
+	if err := resc.init(); err != nil {
+		return resc.CreateTime, err
+	}
+	return resc.CreateTime, nil
 }
 
-func (resc *Resource) GetModifyTime() time.Time {
-	resc.init()
-	return resc.ModifyTime
+func (resc *Resource) GetModifyTime() (time.Time, error) {
+	if err := resc.init(); err != nil {
+		return resc.ModifyTime, err
+	}
+	return resc.ModifyTime, nil
 }
 
-func (resc *Resource) GetId() int {
-	resc.init()
-	return resc.Id
+func (resc *Resource) GetId() (int, error) {
+	if err := resc.init(); err != nil {
+		return resc.Id, err
+	}
+	return resc.Id, nil
 }
 
-func (resc *Resource) GetType() int {
-	resc.init()
-	return resc.Type
+func (resc *Resource) GetType() (int, error) {
+	if err := resc.init(); err != nil {
+		return resc.Type, err
+	}
+	return resc.Type, nil
 }
 
-func (resc *Resource) GetContext() string {
-	resc.init()
-	return resc.Context
+func (resc *Resource) GetContext() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.Context, err
+	}
+	return resc.Context, nil
 }
 
-func (resc *Resource) GetClass() int {
-	resc.init()
-	return resc.Class
+func (resc *Resource) GetClass() (int, error) {
+	if err := resc.init(); err != nil {
+		return resc.Class, err
+	}
+	return resc.Class, nil
 }
 
-func (resc *Resource) GetChildren() string {
-	resc.init()
-	return resc.Children
+func (resc *Resource) GetChildren() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.Children, err
+	}
+	return resc.Children, nil
 }
 
-func (resc *Resource) GetFreeSpace() int {
-	resc.init()
-	return resc.FreeSpace
+func (resc *Resource) GetFreeSpace() (int, error) {
+	if err := resc.init(); err != nil {
+		return resc.FreeSpace, err
+	}
+	return resc.FreeSpace, nil
 }
 
-func (resc *Resource) GetInfo() string {
-	resc.init()
-	return resc.Info
+func (resc *Resource) GetInfo() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.Info, err
+	}
+	return resc.Info, nil
 }
 
-func (resc *Resource) GetStatus() string {
-	resc.init()
-	return resc.Status
+func (resc *Resource) GetStatus() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.Status, err
+	}
+	return resc.Status, nil
 }
 
-func (resc *Resource) GetParentStr() string {
-	resc.init()
-	return resc.ParentStr
+func (resc *Resource) GetParentStr() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.ParentStr, err
+	}
+	return resc.ParentStr, nil
 }
 
-func (resc *Resource) GetNet() string {
-	resc.init()
-	return resc.Net
+func (resc *Resource) GetNet() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.Net, err
+	}
+	return resc.Net, nil
 }
 
-func (resc *Resource) GetFreeSpaceTime() time.Time {
-	resc.init()
-	return resc.FreeSpaceTime
+func (resc *Resource) GetFreeSpaceTime() (time.Time, error) {
+	if err := resc.init(); err != nil {
+		return resc.FreeSpaceTime, err
+	}
+	return resc.FreeSpaceTime, nil
 }
 
-func (resc *Resource) GetObjCount() int {
-	resc.init()
-	return resc.ObjCount
+func (resc *Resource) GetObjCount() (int, error) {
+	if err := resc.init(); err != nil {
+		return resc.ObjCount, err
+	}
+	return resc.ObjCount, nil
 }
 
-func (resc *Resource) GetStorageType() string {
-	resc.init()
-	return resc.StorageType
+func (resc *Resource) GetStorageType() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.StorageType, err
+	}
+	return resc.StorageType, nil
 }
 
-func (resc *Resource) GetPhysPath() string {
-	resc.init()
-	return resc.PhysPath
+func (resc *Resource) GetPhysPath() (string, error) {
+	if err := resc.init(); err != nil {
+		return resc.PhysPath, err
+	}
+	return resc.PhysPath, nil
 }
 
 func (resc *Resource) GetZone() *Zone {
-	resc.init()
 	return resc.Zone
 }
 

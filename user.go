@@ -64,9 +64,11 @@ func (usr *User) GetZone() *Zone {
 	return usr.Zone
 }
 
-func (usr *User) GetComment() string {
-	usr.init()
-	return usr.Comment
+func (usr *User) GetComment() (string, error) {
+	if err := usr.init(); err != nil {
+		return usr.Comment, err
+	}
+	return usr.Comment, nil
 }
 
 func (usr *User) GetCreateTime() (time.Time, error) {
@@ -76,19 +78,25 @@ func (usr *User) GetCreateTime() (time.Time, error) {
 	return usr.CreateTime, nil
 }
 
-func (usr *User) GetModifyTime() time.Time {
-	usr.init()
-	return usr.ModifyTime
+func (usr *User) GetModifyTime() (time.Time, error) {
+	if err := usr.init(); err != nil {
+		return usr.ModifyTime, err
+	}
+	return usr.ModifyTime, nil
 }
 
-func (usr *User) GetId() int {
-	usr.init()
-	return usr.Id
+func (usr *User) GetId() (int, error) {
+	if err := usr.init(); err != nil {
+		return usr.Id, err
+	}
+	return usr.Id, nil
 }
 
-func (usr *User) GetType() int {
-	usr.init()
-	return usr.Type
+func (usr *User) GetType() (int, error) {
+	if err := usr.init(); err != nil {
+		return usr.Type, err
+	}
+	return usr.Type, nil
 }
 
 func (usr *User) GetCon() *Connection {

@@ -55,14 +55,14 @@ func (grp *Group) GetName() string {
 }
 
 func (grp *Group) GetZone() *Zone {
-	grp.init()
-
 	return grp.Zone
 }
 
-func (grp *Group) GetComment() string {
-	grp.init()
-	return grp.Comment
+func (grp *Group) GetComment() (string, error) {
+	if err := grp.init(); err != nil {
+		return grp.Comment, err
+	}
+	return grp.Comment, nil
 }
 
 func (grp *Group) GetCreateTime() (time.Time, error) {
@@ -72,19 +72,25 @@ func (grp *Group) GetCreateTime() (time.Time, error) {
 	return grp.CreateTime, nil
 }
 
-func (grp *Group) GetModifyTime() time.Time {
-	grp.init()
-	return grp.ModifyTime
+func (grp *Group) GetModifyTime() (time.Time, error) {
+	if err := grp.init(); err != nil {
+		return grp.ModifyTime, err
+	}
+	return grp.ModifyTime, nil
 }
 
-func (grp *Group) GetId() int {
-	grp.init()
-	return grp.Id
+func (grp *Group) GetId() (int, error) {
+	if err := grp.init(); err != nil {
+		return grp.Id, err
+	}
+	return grp.Id, nil
 }
 
-func (grp *Group) GetType() int {
-	grp.init()
-	return grp.Type
+func (grp *Group) GetType() (int, error) {
+	if err := grp.init(); err != nil {
+		return grp.Type, err
+	}
+	return grp.Type, nil
 }
 
 func (grp *Group) GetCon() *Connection {
@@ -266,7 +272,13 @@ func (grp *Group) FetchUsers() (Users, error) {
 
 	if status := C.gorods_get_group(ccon, &result, cGroupName, &err); status != 0 {
 		grp.Con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Group %v Failed: %v", grp.Name, C.GoString(err)))
+		if status == C.CAT_NO_ROWS_FOUND {
+			return make(Users, 0), nil
+		} else {
+
+			return nil, newError(Fatal, fmt.Sprintf("iRods Get Group %v Failed: %v", grp.Name, C.GoString(err)))
+		}
+
 	}
 
 	grp.Con.ReturnCcon(ccon)

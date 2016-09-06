@@ -88,34 +88,46 @@ func (zne *Zone) GetName() string {
 	return zne.Name
 }
 
-func (zne *Zone) GetComment() string {
-	zne.init()
-	return zne.Comment
+func (zne *Zone) GetComment() (string, error) {
+	if err := zne.init(); err != nil {
+		return zne.Comment, err
+	}
+	return zne.Comment, nil
 }
 
-func (zne *Zone) GetCreateTime() time.Time {
-	zne.init()
-	return zne.CreateTime
+func (zne *Zone) GetCreateTime() (time.Time, error) {
+	if err := zne.init(); err != nil {
+		return zne.CreateTime, err
+	}
+	return zne.CreateTime, nil
 }
 
-func (zne *Zone) GetModifyTime() time.Time {
-	zne.init()
-	return zne.ModifyTime
+func (zne *Zone) GetModifyTime() (time.Time, error) {
+	if err := zne.init(); err != nil {
+		return zne.ModifyTime, err
+	}
+	return zne.ModifyTime, nil
 }
 
-func (zne *Zone) GetId() int {
-	zne.init()
-	return zne.Id
+func (zne *Zone) GetId() (int, error) {
+	if err := zne.init(); err != nil {
+		return zne.Id, err
+	}
+	return zne.Id, nil
 }
 
-func (zne *Zone) GetType() int {
-	zne.init()
-	return zne.Type
+func (zne *Zone) GetType() (int, error) {
+	if err := zne.init(); err != nil {
+		return zne.Type, err
+	}
+	return zne.Type, nil
 }
 
-func (zne *Zone) GetConString() string {
-	zne.init()
-	return zne.ConString
+func (zne *Zone) GetConString() (string, error) {
+	if err := zne.init(); err != nil {
+		return zne.ConString, err
+	}
+	return zne.ConString, nil
 }
 
 func (zne *Zone) RefreshInfo() error {
