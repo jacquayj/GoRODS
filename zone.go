@@ -15,7 +15,7 @@ import (
 )
 
 type Zone struct {
-	Name string
+	name string
 
 	typ         int
 	conString   string
@@ -34,7 +34,7 @@ type Zones []*Zone
 
 func (znes Zones) FindByName(name string, con *Connection) *Zone {
 	for _, zne := range znes {
-		if zne.Name == name {
+		if zne.name == name {
 			return zne
 		}
 	}
@@ -52,7 +52,7 @@ func initZone(name string, con *Connection) (*Zone, error) {
 	zne := new(Zone)
 
 	zne.con = con
-	zne.Name = name
+	zne.name = name
 
 	return zne, nil
 }
@@ -70,7 +70,7 @@ func (zne *Zone) init() error {
 
 func (zne *Zone) Remove() bool {
 	for n, p := range *zne.parentSlice {
-		if p.Name == zne.Name {
+		if p.name == zne.name {
 			zne.parentSlice.Remove(n)
 			return true
 		}
@@ -81,11 +81,11 @@ func (zne *Zone) Remove() bool {
 
 func (zne *Zone) String() string {
 	zne.init()
-	return fmt.Sprintf("%v:%v", getTypeString(zne.typ), zne.Name)
+	return fmt.Sprintf("%v:%v", getTypeString(zne.typ), zne.name)
 }
 
 func (zne *Zone) GetName() string {
-	return zne.Name
+	return zne.name
 }
 
 func (zne *Zone) GetComment() (string, error) {
@@ -167,7 +167,7 @@ func (zne *Zone) FetchInfo() (map[string]string, error) {
 
 	result.size = C.int(0)
 
-	cZone := C.CString(zne.Name)
+	cZone := C.CString(zne.name)
 	defer C.free(unsafe.Pointer(cZone))
 
 	ccon := zne.con.GetCcon()

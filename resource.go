@@ -36,27 +36,6 @@ type Resource struct {
 	storageType   string
 	physPath      string
 
-	//map[
-	// resc_context:
-	// resc_id: 10022
-	// zone_name: tempZone
-	// resc_class_name: cache
-	// modify_ts: 01471623935
-	// resc_children:
-	// free_space:
-	// resc_info:
-	// r_comment:
-	// resc_status:
-	// resc_parent:
-	// resc_net: irods-resource
-	// free_space_ts:
-	// resc_objcount: 2
-	// resc_name: irods-resourceResource
-	// resc_type_name: unixfilesystem
-	// resc_def_path: /var/lib/irods/iRODS/Vault
-	// create_ts: 01471614567
-	// ]
-
 	parentSlice *Resources
 	hasInit     bool
 
