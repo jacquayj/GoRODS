@@ -4,3 +4,4 @@ bin
 *.o
 empty.txt
 sftp-config.json
+*.tmp
