@@ -17,24 +17,26 @@ import (
 
 // Collection structs contain information about single collections in an iRods zone.
 type Collection struct {
-	Options        *CollectionOptions
-	TrimRepls      bool
-	Path           string
-	Name           string
-	DataObjects    IRodsObjs
-	MetaCol        *MetaCollection
-	Con            *Connection
-	Col            *Collection
-	Recursive      bool
-	Init           bool
-	Type           int
-	ACLInheritance bool
-	Parent         *Collection
+	options *CollectionOptions
 
-	OwnerName  string
-	Owner      *User
-	CreateTime time.Time
-	ModifyTime time.Time
+	trimRepls   bool
+	path        string
+	name        string
+	dataObjects IRodsObjs
+	metaCol     *MetaCollection
+	con         *Connection
+	col         *Collection
+
+	recursive      bool
+	hasInit        bool
+	typ            int
+	ACLInheritance bool
+	parent         *Collection
+
+	ownerName  string
+	owner      *User
+	createTime time.Time
+	modifyTime time.Time
 
 	chandle C.int
 }
@@ -59,7 +61,7 @@ type CollectionOptions struct {
 // 		C: pkg
 // 		C: src
 func (obj *Collection) String() string {
-	str := fmt.Sprintf("Collection: %v\n", obj.Path)
+	str := fmt.Sprintf("Collection: %v\n", obj.path)
 
 	objs, _ := obj.All()
 
@@ -76,32 +78,32 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	col := new(Collection)
 
 	col.chandle = C.int(-1)
-	col.Type = CollectionType
-	col.Col = acol
-	col.Con = col.Col.Con
-	col.Path = C.GoString(data.collName)
-	col.Options = acol.Options
-	col.Recursive = acol.Recursive
-	col.TrimRepls = acol.TrimRepls
-	col.Parent = acol
+	col.typ = CollectionType
+	col.col = acol
+	col.con = col.col.con
+	col.path = C.GoString(data.collName)
+	col.options = acol.options
+	col.recursive = acol.recursive
+	col.trimRepls = acol.trimRepls
+	col.parent = acol
 
-	col.OwnerName = C.GoString(data.ownerName)
-	col.CreateTime = cTimeToTime(data.createTime)
-	col.ModifyTime = cTimeToTime(data.modifyTime)
+	col.ownerName = C.GoString(data.ownerName)
+	col.createTime = cTimeToTime(data.createTime)
+	col.modifyTime = cTimeToTime(data.modifyTime)
 
-	col.Name = filepath.Base(col.Path)
+	col.name = filepath.Base(col.path)
 
-	if usrs, err := col.Con.GetUsers(); err != nil {
+	if usrs, err := col.con.GetUsers(); err != nil {
 		return nil, err
 	} else {
-		if u := usrs.FindByName(col.OwnerName, col.Con); u != nil {
-			col.Owner = u
+		if u := usrs.FindByName(col.ownerName, col.con); u != nil {
+			col.owner = u
 		} else {
 			return nil, newError(Fatal, fmt.Sprintf("iRods initCollection Failed: Unable to locate user in cache"))
 		}
 	}
 
-	if col.Recursive {
+	if col.recursive {
 
 		if er := col.init(); er != nil {
 			return nil, er
@@ -111,8 +113,8 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	return col, nil
 }
 
-// getCollection initializes specified collection located at startPath using gorods.Connection.
-// Could be considered alias of Connection.Collection()
+// getCollection initializes specified collection located at startPath using gorods.connection.
+// Could be considered alias of Connection.collection()
 func getCollection(opts CollectionOptions, con *Connection) (*Collection, error) {
 
 	opts.Path = strings.TrimRight(opts.Path, "/")
@@ -127,16 +129,16 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 	parentOpts.Recursive = false
 
 	parentCol := new(Collection)
-	parentCol.Options = &parentOpts
+	parentCol.options = &parentOpts
 	parentCol.chandle = C.int(-1)
-	parentCol.Type = CollectionType
-	parentCol.Con = con
-	parentCol.Path = parentOpts.Path
-	parentCol.Recursive = parentOpts.Recursive
-	parentCol.TrimRepls = parentOpts.TrimRepls
+	parentCol.typ = CollectionType
+	parentCol.con = con
+	parentCol.path = parentOpts.Path
+	parentCol.recursive = parentOpts.Recursive
+	parentCol.trimRepls = parentOpts.TrimRepls
 
 	// Extract name
-	parentCol.Name = filepath.Base(parentCol.Path)
+	parentCol.name = filepath.Base(parentCol.path)
 
 	// Open and read parent collection
 	if er := parentCol.init(); er != nil {
@@ -144,7 +146,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 	} else {
 		if col := parentCol.Cd(colName); col != nil {
 			if opts.Recursive {
-				col.Recursive = true
+				col.recursive = true
 				if er := col.init(); er != nil {
 					return nil, er
 				}
@@ -165,18 +167,18 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 		errMsg *C.char
 	)
 
-	path := C.CString(coll.Path + "/" + name)
+	path := C.CString(coll.path + "/" + name)
 
 	defer C.free(unsafe.Pointer(path))
 
-	ccon := coll.Con.GetCcon()
+	ccon := coll.con.GetCcon()
 
 	if status := C.gorods_create_collection(path, ccon, &errMsg); status != 0 {
-		coll.Con.ReturnCcon(ccon)
+		coll.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Create Collection Failed: %v, Does the collection already exist?", C.GoString(errMsg)))
 	}
 
-	coll.Con.ReturnCcon(ccon)
+	coll.con.ReturnCcon(ccon)
 
 	coll.Refresh()
 
@@ -189,7 +191,7 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 // init opens and reads collection information from iRods if it hasn't been init'd already
 func (col *Collection) init() error {
 
-	if !col.Init {
+	if !col.hasInit {
 		if err := col.Open(); err != nil {
 			return err
 		}
@@ -199,7 +201,7 @@ func (col *Collection) init() error {
 		}
 	}
 
-	col.Init = true
+	col.hasInit = true
 
 	return nil
 }
@@ -210,9 +212,9 @@ func (col *Collection) GetCollections() (response IRodsObjs, err error) {
 		return
 	}
 
-	for i, obj := range col.DataObjects {
+	for i, obj := range col.dataObjects {
 		if obj.GetType() == CollectionType {
-			response = append(response, col.DataObjects[i])
+			response = append(response, col.dataObjects[i])
 		}
 	}
 
@@ -225,9 +227,9 @@ func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
 		return
 	}
 
-	for i, obj := range col.DataObjects {
+	for i, obj := range col.dataObjects {
 		if obj.GetType() == DataObjType {
-			response = append(response, col.DataObjects[i])
+			response = append(response, col.dataObjects[i])
 		}
 	}
 
@@ -237,10 +239,10 @@ func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
 // Returns generic interface slice containing both data objects and collections combined
 func (col *Collection) All() (IRodsObjs, error) {
 	if err := col.init(); err != nil {
-		return col.DataObjects, err
+		return col.dataObjects, err
 	}
 
-	return col.DataObjects, nil
+	return col.dataObjects, nil
 }
 
 // Inheritance returns true or false, depending on the collection's inheritance setting
@@ -251,11 +253,11 @@ func (col *Collection) Inheritance() (bool, error) {
 		err     *C.char
 	)
 
-	collName := C.CString(col.Path)
+	collName := C.CString(col.path)
 	defer C.free(unsafe.Pointer(collName))
 
-	ccon := col.Con.GetCcon()
-	defer col.Con.ReturnCcon(ccon)
+	ccon := col.con.GetCcon()
+	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_collection_inheritance(ccon, collName, &enabled, &err); status != 0 {
 		return false, newError(Fatal, fmt.Sprintf("iRods Get Collection Inheritance Failed: %v", C.GoString(err)))
@@ -287,76 +289,76 @@ func (col *Collection) GetACL() (ACLs, error) {
 		collName *C.char
 	)
 
-	zone, zErr := col.Con.GetLocalZone()
+	zone, zErr := col.con.GetLocalZone()
 	if zErr != nil {
 		return nil, zErr
 	} else {
 		zoneHint = C.CString(zone.Name())
 	}
 
-	collName = C.CString(col.Path)
+	collName = C.CString(col.path)
 	defer C.free(unsafe.Pointer(collName))
 	defer C.free(unsafe.Pointer(zoneHint))
 
-	ccon := col.Con.GetCcon()
+	ccon := col.con.GetCcon()
 
 	if status := C.gorods_get_collection_acl(ccon, collName, &result, zoneHint, &err); status != 0 {
-		col.Con.ReturnCcon(ccon)
+		col.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Collection ACL Failed: %v", C.GoString(err)))
 	}
 
-	col.Con.ReturnCcon(ccon)
+	col.con.ReturnCcon(ccon)
 
-	return aclSliceToResponse(&result, col.Con)
+	return aclSliceToResponse(&result, col.con)
 }
 
 // Type gets the type
 func (col *Collection) GetType() int {
-	return col.Type
+	return col.typ
 }
 
 // IsRecursive returns true or false
 func (col *Collection) IsRecursive() bool {
-	return col.Recursive
+	return col.recursive
 }
 
 // Connection returns the *Connection used to get collection
 func (col *Collection) GetCon() *Connection {
-	return col.Con
+	return col.con
 }
 
 // GetName returns the Name of the collection
 func (col *Collection) GetName() string {
-	return col.Name
+	return col.name
 }
 
 // GetPath returns the Path of the collection
 func (col *Collection) GetPath() string {
-	return col.Path
+	return col.path
 }
 
 // GetOwnerName returns the owner name of the collection
 func (col *Collection) GetOwnerName() string {
-	return col.OwnerName
+	return col.ownerName
 }
 
 func (col *Collection) GetOwner() *User {
-	return col.Owner
+	return col.owner
 }
 
 // GetCreateTime returns the create time of the collection
 func (col *Collection) GetCreateTime() time.Time {
-	return col.CreateTime
+	return col.createTime
 }
 
 // GetModifyTime returns the modify time of the collection
 func (col *Collection) GetModifyTime() time.Time {
-	return col.ModifyTime
+	return col.modifyTime
 }
 
 // GetCol returns the *Collection of the collection
 func (col *Collection) GetCol() *Collection {
-	return col.Col
+	return col.col
 }
 
 // Destroy is equivalent to irm -rf
@@ -378,7 +380,7 @@ func (col *Collection) Trash(recursive bool) error {
 func (col *Collection) Rm(recursive bool, force bool) error {
 	var errMsg *C.char
 
-	path := C.CString(col.Path)
+	path := C.CString(col.path)
 
 	defer C.free(unsafe.Pointer(path))
 
@@ -395,8 +397,8 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 		cRecursive = C.int(1)
 	}
 
-	ccon := col.Con.GetCcon()
-	defer col.Con.ReturnCcon(ccon)
+	ccon := col.con.GetCcon()
+	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_rm(path, 1, cRecursive, cForce, ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Rm Collection Failed: %v", C.GoString(errMsg)))
@@ -421,15 +423,15 @@ func (col *Collection) Meta() (*MetaCollection, error) {
 		return nil, er
 	}
 
-	if col.MetaCol == nil {
+	if col.metaCol == nil {
 		if mc, err := newMetaCollection(col); err == nil {
-			col.MetaCol = mc
+			col.metaCol = mc
 		} else {
 			return nil, err
 		}
 	}
 
-	return col.MetaCol, nil
+	return col.metaCol, nil
 }
 
 // AddMeta adds a single Meta triple struct
@@ -463,9 +465,9 @@ func (col *Collection) Open() error {
 			cTrimRepls C.int
 		)
 
-		path := C.CString(col.Path)
+		path := C.CString(col.path)
 
-		if col.TrimRepls {
+		if col.trimRepls {
 			cTrimRepls = C.int(1)
 		} else {
 			cTrimRepls = C.int(0)
@@ -473,11 +475,11 @@ func (col *Collection) Open() error {
 
 		defer C.free(unsafe.Pointer(path))
 
-		ccon := col.Con.GetCcon()
-		defer col.Con.ReturnCcon(ccon)
+		ccon := col.con.GetCcon()
+		defer col.con.ReturnCcon(ccon)
 
 		if status := C.gorods_open_collection(path, cTrimRepls, &col.chandle, ccon, &errMsg); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+			return newError(Fatal, fmt.Sprintf("iRods Open Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
 		}
 	}
 
@@ -488,7 +490,7 @@ func (col *Collection) Open() error {
 func (col *Collection) Close() error {
 	var errMsg *C.char
 
-	for _, c := range col.DataObjects {
+	for _, c := range col.dataObjects {
 		if err := c.Close(); err != nil {
 			return err
 		}
@@ -496,11 +498,11 @@ func (col *Collection) Close() error {
 
 	if int(col.chandle) > -1 {
 
-		ccon := col.Con.GetCcon()
-		defer col.Con.ReturnCcon(ccon)
+		ccon := col.con.GetCcon()
+		defer col.con.ReturnCcon(ccon)
 
 		if status := C.gorods_close_collection(col.chandle, ccon, &errMsg); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.Path, C.GoString(errMsg)))
+			return newError(Fatal, fmt.Sprintf("iRods Close Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
 		}
 
 		col.chandle = C.int(-1)
@@ -514,7 +516,7 @@ func (col *Collection) Refresh() error {
 	return col.ReadCollection()
 }
 
-// ReadCollection reads data (overwrites) into col.DataObjects field.
+// ReadCollection reads data (overwrites) into col.dataObjects field.
 func (col *Collection) ReadCollection() error {
 
 	if er := col.Open(); er != nil {
@@ -528,12 +530,12 @@ func (col *Collection) ReadCollection() error {
 		arrSize C.int
 	)
 
-	ccon := col.Con.GetCcon()
+	ccon := col.con.GetCcon()
 
 	// Read data objs from collection
 	C.gorods_read_collection(ccon, col.chandle, &arr, &arrSize, &err)
 
-	col.Con.ReturnCcon(ccon)
+	col.con.ReturnCcon(ccon)
 
 	// Get result length
 	arrLen := int(arrSize)
@@ -544,7 +546,7 @@ func (col *Collection) ReadCollection() error {
 	// Convert C array to slice, backed by arr *C.collEnt_t
 	slice := (*[1 << 30]C.collEnt_t)(unsafeArr)[:arrLen:arrLen]
 
-	col.DataObjects = make([]IRodsObj, 0)
+	col.dataObjects = make([]IRodsObj, 0)
 
 	for i := range slice {
 		obj := &slice[i]
@@ -619,7 +621,7 @@ func (col *Collection) CreateSubCollection(name string) (*Collection, error) {
 }
 
 func (col *Collection) add(dataObj IRodsObj) *Collection {
-	col.DataObjects = append(col.DataObjects, dataObj)
+	col.dataObjects = append(col.dataObjects, dataObj)
 
 	return col
 }

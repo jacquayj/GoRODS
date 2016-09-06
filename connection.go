@@ -178,7 +178,7 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 			col := obj.(*Collection)
 
 			// Use .DataObjects and not All() so we don't init the non-recursive collections
-			if subCol := col.DataObjects.FindRecursive(path); subCol != nil {
+			if subCol := col.dataObjects.FindRecursive(path); subCol != nil {
 				return subCol
 			}
 		}
@@ -556,7 +556,7 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 
 		// Init the cached collection if recursive is set
 		if recursive {
-			col.Recursive = true
+			col.recursive = true
 
 			if er := col.init(); er != nil {
 				return nil, er
