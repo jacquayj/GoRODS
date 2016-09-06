@@ -151,6 +151,35 @@ int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* con
 }
 
 
+int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, rcComm_t* conn, char** err) {
+    
+    int status;
+    dataObjInp_t dataObjInp;
+    char locFilePath[MAX_NAME_LEN];
+    bzero(&dataObjInp, sizeof(dataObjInp)); 
+
+    rstrcpy(dataObjInp.objPath, outPath, MAX_NAME_LEN); 
+    rstrcpy(locFilePath, inPath, MAX_NAME_LEN);
+
+    dataObjInp.createMode = mode;
+    dataObjInp.dataSize = size;
+
+    if ( resource != NULL && resource[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
+    }
+
+    if ( force > 0 ) {
+        addKeyVal(&dataObjInp.condInput, FORCE_FLAG_KW, ""); 
+    }
+
+    status = rcDataObjPut(conn, &dataObjInp, locFilePath); 
+    if ( status < 0 ) { 
+        *err = "rcDataObjPut failed";
+    }
+
+    return status;
+}
+
 int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err) {
 	
 	openedDataObjInp_t dataObjWriteInp; 

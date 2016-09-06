@@ -8,7 +8,6 @@ import "C"
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
@@ -43,7 +42,7 @@ type Collection struct {
 type CollectionOptions struct {
 	Path      string
 	Recursive bool
-	TrimRepls bool
+	GetRepls  bool
 }
 
 // String shows the contents of the collection.
@@ -134,7 +133,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 	parentCol.con = con
 	parentCol.path = parentOpts.Path
 	parentCol.recursive = parentOpts.Recursive
-	parentCol.trimRepls = parentOpts.TrimRepls
+	parentCol.trimRepls = !parentOpts.GetRepls
 
 	// Extract name
 	parentCol.name = filepath.Base(parentCol.path)
@@ -582,29 +581,43 @@ func (col *Collection) ReadCollection() error {
 	return col.Close()
 }
 
-// Put adds a local file to the remote iRods collection
-func (col *Collection) Put(localFile string) (*DataObj, error) {
-	if err := col.init(); err != nil {
+func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, error) {
+
+	var (
+		errMsg *C.char
+		force  int
+	)
+
+	if opts.Force {
+		force = 1
+	} else {
+		force = 0
+	}
+
+	path := C.CString(col.path + "/" + opts.Name)
+	resource := C.CString(opts.Resource)
+	cLocalPath := C.CString(localPath)
+
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(resource))
+	defer C.free(unsafe.Pointer(cLocalPath))
+
+	ccon := col.con.GetCcon()
+
+	if status := C.gorods_put_dataobject(cLocalPath, path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, ccon, &errMsg); status != 0 {
+		col.con.ReturnCcon(ccon)
+		return nil, newError(Fatal, fmt.Sprintf("iRods Put DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
+	}
+	col.con.ReturnCcon(ccon)
+
+	if err := col.Refresh(); err != nil {
 		return nil, err
 	}
 
-	data, err := ioutil.ReadFile(localFile)
-	if err != nil {
-		return nil, newError(Fatal, fmt.Sprintf("Can't read file for Put(): %v", localFile))
-	}
-
-	fileName := filepath.Base(localFile)
-
-	if newFile, er := col.CreateDataObj(DataObjOptions{
-		Name:  fileName,
-		Size:  int64(len(data)),
-		Mode:  0750,
-		Force: true,
-	}); er == nil {
-		newFile.Write(data)
-		return newFile, nil
+	if do, err := getDataObj(C.GoString(path), col.con); err != nil {
+		return nil, err
 	} else {
-		return nil, er
+		return do, nil
 	}
 
 }
