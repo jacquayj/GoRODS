@@ -15,26 +15,26 @@ import (
 )
 
 type Resource struct {
-	Name string
+	name string
 
-	Type          int
-	Comment       string
-	CreateTime    time.Time
-	ModifyTime    time.Time
-	Id            int
-	Context       string
-	Zone          *Zone
-	Class         int
-	Children      string
-	FreeSpace     int
-	Info          string
-	Status        string
-	ParentStr     string
-	Net           string
-	FreeSpaceTime time.Time
-	ObjCount      int
-	StorageType   string
-	PhysPath      string
+	typ           int
+	comment       string
+	createTime    time.Time
+	modifyTime    time.Time
+	id            int
+	context       string
+	zone          *Zone
+	class         int
+	children      string
+	freeSpace     int
+	info          string
+	status        string
+	parentStr     string
+	net           string
+	freeSpaceTime time.Time
+	objCount      int
+	storageType   string
+	physPath      string
 
 	//map[
 	// resc_context:
@@ -57,17 +57,17 @@ type Resource struct {
 	// create_ts: 01471614567
 	// ]
 
-	ParentSlice *Resources
-	Init        bool
+	parentSlice *Resources
+	hasInit     bool
 
-	Con *Connection
+	con *Connection
 }
 
 type Resources []*Resource
 
 func (rescs Resources) FindByName(name string) *Resource {
 	for _, resc := range rescs {
-		if resc.Name == name {
+		if resc.name == name {
 			return resc
 		}
 	}
@@ -86,28 +86,28 @@ func initResource(name string, con *Connection) (*Resource, error) {
 		return nil, er
 	}
 
-	resc.Con = con
-	resc.Name = name
-	resc.Zone = zne
+	resc.con = con
+	resc.name = name
+	resc.zone = zne
 
 	return resc, nil
 }
 
 func (resc *Resource) init() error {
-	if !resc.Init {
+	if !resc.hasInit {
 		if err := resc.RefreshInfo(); err != nil {
 			return err
 		}
-		resc.Init = true
+		resc.hasInit = true
 	}
 
 	return nil
 }
 
 func (resc *Resource) Remove() bool {
-	for n, p := range *resc.ParentSlice {
-		if p.Name == resc.Name {
-			resc.ParentSlice.Remove(n)
+	for n, p := range *resc.parentSlice {
+		if p.name == resc.name {
+			resc.parentSlice.Remove(n)
 			return true
 		}
 	}
@@ -120,130 +120,130 @@ func (resc *Resource) String() string {
 }
 
 func (resc *Resource) GetName() string {
-	return resc.Name
+	return resc.name
 }
 
 func (resc *Resource) GetComment() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.Comment, err
+		return resc.comment, err
 	}
-	return resc.Comment, nil
+	return resc.comment, nil
 }
 
 func (resc *Resource) GetCreateTime() (time.Time, error) {
 	if err := resc.init(); err != nil {
-		return resc.CreateTime, err
+		return resc.createTime, err
 	}
-	return resc.CreateTime, nil
+	return resc.createTime, nil
 }
 
 func (resc *Resource) GetModifyTime() (time.Time, error) {
 	if err := resc.init(); err != nil {
-		return resc.ModifyTime, err
+		return resc.modifyTime, err
 	}
-	return resc.ModifyTime, nil
+	return resc.modifyTime, nil
 }
 
 func (resc *Resource) GetId() (int, error) {
 	if err := resc.init(); err != nil {
-		return resc.Id, err
+		return resc.id, err
 	}
-	return resc.Id, nil
+	return resc.id, nil
 }
 
 func (resc *Resource) GetType() (int, error) {
 	if err := resc.init(); err != nil {
-		return resc.Type, err
+		return resc.typ, err
 	}
-	return resc.Type, nil
+	return resc.typ, nil
 }
 
 func (resc *Resource) GetContext() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.Context, err
+		return resc.context, err
 	}
-	return resc.Context, nil
+	return resc.context, nil
 }
 
 func (resc *Resource) GetClass() (int, error) {
 	if err := resc.init(); err != nil {
-		return resc.Class, err
+		return resc.class, err
 	}
-	return resc.Class, nil
+	return resc.class, nil
 }
 
 func (resc *Resource) GetChildren() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.Children, err
+		return resc.children, err
 	}
-	return resc.Children, nil
+	return resc.children, nil
 }
 
 func (resc *Resource) GetFreeSpace() (int, error) {
 	if err := resc.init(); err != nil {
-		return resc.FreeSpace, err
+		return resc.freeSpace, err
 	}
-	return resc.FreeSpace, nil
+	return resc.freeSpace, nil
 }
 
 func (resc *Resource) GetInfo() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.Info, err
+		return resc.info, err
 	}
-	return resc.Info, nil
+	return resc.info, nil
 }
 
 func (resc *Resource) GetStatus() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.Status, err
+		return resc.status, err
 	}
-	return resc.Status, nil
+	return resc.status, nil
 }
 
 func (resc *Resource) GetParentStr() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.ParentStr, err
+		return resc.parentStr, err
 	}
-	return resc.ParentStr, nil
+	return resc.parentStr, nil
 }
 
 func (resc *Resource) GetNet() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.Net, err
+		return resc.net, err
 	}
-	return resc.Net, nil
+	return resc.net, nil
 }
 
 func (resc *Resource) GetFreeSpaceTime() (time.Time, error) {
 	if err := resc.init(); err != nil {
-		return resc.FreeSpaceTime, err
+		return resc.freeSpaceTime, err
 	}
-	return resc.FreeSpaceTime, nil
+	return resc.freeSpaceTime, nil
 }
 
 func (resc *Resource) GetObjCount() (int, error) {
 	if err := resc.init(); err != nil {
-		return resc.ObjCount, err
+		return resc.objCount, err
 	}
-	return resc.ObjCount, nil
+	return resc.objCount, nil
 }
 
 func (resc *Resource) GetStorageType() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.StorageType, err
+		return resc.storageType, err
 	}
-	return resc.StorageType, nil
+	return resc.storageType, nil
 }
 
 func (resc *Resource) GetPhysPath() (string, error) {
 	if err := resc.init(); err != nil {
-		return resc.PhysPath, err
+		return resc.physPath, err
 	}
-	return resc.PhysPath, nil
+	return resc.physPath, nil
 }
 
 func (resc *Resource) GetZone() *Zone {
-	return resc.Zone
+	return resc.zone
 }
 
 func (resc *Resource) RefreshInfo() error {
@@ -275,30 +275,30 @@ func (resc *Resource) RefreshInfo() error {
 	}
 
 	if infoMap, err := resc.FetchInfo(); err == nil {
-		resc.Comment = infoMap["r_comment"]
-		resc.CreateTime = timeStringToTime(infoMap["create_ts"])
-		resc.ModifyTime = timeStringToTime(infoMap["modify_ts"])
-		resc.Id, _ = strconv.Atoi(infoMap["resc_id"])
-		resc.Type = ResourceType
+		resc.comment = infoMap["r_comment"]
+		resc.createTime = timeStringToTime(infoMap["create_ts"])
+		resc.modifyTime = timeStringToTime(infoMap["modify_ts"])
+		resc.id, _ = strconv.Atoi(infoMap["resc_id"])
+		resc.typ = ResourceType
 
-		resc.Context = infoMap["resc_context"]
-		resc.Class = typeMap[infoMap["resc_class_name"]]
-		resc.Children = infoMap["resc_children"]
-		resc.FreeSpace, _ = strconv.Atoi(infoMap["free_space"])
-		resc.Info = infoMap["resc_info"]
-		resc.Status = infoMap["resc_status"]
-		resc.ParentStr = infoMap["resc_parent"]
-		resc.Net = infoMap["resc_net"]
-		resc.FreeSpaceTime = timeStringToTime(infoMap["free_space_ts"])
-		resc.ObjCount, _ = strconv.Atoi(infoMap["resc_objcount"])
-		resc.StorageType = infoMap["resc_type_name"]
-		resc.PhysPath = infoMap["resc_def_path"]
+		resc.context = infoMap["resc_context"]
+		resc.class = typeMap[infoMap["resc_class_name"]]
+		resc.children = infoMap["resc_children"]
+		resc.freeSpace, _ = strconv.Atoi(infoMap["free_space"])
+		resc.info = infoMap["resc_info"]
+		resc.status = infoMap["resc_status"]
+		resc.parentStr = infoMap["resc_parent"]
+		resc.net = infoMap["resc_net"]
+		resc.freeSpaceTime = timeStringToTime(infoMap["free_space_ts"])
+		resc.objCount, _ = strconv.Atoi(infoMap["resc_objcount"])
+		resc.storageType = infoMap["resc_type_name"]
+		resc.physPath = infoMap["resc_def_path"]
 
-		if zones, err := resc.Con.GetZones(); err != nil {
+		if zones, err := resc.con.GetZones(); err != nil {
 			return err
 		} else {
-			if zne := zones.FindByName(infoMap["zone_name"], resc.Con); zne != nil {
-				resc.Zone = zne
+			if zne := zones.FindByName(infoMap["zone_name"], resc.con); zne != nil {
+				resc.zone = zne
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods Refresh Resource Info Failed: Unable to locate zone in cache"))
 			}
@@ -319,17 +319,17 @@ func (resc *Resource) FetchInfo() (map[string]string, error) {
 
 	result.size = C.int(0)
 
-	cResource := C.CString(resc.Name)
+	cResource := C.CString(resc.name)
 	defer C.free(unsafe.Pointer(cResource))
 
-	ccon := resc.Con.GetCcon()
+	ccon := resc.con.GetCcon()
 
 	if status := C.gorods_get_resource(cResource, ccon, &result, &err); status != 0 {
-		resc.Con.ReturnCcon(ccon)
+		resc.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Resource Info Failed: %v", C.GoString(err)))
 	}
 
-	resc.Con.ReturnCcon(ccon)
+	resc.con.ReturnCcon(ccon)
 
 	defer C.gorods_free_string_result(&result)
 
