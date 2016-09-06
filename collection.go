@@ -291,7 +291,7 @@ func (col *Collection) GetACL() (ACLs, error) {
 	if zErr != nil {
 		return nil, zErr
 	} else {
-		zoneHint = C.CString(zone.GetName())
+		zoneHint = C.CString(zone.Name())
 	}
 
 	collName = C.CString(col.Path)

@@ -56,61 +56,61 @@ func (usr *User) Remove() bool {
 	return false
 }
 
-func (usr *User) GetName() string {
+func (usr *User) Name() string {
 	return usr.name
 }
 
-func (usr *User) GetZone() *Zone {
+func (usr *User) Zone() *Zone {
 	return usr.zone
 }
 
-func (usr *User) GetComment() (string, error) {
+func (usr *User) Comment() (string, error) {
 	if err := usr.init(); err != nil {
 		return usr.comment, err
 	}
 	return usr.comment, nil
 }
 
-func (usr *User) GetInfo() (string, error) {
+func (usr *User) Info() (string, error) {
 	if err := usr.init(); err != nil {
 		return usr.info, err
 	}
 	return usr.info, nil
 }
 
-func (usr *User) GetCreateTime() (time.Time, error) {
+func (usr *User) CreateTime() (time.Time, error) {
 	if err := usr.init(); err != nil {
 		return usr.createTime, err
 	}
 	return usr.createTime, nil
 }
 
-func (usr *User) GetModifyTime() (time.Time, error) {
+func (usr *User) ModifyTime() (time.Time, error) {
 	if err := usr.init(); err != nil {
 		return usr.modifyTime, err
 	}
 	return usr.modifyTime, nil
 }
 
-func (usr *User) GetId() (int, error) {
+func (usr *User) Id() (int, error) {
 	if err := usr.init(); err != nil {
 		return usr.id, err
 	}
 	return usr.id, nil
 }
 
-func (usr *User) GetType() (int, error) {
+func (usr *User) Type() (int, error) {
 	if err := usr.init(); err != nil {
 		return usr.typ, err
 	}
 	return usr.typ, nil
 }
 
-func (usr *User) GetCon() *Connection {
+func (usr *User) Con() *Connection {
 	return usr.con
 }
 
-func (usr *User) GetGroups() (Groups, error) {
+func (usr *User) Groups() (Groups, error) {
 	if err := usr.init(); err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (usr *User) GetGroups() (Groups, error) {
 }
 
 func (usr *User) Delete() error {
-	if err := deleteUser(usr.GetName(), usr.GetZone(), usr.con); err != nil {
+	if err := deleteUser(usr.Name(), usr.Zone(), usr.con); err != nil {
 		return err
 	}
 
@@ -355,15 +355,15 @@ func (usr *User) ChangePassword(newPass string) error {
 		err *C.char
 	)
 
-	cUserName := C.CString(usr.GetName())
+	cUserName := C.CString(usr.Name())
 	cNewPass := C.CString(newPass)
-	cMyPass := C.CString(usr.GetCon().Options.Password)
+	cMyPass := C.CString(usr.Con().Options.Password)
 	defer C.free(unsafe.Pointer(cUserName))
 	defer C.free(unsafe.Pointer(cNewPass))
 	defer C.free(unsafe.Pointer(cMyPass))
 
-	ccon := usr.GetCon().GetCcon()
-	defer usr.GetCon().ReturnCcon(ccon)
+	ccon := usr.Con().GetCcon()
+	defer usr.Con().ReturnCcon(ccon)
 
 	if status := C.gorods_change_user_password(cUserName, cNewPass, cMyPass, ccon, &err); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods ChangePassword Failed: %v", C.GoString(err)))
@@ -377,7 +377,7 @@ func deleteUser(userName string, zone *Zone, con *Connection) error {
 		err *C.char
 	)
 
-	cZoneName := C.CString(zone.GetName())
+	cZoneName := C.CString(zone.Name())
 	cUserName := C.CString(userName)
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cUserName))

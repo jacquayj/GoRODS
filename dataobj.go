@@ -208,7 +208,7 @@ func (obj *DataObj) GetACL() (ACLs, error) {
 	if zErr != nil {
 		return nil, zErr
 	} else {
-		zoneHint = C.CString(zone.GetName())
+		zoneHint = C.CString(zone.Name())
 	}
 
 	cDataId := C.CString(obj.DataId)
@@ -366,7 +366,7 @@ func (obj *DataObj) Open() error {
 	var errMsg *C.char
 
 	path := C.CString(obj.Path)
-	resourceName := C.CString(obj.Resource.GetName())
+	resourceName := C.CString(obj.Resource.Name())
 	replNum := C.CString(strconv.Itoa(obj.ReplNum))
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(resourceName))
@@ -389,7 +389,7 @@ func (obj *DataObj) OpenRW() error {
 	var errMsg *C.char
 
 	path := C.CString(obj.Path)
-	resourceName := C.CString(obj.Resource.GetName())
+	resourceName := C.CString(obj.Resource.Name())
 	replNum := C.CString(strconv.Itoa(obj.ReplNum))
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(resourceName))

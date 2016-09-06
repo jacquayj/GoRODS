@@ -204,7 +204,7 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 
 	cUser := C.CString(user)
 	cPath := C.CString(obj.GetPath())
-	cZone := C.CString(zone.GetName())
+	cZone := C.CString(zone.Name())
 	cAccessLevel := C.CString(getTypeString(accessLevel))
 	defer C.free(unsafe.Pointer(cUser))
 	defer C.free(unsafe.Pointer(cPath))
@@ -737,7 +737,7 @@ func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 	if z, err := con.GetLocalZone(); err != nil {
 		return nil, err
 	} else {
-		if err := createUser(name, z.GetName(), typ, con); err != nil {
+		if err := createUser(name, z.Name(), typ, con); err != nil {
 			return nil, err
 		}
 

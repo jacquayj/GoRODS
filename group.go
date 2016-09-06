@@ -50,61 +50,61 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	return grp, nil
 }
 
-func (grp *Group) GetName() string {
+func (grp *Group) Name() string {
 	return grp.name
 }
 
-func (grp *Group) GetZone() *Zone {
+func (grp *Group) Zone() *Zone {
 	return grp.zone
 }
 
-func (grp *Group) GetComment() (string, error) {
+func (grp *Group) Comment() (string, error) {
 	if err := grp.init(); err != nil {
 		return grp.comment, err
 	}
 	return grp.comment, nil
 }
 
-func (grp *Group) GetCreateTime() (time.Time, error) {
+func (grp *Group) CreateTime() (time.Time, error) {
 	if err := grp.init(); err != nil {
 		return grp.createTime, err
 	}
 	return grp.createTime, nil
 }
 
-func (grp *Group) GetModifyTime() (time.Time, error) {
+func (grp *Group) ModifyTime() (time.Time, error) {
 	if err := grp.init(); err != nil {
 		return grp.modifyTime, err
 	}
 	return grp.modifyTime, nil
 }
 
-func (grp *Group) GetId() (int, error) {
+func (grp *Group) Id() (int, error) {
 	if err := grp.init(); err != nil {
 		return grp.id, err
 	}
 	return grp.id, nil
 }
 
-func (grp *Group) GetInfo() (string, error) {
+func (grp *Group) Info() (string, error) {
 	if err := grp.init(); err != nil {
 		return grp.info, err
 	}
 	return grp.info, nil
 }
 
-func (grp *Group) GetType() (int, error) {
+func (grp *Group) Type() (int, error) {
 	if err := grp.init(); err != nil {
 		return grp.typ, err
 	}
 	return grp.typ, nil
 }
 
-func (grp *Group) GetCon() *Connection {
+func (grp *Group) Con() *Connection {
 	return grp.con
 }
 
-func (grp *Group) GetUsers() (Users, error) {
+func (grp *Group) Users() (Users, error) {
 	if err := grp.init(); err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (grp *Group) GetUsers() (Users, error) {
 }
 
 func (grp *Group) Delete() error {
-	if err := deleteGroup(grp.GetName(), grp.GetZone(), grp.con); err != nil {
+	if err := deleteGroup(grp.Name(), grp.Zone(), grp.con); err != nil {
 		return err
 	}
 
@@ -381,7 +381,7 @@ func addToGroup(userName string, zone *Zone, groupName string, con *Connection) 
 	)
 
 	cUserName := C.CString(userName)
-	cZoneName := C.CString(zone.GetName())
+	cZoneName := C.CString(zone.Name())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cUserName))
 	defer C.free(unsafe.Pointer(cZoneName))
@@ -403,7 +403,7 @@ func removeFromGroup(userName string, zone *Zone, groupName string, con *Connect
 	)
 
 	cUserName := C.CString(userName)
-	cZoneName := C.CString(zone.GetName())
+	cZoneName := C.CString(zone.Name())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cUserName))
 	defer C.free(unsafe.Pointer(cZoneName))
@@ -424,7 +424,7 @@ func deleteGroup(groupName string, zone *Zone, con *Connection) error {
 		err *C.char
 	)
 
-	cZoneName := C.CString(zone.GetName())
+	cZoneName := C.CString(zone.Name())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cGroupName))
@@ -444,7 +444,7 @@ func createGroup(groupName string, zone *Zone, con *Connection) error {
 		err *C.char
 	)
 
-	cZoneName := C.CString(zone.GetName())
+	cZoneName := C.CString(zone.Name())
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cGroupName))

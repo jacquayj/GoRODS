@@ -12,14 +12,14 @@ import (
 )
 
 type AccessObject interface {
-	GetName() string
-	GetZone() *Zone
-	GetComment() (string, error)
-	GetCreateTime() (time.Time, error)
-	GetModifyTime() (time.Time, error)
-	GetId() (int, error)
-	GetType() (int, error)
-	GetCon() *Connection
+	Name() string
+	Zone() *Zone
+	Comment() (string, error)
+	CreateTime() (time.Time, error)
+	ModifyTime() (time.Time, error)
+	Id() (int, error)
+	Type() (int, error)
+	Con() *Connection
 }
 
 type ACL struct {
@@ -49,5 +49,5 @@ func (acl *ACL) Group() *Group {
 func (acl *ACL) String() string {
 	typeString := getTypeString(acl.Type)
 
-	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.GetName(), acl.AccessObject.GetZone().GetName(), getTypeString(acl.AccessLevel))
+	return fmt.Sprintf("%v:%v#%v:%v", typeString, acl.AccessObject.Name(), acl.AccessObject.Zone().Name(), getTypeString(acl.AccessLevel))
 }
