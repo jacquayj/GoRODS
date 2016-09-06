@@ -196,7 +196,7 @@ func (obj *DataObj) initRW() error {
 // [rods#tempZone:own
 // developers#tempZone:modify object
 // designers#tempZone:read object]
-func (obj *DataObj) GetACL() (ACLs, error) {
+func (obj *DataObj) ACL() (ACLs, error) {
 
 	var (
 		result   C.goRodsACLResult_t
@@ -235,83 +235,83 @@ func (obj *DataObj) Chmod(userOrGroup string, accessLevel int, recursive bool) e
 }
 
 // Type gets the type
-func (obj *DataObj) GetType() int {
+func (obj *DataObj) Type() int {
 	return obj.typ
 }
 
 // Connection returns the *Connection used to get data object
-func (obj *DataObj) GetCon() *Connection {
+func (obj *DataObj) Con() *Connection {
 	return obj.con
 }
 
 // GetName returns the Name of the data object
-func (obj *DataObj) GetName() string {
+func (obj *DataObj) Name() string {
 	return obj.name
 }
 
 // GetName returns the Path of the data object
-func (obj *DataObj) GetPath() string {
+func (obj *DataObj) Path() string {
 	return obj.path
 }
 
 // GetName returns the *Collection of the data object
-func (obj *DataObj) GetCol() *Collection {
+func (obj *DataObj) Col() *Collection {
 	return obj.col
 }
 
 // GetOwnerName returns the owner name of the data object
-func (obj *DataObj) GetOwnerName() string {
+func (obj *DataObj) OwnerName() string {
 	return obj.ownerName
 }
 
 // GetOwnerName returns the owner name of the data object
-func (obj *DataObj) GetOwner() *User {
+func (obj *DataObj) Owner() *User {
 	return obj.owner
 }
 
-func (obj *DataObj) GetResource() *Resource {
+func (obj *DataObj) Resource() *Resource {
 	return obj.resource
 }
 
-func (obj *DataObj) GetDataId() string {
+func (obj *DataObj) DataId() string {
 	return obj.dataId
 }
 
-func (obj *DataObj) GetPhyPath() string {
+func (obj *DataObj) PhyPath() string {
 	return obj.phyPath
 }
 
-func (obj *DataObj) GetReplNum() int {
+func (obj *DataObj) ReplNum() int {
 	return obj.replNum
 }
 
-func (obj *DataObj) GetRescHier() string {
+func (obj *DataObj) RescHier() string {
 	return obj.rescHier
 }
 
-func (obj *DataObj) GetReplStatus() int {
+func (obj *DataObj) ReplStatus() int {
 	return obj.replStatus
 }
 
-func (obj *DataObj) GetChecksum() string {
+func (obj *DataObj) Checksum() string {
 	return obj.checksum
 }
 
-func (obj *DataObj) GetOffset() int64 {
+func (obj *DataObj) Offset() int64 {
 	return obj.offset
 }
 
-func (obj *DataObj) GetSize() int64 {
+func (obj *DataObj) Size() int64 {
 	return obj.size
 }
 
 // GetCreateTime returns the create time of the data object
-func (obj *DataObj) GetCreateTime() time.Time {
+func (obj *DataObj) CreateTime() time.Time {
 	return obj.createTime
 }
 
 // GetModifyTime returns the modify time of the data object
-func (obj *DataObj) GetModifyTime() time.Time {
+func (obj *DataObj) ModifyTime() time.Time {
 	return obj.modifyTime
 }
 

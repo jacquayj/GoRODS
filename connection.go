@@ -56,16 +56,16 @@ const (
 
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
-	GetType() int
-	GetName() string
-	GetPath() string
-	GetCol() *Collection
-	GetCon() *Connection
-	//GetACL() map[string]string
+	Type() int
+	Name() string
+	Path() string
+	Col() *Collection
+	Con() *Connection
+	ACL() (ACLs, error)
 
-	GetOwnerName() string
-	GetCreateTime() time.Time
-	GetModifyTime() time.Time
+	OwnerName() string
+	CreateTime() time.Time
+	ModifyTime() time.Time
 
 	// irm -rf
 	Destroy() error
@@ -113,7 +113,7 @@ func (objs IRodsObjs) Find(path string) IRodsObj {
 	}
 
 	for i, obj := range objs {
-		if obj.GetPath() == path || obj.GetName() == path {
+		if obj.Path() == path || obj.Name() == path {
 			return objs[i]
 		}
 	}
@@ -170,11 +170,11 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	}
 
 	for i, obj := range objs {
-		if obj.GetPath() == path || obj.GetName() == path {
+		if obj.Path() == path || obj.Name() == path {
 			return objs[i]
 		}
 
-		if obj.GetType() == CollectionType {
+		if obj.Type() == CollectionType {
 			col := obj.(*Collection)
 
 			// Use .DataObjects and not All() so we don't init the non-recursive collections
@@ -197,13 +197,13 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be Null | Read | Write | Own"))
 	}
 
-	zone, zErr := obj.GetCon().GetLocalZone()
+	zone, zErr := obj.Con().GetLocalZone()
 	if zErr != nil {
 		return zErr
 	}
 
 	cUser := C.CString(user)
-	cPath := C.CString(obj.GetPath())
+	cPath := C.CString(obj.Path())
 	cZone := C.CString(zone.Name())
 	cAccessLevel := C.CString(getTypeString(accessLevel))
 	defer C.free(unsafe.Pointer(cUser))
@@ -217,8 +217,8 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
 		cRecursive = C.int(0)
 	}
 
-	ccon := obj.GetCon().GetCcon()
-	defer obj.GetCon().ReturnCcon(ccon)
+	ccon := obj.Con().GetCcon()
+	defer obj.Con().ReturnCcon(ccon)
 
 	if status := C.gorods_chmod(ccon, cPath, cZone, cUser, cAccessLevel, cRecursive, &err); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: %v", C.GoString(err)))

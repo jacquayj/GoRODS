@@ -27,11 +27,10 @@ type Collection struct {
 	con         *Connection
 	col         *Collection
 
-	recursive      bool
-	hasInit        bool
-	typ            int
-	ACLInheritance bool
-	parent         *Collection
+	recursive bool
+	hasInit   bool
+	typ       int
+	parent    *Collection
 
 	ownerName  string
 	owner      *User
@@ -66,7 +65,7 @@ func (obj *Collection) String() string {
 	objs, _ := obj.All()
 
 	for _, o := range objs {
-		str += fmt.Sprintf("\t%v: %v\n", getTypeString(o.GetType()), o.GetName())
+		str += fmt.Sprintf("\t%v: %v\n", getTypeString(o.Type()), o.Name())
 	}
 
 	return str
@@ -207,13 +206,13 @@ func (col *Collection) init() error {
 }
 
 // GetCollections returns only the IRodsObjs that represent collections
-func (col *Collection) GetCollections() (response IRodsObjs, err error) {
+func (col *Collection) Collections() (response IRodsObjs, err error) {
 	if err = col.init(); err != nil {
 		return
 	}
 
 	for i, obj := range col.dataObjects {
-		if obj.GetType() == CollectionType {
+		if obj.Type() == CollectionType {
 			response = append(response, col.dataObjects[i])
 		}
 	}
@@ -222,13 +221,13 @@ func (col *Collection) GetCollections() (response IRodsObjs, err error) {
 }
 
 // GetDataObjs returns only the data objects contained within the collection
-func (col *Collection) GetDataObjs() (response IRodsObjs, err error) {
+func (col *Collection) DataObjs() (response IRodsObjs, err error) {
 	if err = col.init(); err != nil {
 		return
 	}
 
 	for i, obj := range col.dataObjects {
-		if obj.GetType() == DataObjType {
+		if obj.Type() == DataObjType {
 			response = append(response, col.dataObjects[i])
 		}
 	}
@@ -280,7 +279,7 @@ func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool
 // [rods#tempZone:own
 // developers#tempZone:modify object
 // designers#tempZone:read object]
-func (col *Collection) GetACL() (ACLs, error) {
+func (col *Collection) ACL() (ACLs, error) {
 
 	var (
 		result   C.goRodsACLResult_t
@@ -313,7 +312,7 @@ func (col *Collection) GetACL() (ACLs, error) {
 }
 
 // Type gets the type
-func (col *Collection) GetType() int {
+func (col *Collection) Type() int {
 	return col.typ
 }
 
@@ -323,41 +322,41 @@ func (col *Collection) IsRecursive() bool {
 }
 
 // Connection returns the *Connection used to get collection
-func (col *Collection) GetCon() *Connection {
+func (col *Collection) Con() *Connection {
 	return col.con
 }
 
 // GetName returns the Name of the collection
-func (col *Collection) GetName() string {
+func (col *Collection) Name() string {
 	return col.name
 }
 
 // GetPath returns the Path of the collection
-func (col *Collection) GetPath() string {
+func (col *Collection) Path() string {
 	return col.path
 }
 
 // GetOwnerName returns the owner name of the collection
-func (col *Collection) GetOwnerName() string {
+func (col *Collection) OwnerName() string {
 	return col.ownerName
 }
 
-func (col *Collection) GetOwner() *User {
+func (col *Collection) Owner() *User {
 	return col.owner
 }
 
 // GetCreateTime returns the create time of the collection
-func (col *Collection) GetCreateTime() time.Time {
+func (col *Collection) CreateTime() time.Time {
 	return col.createTime
 }
 
 // GetModifyTime returns the modify time of the collection
-func (col *Collection) GetModifyTime() time.Time {
+func (col *Collection) ModifyTime() time.Time {
 	return col.modifyTime
 }
 
 // GetCol returns the *Collection of the collection
-func (col *Collection) GetCol() *Collection {
+func (col *Collection) Col() *Collection {
 	return col.col
 }
 
@@ -671,7 +670,7 @@ func (col *Collection) FindObj(path string) *DataObj {
 
 // Cd is a shortcut for calling collection.GetCollections().Find(path). It effectively returns (or changes to) the sub collection you specify collection-relatively or absolutely.
 func (col *Collection) Cd(path string) *Collection {
-	if cols, err := col.GetCollections(); err == nil {
+	if cols, err := col.Collections(); err == nil {
 		if c := cols.Find(path); c != nil {
 			return c.(*Collection)
 		}
@@ -682,7 +681,7 @@ func (col *Collection) Cd(path string) *Collection {
 
 // Get is a shortcut for calling collection.GetDataObjs().Find(path). It effectively returns the DataObj you specify collection-relatively or absolutely.
 func (col *Collection) Get(path string) *DataObj {
-	if cols, err := col.GetDataObjs(); err == nil {
+	if cols, err := col.DataObjs(); err == nil {
 		if d := cols.Find(path); d != nil {
 			return d.(*DataObj)
 		}
