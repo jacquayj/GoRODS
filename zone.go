@@ -17,17 +17,17 @@ import (
 type Zone struct {
 	Name string
 
-	Type        int
-	ConString   string
-	Comment     string
-	CreateTime  time.Time
-	ModifyTime  time.Time
-	Id          int
-	ParentSlice *Zones
+	typ         int
+	conString   string
+	comment     string
+	createTime  time.Time
+	modifyTime  time.Time
+	id          int
+	parentSlice *Zones
 
-	Init bool
+	hasInit bool
 
-	Con *Connection
+	con *Connection
 }
 
 type Zones []*Zone
@@ -51,27 +51,27 @@ func (znes *Zones) Remove(index int) {
 func initZone(name string, con *Connection) (*Zone, error) {
 	zne := new(Zone)
 
-	zne.Con = con
+	zne.con = con
 	zne.Name = name
 
 	return zne, nil
 }
 
 func (zne *Zone) init() error {
-	if !zne.Init {
+	if !zne.hasInit {
 		if err := zne.RefreshInfo(); err != nil {
 			return err
 		}
-		zne.Init = true
+		zne.hasInit = true
 	}
 
 	return nil
 }
 
 func (zne *Zone) Remove() bool {
-	for n, p := range *zne.ParentSlice {
+	for n, p := range *zne.parentSlice {
 		if p.Name == zne.Name {
-			zne.ParentSlice.Remove(n)
+			zne.parentSlice.Remove(n)
 			return true
 		}
 	}
@@ -81,7 +81,7 @@ func (zne *Zone) Remove() bool {
 
 func (zne *Zone) String() string {
 	zne.init()
-	return fmt.Sprintf("%v:%v", getTypeString(zne.Type), zne.Name)
+	return fmt.Sprintf("%v:%v", getTypeString(zne.typ), zne.Name)
 }
 
 func (zne *Zone) GetName() string {
@@ -90,44 +90,44 @@ func (zne *Zone) GetName() string {
 
 func (zne *Zone) GetComment() (string, error) {
 	if err := zne.init(); err != nil {
-		return zne.Comment, err
+		return zne.comment, err
 	}
-	return zne.Comment, nil
+	return zne.comment, nil
 }
 
 func (zne *Zone) GetCreateTime() (time.Time, error) {
 	if err := zne.init(); err != nil {
-		return zne.CreateTime, err
+		return zne.createTime, err
 	}
-	return zne.CreateTime, nil
+	return zne.createTime, nil
 }
 
 func (zne *Zone) GetModifyTime() (time.Time, error) {
 	if err := zne.init(); err != nil {
-		return zne.ModifyTime, err
+		return zne.modifyTime, err
 	}
-	return zne.ModifyTime, nil
+	return zne.modifyTime, nil
 }
 
 func (zne *Zone) GetId() (int, error) {
 	if err := zne.init(); err != nil {
-		return zne.Id, err
+		return zne.id, err
 	}
-	return zne.Id, nil
+	return zne.id, nil
 }
 
 func (zne *Zone) GetType() (int, error) {
 	if err := zne.init(); err != nil {
-		return zne.Type, err
+		return zne.typ, err
 	}
-	return zne.Type, nil
+	return zne.typ, nil
 }
 
 func (zne *Zone) GetConString() (string, error) {
 	if err := zne.init(); err != nil {
-		return zne.ConString, err
+		return zne.conString, err
 	}
-	return zne.ConString, nil
+	return zne.conString, nil
 }
 
 func (zne *Zone) RefreshInfo() error {
@@ -146,12 +146,12 @@ func (zne *Zone) RefreshInfo() error {
 	}
 
 	if infoMap, err := zne.FetchInfo(); err == nil {
-		zne.Comment = infoMap["r_comment"]
-		zne.CreateTime = timeStringToTime(infoMap["create_ts"])
-		zne.ModifyTime = timeStringToTime(infoMap["modify_ts"])
-		zne.Id, _ = strconv.Atoi(infoMap["zone_id"])
-		zne.Type = typeMap[infoMap["zone_type_name"]]
-		zne.ConString = infoMap["zone_conn_string"]
+		zne.comment = infoMap["r_comment"]
+		zne.createTime = timeStringToTime(infoMap["create_ts"])
+		zne.modifyTime = timeStringToTime(infoMap["modify_ts"])
+		zne.id, _ = strconv.Atoi(infoMap["zone_id"])
+		zne.typ = typeMap[infoMap["zone_type_name"]]
+		zne.conString = infoMap["zone_conn_string"]
 	} else {
 		return err
 	}
@@ -170,14 +170,14 @@ func (zne *Zone) FetchInfo() (map[string]string, error) {
 	cZone := C.CString(zne.Name)
 	defer C.free(unsafe.Pointer(cZone))
 
-	ccon := zne.Con.GetCcon()
+	ccon := zne.con.GetCcon()
 
 	if status := C.gorods_get_zone(cZone, ccon, &result, &err); status != 0 {
-		zne.Con.ReturnCcon(ccon)
+		zne.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Zone Info Failed: %v", C.GoString(err)))
 	}
 
-	zne.Con.ReturnCcon(ccon)
+	zne.con.ReturnCcon(ccon)
 
 	defer C.gorods_free_string_result(&result)
 
