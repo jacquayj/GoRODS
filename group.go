@@ -15,12 +15,12 @@ import (
 )
 
 type Group struct {
-	Name        string
+	name        string
 	CreateTime  time.Time
 	ModifyTime  time.Time
 	Id          int
 	Type        int
-	Zone        *Zone
+	zone        *Zone
 	Info        string
 	Comment     string
 	ParentSlice *Groups
@@ -38,24 +38,24 @@ func initGroup(name string, con *Connection) (*Group, error) {
 
 	grp := new(Group)
 
-	grp.Name = name
+	grp.name = name
 	grp.Con = con
 
 	if z, err := con.GetLocalZone(); err != nil {
 		return nil, err
 	} else {
-		grp.Zone = z
+		grp.zone = z
 	}
 
 	return grp, nil
 }
 
 func (grp *Group) GetName() string {
-	return grp.Name
+	return grp.name
 }
 
 func (grp *Group) GetZone() *Zone {
-	return grp.Zone
+	return grp.zone
 }
 
 func (grp *Group) GetComment() (string, error) {
@@ -133,7 +133,7 @@ func (grp *Group) init() error {
 
 func (grps Groups) FindByName(name string, con *Connection) *Group {
 	for _, grp := range grps {
-		if grp.Name == name {
+		if grp.name == name {
 			return grp
 		}
 	}
@@ -149,7 +149,7 @@ func (grps *Groups) Remove(index int) {
 
 func (grp *Group) Remove() bool {
 	for n, p := range *grp.ParentSlice {
-		if p.Name == grp.Name {
+		if p.name == grp.name {
 			grp.ParentSlice.Remove(n)
 			return true
 		}
@@ -159,7 +159,7 @@ func (grp *Group) Remove() bool {
 }
 
 func (grp *Group) String() string {
-	return fmt.Sprintf("%v", grp.Name)
+	return fmt.Sprintf("%v", grp.name)
 }
 
 func (grp *Group) RefreshInfo() error {
@@ -184,7 +184,7 @@ func (grp *Group) RefreshInfo() error {
 			return err
 		} else {
 			if zne := zones.FindByName(infoMap["zone_name"], grp.Con); zne != nil {
-				grp.Zone = zne
+				grp.zone = zne
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods Refresh Group Info Failed: Unable to locate zone in cache"))
 			}
@@ -215,7 +215,7 @@ func (grp *Group) FetchInfo() (map[string]string, error) {
 
 	result.size = C.int(0)
 
-	cGroup := C.CString(grp.Name)
+	cGroup := C.CString(grp.name)
 	defer C.free(unsafe.Pointer(cGroup))
 
 	ccon := grp.Con.GetCcon()
@@ -265,7 +265,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 
 	result.size = C.int(0)
 
-	cGroupName := C.CString(grp.Name)
+	cGroupName := C.CString(grp.name)
 	defer C.free(unsafe.Pointer(cGroupName))
 
 	ccon := grp.Con.GetCcon()
@@ -276,7 +276,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 			return make(Users, 0), nil
 		} else {
 
-			return nil, newError(Fatal, fmt.Sprintf("iRods Get Group %v Failed: %v", grp.Name, C.GoString(err)))
+			return nil, newError(Fatal, fmt.Sprintf("iRods Get Group %v Failed: %v", grp.name, C.GoString(err)))
 		}
 
 	}
@@ -322,8 +322,8 @@ func (grp *Group) AddUser(usr interface{}) error {
 			usrName := usr.(string)
 
 			if existingUsr := usrs.FindByName(usrName, grp.Con); existingUsr != nil {
-				zoneName := existingUsr.Zone
-				return addToGroup(usrName, zoneName, grp.Name, grp.Con)
+				zoneName := existingUsr.zone
+				return addToGroup(usrName, zoneName, grp.name, grp.Con)
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: can't find iRODS user by string"))
 			}
@@ -333,7 +333,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 
 	case *User:
 		aUsr := usr.(*User)
-		return addToGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
+		return addToGroup(aUsr.name, aUsr.zone, grp.name, aUsr.con)
 	default:
 	}
 
@@ -349,8 +349,8 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 			usrName := usr.(string)
 
 			if existingUsr := usrs.FindByName(usrName, grp.Con); existingUsr != nil {
-				zoneName := existingUsr.Zone
-				return removeFromGroup(usrName, zoneName, grp.Name, grp.Con)
+				zoneName := existingUsr.zone
+				return removeFromGroup(usrName, zoneName, grp.name, grp.Con)
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: can't find iRODS user by string"))
 			}
@@ -360,7 +360,7 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 
 	case *User:
 		aUsr := usr.(*User)
-		return removeFromGroup(aUsr.Name, aUsr.Zone, grp.Name, aUsr.Con)
+		return removeFromGroup(aUsr.name, aUsr.zone, grp.name, aUsr.con)
 	default:
 	}
 
