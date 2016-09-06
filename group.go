@@ -16,19 +16,19 @@ import (
 
 type Group struct {
 	name        string
-	CreateTime  time.Time
-	ModifyTime  time.Time
-	Id          int
-	Type        int
+	createTime  time.Time
+	modifyTime  time.Time
+	id          int
+	typ         int
 	zone        *Zone
-	Info        string
-	Comment     string
-	ParentSlice *Groups
+	info        string
+	comment     string
+	parentSlice *Groups
 
-	Init bool
+	hasInit bool
 
-	Users Users
-	Con   *Connection
+	users Users
+	con   *Connection
 }
 
 type Groups []*Group
@@ -39,7 +39,7 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	grp := new(Group)
 
 	grp.name = name
-	grp.Con = con
+	grp.con = con
 
 	if z, err := con.GetLocalZone(); err != nil {
 		return nil, err
@@ -60,41 +60,48 @@ func (grp *Group) GetZone() *Zone {
 
 func (grp *Group) GetComment() (string, error) {
 	if err := grp.init(); err != nil {
-		return grp.Comment, err
+		return grp.comment, err
 	}
-	return grp.Comment, nil
+	return grp.comment, nil
 }
 
 func (grp *Group) GetCreateTime() (time.Time, error) {
 	if err := grp.init(); err != nil {
-		return grp.CreateTime, err
+		return grp.createTime, err
 	}
-	return grp.CreateTime, nil
+	return grp.createTime, nil
 }
 
 func (grp *Group) GetModifyTime() (time.Time, error) {
 	if err := grp.init(); err != nil {
-		return grp.ModifyTime, err
+		return grp.modifyTime, err
 	}
-	return grp.ModifyTime, nil
+	return grp.modifyTime, nil
 }
 
 func (grp *Group) GetId() (int, error) {
 	if err := grp.init(); err != nil {
-		return grp.Id, err
+		return grp.id, err
 	}
-	return grp.Id, nil
+	return grp.id, nil
+}
+
+func (grp *Group) GetInfo() (string, error) {
+	if err := grp.init(); err != nil {
+		return grp.info, err
+	}
+	return grp.info, nil
 }
 
 func (grp *Group) GetType() (int, error) {
 	if err := grp.init(); err != nil {
-		return grp.Type, err
+		return grp.typ, err
 	}
-	return grp.Type, nil
+	return grp.typ, nil
 }
 
 func (grp *Group) GetCon() *Connection {
-	return grp.Con
+	return grp.con
 }
 
 func (grp *Group) GetUsers() (Users, error) {
@@ -102,15 +109,15 @@ func (grp *Group) GetUsers() (Users, error) {
 		return nil, err
 	}
 
-	return grp.Users, nil
+	return grp.users, nil
 }
 
 func (grp *Group) Delete() error {
-	if err := deleteGroup(grp.GetName(), grp.GetZone(), grp.Con); err != nil {
+	if err := deleteGroup(grp.GetName(), grp.GetZone(), grp.con); err != nil {
 		return err
 	}
 
-	if err := grp.Con.RefreshGroups(); err != nil {
+	if err := grp.con.RefreshGroups(); err != nil {
 		return err
 	}
 
@@ -118,14 +125,14 @@ func (grp *Group) Delete() error {
 }
 
 func (grp *Group) init() error {
-	if !grp.Init {
+	if !grp.hasInit {
 		if err := grp.RefreshInfo(); err != nil {
 			return err
 		}
 		if err := grp.RefreshUsers(); err != nil {
 			return err
 		}
-		grp.Init = true
+		grp.hasInit = true
 	}
 
 	return nil
@@ -148,9 +155,9 @@ func (grps *Groups) Remove(index int) {
 }
 
 func (grp *Group) Remove() bool {
-	for n, p := range *grp.ParentSlice {
+	for n, p := range *grp.parentSlice {
 		if p.name == grp.name {
-			grp.ParentSlice.Remove(n)
+			grp.parentSlice.Remove(n)
 			return true
 		}
 	}
@@ -173,17 +180,17 @@ func (grp *Group) RefreshInfo() error {
 	// user_info:
 
 	if infoMap, err := grp.FetchInfo(); err == nil {
-		grp.Comment = infoMap["r_comment"]
-		grp.CreateTime = timeStringToTime(infoMap["create_ts"])
-		grp.ModifyTime = timeStringToTime(infoMap["modify_ts"])
-		grp.Id, _ = strconv.Atoi(infoMap["user_id"])
-		grp.Type = GroupType
-		grp.Info = infoMap["user_info"]
+		grp.comment = infoMap["r_comment"]
+		grp.createTime = timeStringToTime(infoMap["create_ts"])
+		grp.modifyTime = timeStringToTime(infoMap["modify_ts"])
+		grp.id, _ = strconv.Atoi(infoMap["user_id"])
+		grp.typ = GroupType
+		grp.info = infoMap["user_info"]
 
-		if zones, err := grp.Con.GetZones(); err != nil {
+		if zones, err := grp.con.GetZones(); err != nil {
 			return err
 		} else {
-			if zne := zones.FindByName(infoMap["zone_name"], grp.Con); zne != nil {
+			if zne := zones.FindByName(infoMap["zone_name"], grp.con); zne != nil {
 				grp.zone = zne
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods Refresh Group Info Failed: Unable to locate zone in cache"))
@@ -199,7 +206,7 @@ func (grp *Group) RefreshInfo() error {
 func (grp *Group) RefreshUsers() error {
 
 	if usrs, err := grp.FetchUsers(); err == nil {
-		grp.Users = usrs
+		grp.users = usrs
 	} else {
 		return err
 	}
@@ -218,14 +225,14 @@ func (grp *Group) FetchInfo() (map[string]string, error) {
 	cGroup := C.CString(grp.name)
 	defer C.free(unsafe.Pointer(cGroup))
 
-	ccon := grp.Con.GetCcon()
+	ccon := grp.con.GetCcon()
 
 	if status := C.gorods_get_user(cGroup, ccon, &result, &err); status != 0 {
-		grp.Con.ReturnCcon(ccon)
+		grp.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Group Info Failed: %v", C.GoString(err)))
 	}
 
-	grp.Con.ReturnCcon(ccon)
+	grp.con.ReturnCcon(ccon)
 
 	defer C.gorods_free_string_result(&result)
 
@@ -268,10 +275,10 @@ func (grp *Group) FetchUsers() (Users, error) {
 	cGroupName := C.CString(grp.name)
 	defer C.free(unsafe.Pointer(cGroupName))
 
-	ccon := grp.Con.GetCcon()
+	ccon := grp.con.GetCcon()
 
 	if status := C.gorods_get_group(ccon, &result, cGroupName, &err); status != 0 {
-		grp.Con.ReturnCcon(ccon)
+		grp.con.ReturnCcon(ccon)
 		if status == C.CAT_NO_ROWS_FOUND {
 			return make(Users, 0), nil
 		} else {
@@ -281,7 +288,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 
 	}
 
-	grp.Con.ReturnCcon(ccon)
+	grp.con.ReturnCcon(ccon)
 	defer C.gorods_free_string_result(&result)
 
 	unsafeArr := unsafe.Pointer(result.strArr)
@@ -290,14 +297,14 @@ func (grp *Group) FetchUsers() (Users, error) {
 	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
-	if usrs, err := grp.Con.GetUsers(); err == nil {
+	if usrs, err := grp.con.GetUsers(); err == nil {
 		response := make(Users, 0)
 
 		for _, userNames := range slice {
 
 			usrFrags := strings.Split(C.GoString(userNames), "#")
 
-			if usr := usrs.FindByName(usrFrags[0], grp.Con); usr != nil {
+			if usr := usrs.FindByName(usrFrags[0], grp.con); usr != nil {
 				response = append(response, usr)
 			} else {
 				return nil, newError(Fatal, fmt.Sprintf("iRods FetchUsers Failed: User in response not found in cache"))
@@ -318,12 +325,12 @@ func (grp *Group) AddUser(usr interface{}) error {
 	case string:
 		// Need to lookup user by string in cache for zone info
 
-		if usrs, err := grp.Con.GetUsers(); err == nil {
+		if usrs, err := grp.con.GetUsers(); err == nil {
 			usrName := usr.(string)
 
-			if existingUsr := usrs.FindByName(usrName, grp.Con); existingUsr != nil {
+			if existingUsr := usrs.FindByName(usrName, grp.con); existingUsr != nil {
 				zoneName := existingUsr.zone
-				return addToGroup(usrName, zoneName, grp.name, grp.Con)
+				return addToGroup(usrName, zoneName, grp.name, grp.con)
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: can't find iRODS user by string"))
 			}
@@ -345,12 +352,12 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	case string:
 		// Need to lookup user by string in cache for zone info
 
-		if usrs, err := grp.Con.GetUsers(); err == nil {
+		if usrs, err := grp.con.GetUsers(); err == nil {
 			usrName := usr.(string)
 
-			if existingUsr := usrs.FindByName(usrName, grp.Con); existingUsr != nil {
+			if existingUsr := usrs.FindByName(usrName, grp.con); existingUsr != nil {
 				zoneName := existingUsr.zone
-				return removeFromGroup(usrName, zoneName, grp.name, grp.Con)
+				return removeFromGroup(usrName, zoneName, grp.name, grp.con)
 			} else {
 				return newError(Fatal, fmt.Sprintf("iRods RemoveUser Failed: can't find iRODS user by string"))
 			}
