@@ -584,8 +584,9 @@ func (col *Collection) ReadCollection() error {
 func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, error) {
 
 	var (
-		errMsg *C.char
-		force  int
+		errMsg   *C.char
+		force    int
+		resource *C.char
 	)
 
 	if opts.Force {
@@ -594,8 +595,17 @@ func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, err
 		force = 0
 	}
 
+	switch opts.Resource.(type) {
+	case string:
+		resource = C.CString(opts.Resource.(string))
+	case *Resource:
+		r := opts.Resource.(*Resource)
+		resource = C.CString(r.Name())
+	default:
+		return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	}
+
 	path := C.CString(col.path + "/" + opts.Name)
-	resource := C.CString(opts.Resource)
 	cLocalPath := C.CString(localPath)
 
 	defer C.free(unsafe.Pointer(path))

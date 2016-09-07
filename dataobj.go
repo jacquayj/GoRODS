@@ -58,7 +58,7 @@ type DataObjOptions struct {
 	Size     int64
 	Mode     int
 	Force    bool
-	Resource string
+	Resource interface{}
 }
 
 // String returns path of data object
@@ -139,9 +139,10 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 
 	var (
-		errMsg *C.char
-		handle C.int
-		force  int
+		errMsg   *C.char
+		handle   C.int
+		force    int
+		resource *C.char
 	)
 
 	if opts.Force {
@@ -150,8 +151,17 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 		force = 0
 	}
 
+	switch opts.Resource.(type) {
+	case string:
+		resource = C.CString(opts.Resource.(string))
+	case *Resource:
+		r := opts.Resource.(*Resource)
+		resource = C.CString(r.Name())
+	default:
+		return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	}
+
 	path := C.CString(coll.path + "/" + opts.Name)
-	resource := C.CString(opts.Resource)
 
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(resource))
@@ -772,13 +782,15 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 
 	path := C.CString(obj.path)
 	dest := C.CString(destination)
+	resource := C.CString("")
 
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(dest))
+	defer C.free(unsafe.Pointer(resource))
 
 	ccon := obj.con.GetCcon()
 
-	if status := C.gorods_copy_dataobject(path, dest, ccon, &err); status != 0 {
+	if status := C.gorods_copy_dataobject(path, dest, C.int(0), resource, ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
 		return newError(Fatal, fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
 	}

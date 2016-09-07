@@ -109,7 +109,7 @@ int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err);
 int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t* conn, char** err);
 int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, char* resource, int* handle, rcComm_t* conn, char** err);
 int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err);
-int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
+int gorods_copy_dataobject(char* source, char* destination, int force, char* resource, rcComm_t* conn, char** err);
 int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
 int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);
 int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err);

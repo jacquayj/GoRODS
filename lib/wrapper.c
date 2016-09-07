@@ -1376,15 +1376,22 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 }
 
 
-int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char** err) {
+int gorods_copy_dataobject(char* source, char* destination, int force, char* resource, rcComm_t* conn, char** err) {
 	dataObjCopyInp_t dataObjCopyInp; 
 	bzero(&dataObjCopyInp, sizeof(dataObjCopyInp)); 
 
 	rstrcpy(dataObjCopyInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
 	rstrcpy(dataObjCopyInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
 
-	addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, FORCE_FLAG_KW, ""); 
 	addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, REG_CHKSUM_KW, ""); 
+
+    if ( resource != NULL && resource[0] != '\0' ) {
+        addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
+    }
+
+    if ( force > 0 ) {
+        addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, FORCE_FLAG_KW, ""); 
+    }
 
 	int status = rcDataObjCopy(conn, &dataObjCopyInp); 
 	if ( status < 0 ) { 
