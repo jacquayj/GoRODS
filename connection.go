@@ -604,7 +604,7 @@ func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string
 	}
 
 	con.ReturnCcon(ccon)
-	//defer C.gorods_free_string_result(&result)
+	defer C.gorods_free_map_result(&result)
 
 	unsafeKeyArr := unsafe.Pointer(result.hashKeys)
 	keyArrLen := int(result.keySize)

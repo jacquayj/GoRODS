@@ -1065,6 +1065,29 @@ int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* acc
 }
 
 
+// typedef struct {
+//     int size;
+//     int keySize;
+//     char** hashKeys;
+//     char** hashValues;
+// } goRodsHashResult_t;
+
+
+void gorods_free_map_result(goRodsHashResult_t* result) {
+
+    int i;
+    for ( i = 0; i < result->keySize; i++ ) {
+        free(result->hashKeys[i]);
+    }
+    free(result->hashKeys);
+
+    for ( i = 0; i < (result->size * result->keySize); i++ ) {
+        free(result->hashValues[i]);
+    }
+    free(result->hashValues);
+
+}
+
 int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err) {
     /*
       NoDistinctFlag is 1 if the user is requesting 'distinct' to be skipped.
@@ -1121,14 +1144,6 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
     return 0;
 
 }
-
-// typedef struct {
-//     int size;
-//     int keySize;
-//     char** hashKeys;
-//     char** hashValues;
-// } goRodsHashResult_t;
-
 
 int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err) {
     int i = 0, n = 0, j = 0;
