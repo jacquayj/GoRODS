@@ -9,37 +9,45 @@ import "C"
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
-	"unsafe"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
+	"unsafe"
 )
 
 // DataObj structs contain information about single data objects in an iRods zone.
 type DataObj struct {
-	Path   string
-	Name   string
-	Checksum string
-	Size   int64
-	Offset int64
-	Type   int
-	DataId string
-	Resource string
-	PhyPath string
+	path     string
+	name     string
+	checksum string
+	size     int64
+	offset   int64
+	typ      int
 
-	OpenedAs C.int
+	replNum    int
+	rescHier   string
+	replStatus int
 
-	OwnerName string
-	CreateTime int
-	ModifyTime int
+	dataId   string
+	resource *Resource
+	phyPath  string
 
-	MetaCol *MetaCollection
+	openedAs C.int
+
+	ownerName string
+	owner     *User
+
+	createTime time.Time
+	modifyTime time.Time
+
+	metaCol *MetaCollection
 
 	// Con field is a pointer to the Connection used to fetch the data object
-	Con *Connection
+	con *Connection
 
 	// Col field is a pointer to the Collection containing the data object
-	Col *Collection
+	col *Collection
 
 	chandle C.int
 }
@@ -50,13 +58,12 @@ type DataObjOptions struct {
 	Size     int64
 	Mode     int
 	Force    bool
-	Resource string
+	Resource interface{}
 }
-
 
 // String returns path of data object
 func (obj *DataObj) String() string {
-	return "DataObject: " + obj.Path
+	return "DataObject: " + obj.path
 }
 
 // We don't init() here or return errors here because it takes forever. Lazy loading is better in this case.
@@ -64,35 +71,59 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 
 	dataObj := new(DataObj)
 
-	dataObj.Type = DataObjType
-	dataObj.Col = col
-	dataObj.Con = dataObj.Col.Con
-	dataObj.Offset = 0
-	dataObj.Name = C.GoString(data.dataName)
-	dataObj.Path = C.GoString(data.collName) + "/" + dataObj.Name
-	dataObj.Size = int64(data.dataSize)
+	dataObj.typ = DataObjType
+	dataObj.col = col
+	dataObj.con = dataObj.col.con
+	dataObj.offset = 0
+	dataObj.name = C.GoString(data.dataName)
+	dataObj.path = C.GoString(data.collName) + "/" + dataObj.name
+	dataObj.size = int64(data.dataSize)
 	dataObj.chandle = C.int(-1)
-	dataObj.Checksum = C.GoString(data.chksum)
-	dataObj.DataId = C.GoString(data.dataId)
-	dataObj.Resource = C.GoString(data.resource)
-	dataObj.PhyPath = C.GoString(data.phyPath)
-	dataObj.OpenedAs = C.int(-1)
+	dataObj.checksum = C.GoString(data.chksum)
+	dataObj.dataId = C.GoString(data.dataId)
+	dataObj.phyPath = C.GoString(data.phyPath)
+	dataObj.openedAs = C.int(-1)
 
-	dataObj.OwnerName = C.GoString(data.ownerName)
-	dataObj.CreateTime, _ = strconv.Atoi(C.GoString(data.createTime))
-	dataObj.ModifyTime, _ = strconv.Atoi(C.GoString(data.modifyTime))
+	dataObj.replNum = int(data.replNum)
+	dataObj.rescHier = C.GoString(data.resc_hier)
+	dataObj.replStatus = int(data.replStatus)
+
+	dataObj.ownerName = C.GoString(data.ownerName)
+	dataObj.createTime = cTimeToTime(data.createTime)
+	dataObj.modifyTime = cTimeToTime(data.modifyTime)
+
+	if rsrcs, err := col.con.GetResources(); err != nil {
+		return nil
+	} else {
+		if r := rsrcs.FindByName(C.GoString(data.resource)); r != nil {
+			dataObj.resource = r
+		}
+	}
+
+	if usrs, err := col.con.GetUsers(); err != nil {
+		return nil
+	} else {
+		if u := usrs.FindByName(dataObj.ownerName, dataObj.con); u != nil {
+			dataObj.owner = u
+		}
+	}
 
 	return dataObj
 }
 
-// getDataObj initializes specified data object located at startPath using gorods.Connection.
+// getDataObj initializes specified data object located at startPath using gorods.connection.
 // Could be considered alias of Connection.DataObject()
 func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 
 	collectionDir := filepath.Dir(startPath)
 	dataObjName := filepath.Base(startPath)
 
-	if col, err := con.Collection(collectionDir, false); err == nil {
+	opts := CollectionOptions{
+		Path:      collectionDir,
+		Recursive: false,
+	}
+
+	if col, err := con.Collection(opts); err == nil {
 		if obj := col.FindObj(dataObjName); obj != nil {
 			return obj, nil
 		} else {
@@ -104,14 +135,14 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 
 }
 
-
 // CreateDataObj creates and adds a data object to the specified collection using provided options. Returns the newly created data object.
 func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 
 	var (
-		errMsg *C.char
-		handle C.int
-		force  int
+		errMsg   *C.char
+		handle   C.int
+		force    int
+		resource *C.char
 	)
 
 	if opts.Force {
@@ -120,34 +151,38 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 		force = 0
 	}
 
-	path := C.CString(coll.Path + "/" + opts.Name)
-	resource := C.CString(opts.Resource)
+	switch opts.Resource.(type) {
+	case string:
+		resource = C.CString(opts.Resource.(string))
+	case *Resource:
+		r := opts.Resource.(*Resource)
+		resource = C.CString(r.Name())
+	default:
+		return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	}
+
+	path := C.CString(coll.path + "/" + opts.Name)
 
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(resource))
 
-	ccon := coll.Con.GetCcon()
-	defer coll.Con.ReturnCcon(ccon)
+	ccon := coll.con.GetCcon()
 
 	if status := C.gorods_create_dataobject(path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, &handle, ccon, &errMsg); status != 0 {
+		coll.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
+	coll.con.ReturnCcon(ccon)
 
-	dataObj := new(DataObj)
+	if err := coll.Refresh(); err != nil {
+		return nil, err
+	}
 
-	dataObj.Type = DataObjType
-	dataObj.Col = coll
-	dataObj.Con = dataObj.Col.Con
-	dataObj.Offset = 0
-	dataObj.Name = opts.Name
-	dataObj.Path = C.GoString(path)
-	dataObj.Size = opts.Size
-	dataObj.chandle = handle
-	dataObj.OpenedAs = C.int(-1)
-
-	coll.add(dataObj)
-
-	return dataObj, nil
+	if do, err := getDataObj(C.GoString(path), coll.con); err != nil {
+		return nil, err
+	} else {
+		return do, nil
+	}
 
 }
 
@@ -171,88 +206,123 @@ func (obj *DataObj) initRW() error {
 // [rods#tempZone:own
 // developers#tempZone:modify object
 // designers#tempZone:read object]
-func (obj *DataObj) GetACL() (ACLs, error) {
+func (obj *DataObj) ACL() (ACLs, error) {
 
 	var (
-		result C.goRodsACLResult_t
-		err    *C.char
+		result   C.goRodsACLResult_t
+		err      *C.char
+		zoneHint *C.char
 	)
 
-	zoneHint := C.CString("tempZone")
-	cDataId := C.CString(obj.DataId)
+	zone, zErr := obj.con.GetLocalZone()
+	if zErr != nil {
+		return nil, zErr
+	} else {
+		zoneHint = C.CString(zone.Name())
+	}
+
+	cDataId := C.CString(obj.dataId)
 	defer C.free(unsafe.Pointer(cDataId))
 	defer C.free(unsafe.Pointer(zoneHint))
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
 
 	if status := C.gorods_get_dataobject_acl(ccon, cDataId, &result, zoneHint, &err); status != 0 {
+		obj.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRods Get Data Object ACL Failed: %v", C.GoString(err)))
 	}
 
-	unsafeArr := unsafe.Pointer(result.aclArr)
-	arrLen := int(result.size)
+	obj.con.ReturnCcon(ccon)
 
-	// Convert C array to slice, backed by arr *C.goRodsACL_t
-	slice := (*[1 << 30]C.goRodsACL_t)(unsafeArr)[:arrLen:arrLen]
+	return aclSliceToResponse(&result, obj.con)
 
-	response := make([]*ACL, 0)
+}
 
-	for _, acl := range slice {
-
-		response = append(response, &ACL {
-			Name: C.GoString(acl.name),
-			Zone: C.GoString(acl.zone),
-			DataAccess: C.GoString(acl.dataAccess),
-			ACLType: C.GoString(acl.acltype),
-		})
-
-	}
-
-	C.gorods_free_acl_result(&result)
-
-	return response, nil
-
+// Chmod changes the permissions/ACL of a data object
+// accessLevel: Null | Read | Write | Own
+func (obj *DataObj) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
+	return chmod(obj, userOrGroup, accessLevel, recursive)
 }
 
 // Type gets the type
-func (obj *DataObj) GetType() int {
-	return obj.Type
+func (obj *DataObj) Type() int {
+	return obj.typ
 }
 
 // Connection returns the *Connection used to get data object
-func (obj *DataObj) GetCon() *Connection {
-	return obj.Con
+func (obj *DataObj) Con() *Connection {
+	return obj.con
 }
 
 // GetName returns the Name of the data object
-func (obj *DataObj) GetName() string {
-	return obj.Name
+func (obj *DataObj) Name() string {
+	return obj.name
 }
 
 // GetName returns the Path of the data object
-func (obj *DataObj) GetPath() string {
-	return obj.Path
+func (obj *DataObj) Path() string {
+	return obj.path
 }
 
 // GetName returns the *Collection of the data object
-func (obj *DataObj) GetCol() *Collection {
-	return obj.Col
+func (obj *DataObj) Col() *Collection {
+	return obj.col
 }
 
 // GetOwnerName returns the owner name of the data object
-func (obj *DataObj) GetOwnerName() string {
-	return obj.OwnerName
+func (obj *DataObj) OwnerName() string {
+	return obj.ownerName
+}
+
+// GetOwnerName returns the owner name of the data object
+func (obj *DataObj) Owner() *User {
+	return obj.owner
+}
+
+func (obj *DataObj) Resource() *Resource {
+	return obj.resource
+}
+
+func (obj *DataObj) DataId() string {
+	return obj.dataId
+}
+
+func (obj *DataObj) PhyPath() string {
+	return obj.phyPath
+}
+
+func (obj *DataObj) ReplNum() int {
+	return obj.replNum
+}
+
+func (obj *DataObj) RescHier() string {
+	return obj.rescHier
+}
+
+func (obj *DataObj) ReplStatus() int {
+	return obj.replStatus
+}
+
+func (obj *DataObj) Checksum() string {
+	return obj.checksum
+}
+
+func (obj *DataObj) Offset() int64 {
+	return obj.offset
+}
+
+func (obj *DataObj) Size() int64 {
+	return obj.size
 }
 
 // GetCreateTime returns the create time of the data object
-func (obj *DataObj) GetCreateTime() int {
-	return obj.CreateTime
+func (obj *DataObj) CreateTime() time.Time {
+	return obj.createTime
 }
 
 // GetModifyTime returns the modify time of the data object
-func (obj *DataObj) GetModifyTime() int {
-	return obj.ModifyTime
+func (obj *DataObj) ModifyTime() time.Time {
+	return obj.modifyTime
 }
 
 // Destroy is equivalent to irm -rf
@@ -274,12 +344,12 @@ func (obj *DataObj) Trash(recursive bool) error {
 func (obj *DataObj) Rm(recursive bool, force bool) error {
 	var errMsg *C.char
 
-	path := C.CString(obj.Path)
+	path := C.CString(obj.path)
 
 	defer C.free(unsafe.Pointer(path))
 
 	var (
-		cForce C.int
+		cForce     C.int
 		cRecursive C.int
 	)
 
@@ -291,8 +361,8 @@ func (obj *DataObj) Rm(recursive bool, force bool) error {
 		cRecursive = C.int(1)
 	}
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_rm(path, 0, cRecursive, cForce, ccon, &errMsg); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Rm DataObject Failed: %v", C.GoString(errMsg)))
@@ -305,18 +375,21 @@ func (obj *DataObj) Rm(recursive bool, force bool) error {
 func (obj *DataObj) Open() error {
 	var errMsg *C.char
 
-	path := C.CString(obj.Path)
-
+	path := C.CString(obj.path)
+	resourceName := C.CString(obj.resource.Name())
+	replNum := C.CString(strconv.Itoa(obj.replNum))
 	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(resourceName))
+	defer C.free(unsafe.Pointer(replNum))
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
-	if status := C.gorods_open_dataobject(path, C.O_RDONLY, &obj.chandle, ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
+	if status := C.gorods_open_dataobject(path, resourceName, replNum, C.O_RDONLY, &obj.chandle, ccon, &errMsg); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Open DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
 	}
 
-	obj.OpenedAs = C.O_RDONLY
+	obj.openedAs = C.O_RDONLY
 
 	return nil
 }
@@ -325,18 +398,21 @@ func (obj *DataObj) Open() error {
 func (obj *DataObj) OpenRW() error {
 	var errMsg *C.char
 
-	path := C.CString(obj.Path)
-
+	path := C.CString(obj.path)
+	resourceName := C.CString(obj.resource.Name())
+	replNum := C.CString(strconv.Itoa(obj.replNum))
 	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(resourceName))
+	defer C.free(unsafe.Pointer(replNum))
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
-	if status := C.gorods_open_dataobject(path, C.O_RDWR, &obj.chandle, ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods OpenRW DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
+	if status := C.gorods_open_dataobject(path, resourceName, replNum, C.O_RDWR, &obj.chandle, ccon, &errMsg); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods OpenRW DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
 	}
 
-	obj.OpenedAs = C.O_RDWR
+	obj.openedAs = C.O_RDWR
 
 	return nil
 }
@@ -347,11 +423,11 @@ func (obj *DataObj) Close() error {
 
 	if int(obj.chandle) > -1 {
 
-		ccon := obj.Con.GetCcon()
-		defer obj.Con.ReturnCcon(ccon)
+		ccon := obj.con.GetCcon()
+		defer obj.con.ReturnCcon(ccon)
 
 		if status := C.gorods_close_dataobject(obj.chandle, ccon, &errMsg); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.Path, C.GoString(errMsg)))
+			return newError(Fatal, fmt.Sprintf("iRods Close DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
 		}
 
 		obj.chandle = C.int(-1)
@@ -367,8 +443,8 @@ func (obj *DataObj) Read() ([]byte, error) {
 	}
 
 	var (
-		buffer C.bytesBuf_t
-		err    *C.char
+		buffer    C.bytesBuf_t
+		err       *C.char
 		bytesRead C.int
 	)
 
@@ -376,14 +452,14 @@ func (obj *DataObj) Read() ([]byte, error) {
 		return nil, er
 	}
 
-	ccon := obj.Con.GetCcon()
+	ccon := obj.con.GetCcon()
 
-	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.Size), &buffer, &bytesRead, ccon, &err); status != 0 {
-		obj.Con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.size), &buffer, &bytesRead, ccon, &err); status != 0 {
+		obj.con.ReturnCcon(ccon)
+		return nil, newError(Fatal, fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
-	obj.Con.ReturnCcon(ccon)
+	obj.con.ReturnCcon(ccon)
 
 	buf := unsafe.Pointer(buffer.buf)
 	defer C.free(buf)
@@ -400,8 +476,8 @@ func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 	}
 
 	var (
-		buffer C.bytesBuf_t
-		err    *C.char
+		buffer    C.bytesBuf_t
+		err       *C.char
 		bytesRead C.int
 	)
 
@@ -409,12 +485,11 @@ func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 		return nil, er
 	}
 
-
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, &bytesRead, ccon, &err); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRods ReadBytes DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRods ReadBytes DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	buf := unsafe.Pointer(buffer.buf)
@@ -435,14 +510,14 @@ func (obj *DataObj) LSeek(offset int64) error {
 		err *C.char
 	)
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_lseek_dataobject(obj.chandle, C.rodsLong_t(offset), ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods LSeek DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		return newError(Fatal, fmt.Sprintf("iRods LSeek DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
-	obj.Offset = offset
+	obj.offset = offset
 
 	return nil
 }
@@ -454,8 +529,8 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 	}
 
 	var (
-		buffer   C.bytesBuf_t
-		err      *C.char
+		buffer    C.bytesBuf_t
+		err       *C.char
 		bytesRead C.int
 	)
 
@@ -463,27 +538,26 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 		return er
 	}
 
-	for obj.Offset < obj.Size {
+	for obj.offset < obj.size {
 
-
-		ccon := obj.Con.GetCcon()
+		ccon := obj.con.GetCcon()
 
 		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, &bytesRead, ccon, &err); status != 0 {
-			obj.Con.ReturnCcon(ccon)
-			return newError(Fatal, fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+			obj.con.ReturnCcon(ccon)
+			return newError(Fatal, fmt.Sprintf("iRods Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 		}
 
-		obj.Con.ReturnCcon(ccon)
+		obj.con.ReturnCcon(ccon)
 
 		buf := unsafe.Pointer(buffer.buf)
 
 		chunk := C.GoBytes(buf, bytesRead)
-		
+
 		C.free(buf)
 
 		callback(chunk)
 
-		if er := obj.LSeek(obj.Offset + size); er != nil {
+		if er := obj.LSeek(obj.offset + size); er != nil {
 			return er
 		}
 	}
@@ -505,7 +579,7 @@ func (obj *DataObj) DownloadTo(localPath string) error {
 		return err
 	} else {
 		if er := ioutil.WriteFile(localPath, objContents, 0644); er != nil {
-			return newError(Fatal, fmt.Sprintf("iRods Download DataObject Failed: %v, %v", obj.Path, er))
+			return newError(Fatal, fmt.Sprintf("iRods Download DataObject Failed: %v, %v", obj.path, er))
 		}
 	}
 
@@ -518,7 +592,7 @@ func (obj *DataObj) Write(data []byte) error {
 		return er
 	}
 
-	if obj.OpenedAs != C.O_RDWR || obj.OpenedAs != C.O_WRONLY {
+	if obj.openedAs != C.O_RDWR || obj.openedAs != C.O_WRONLY {
 		obj.Close()
 		obj.OpenRW()
 	}
@@ -533,16 +607,16 @@ func (obj *DataObj) Write(data []byte) error {
 
 	var err *C.char
 
-	ccon := obj.Con.GetCcon()
+	ccon := obj.con.GetCcon()
 
 	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), ccon, &err); status != 0 {
-		obj.Con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRods Write DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		obj.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Write DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
-	obj.Con.ReturnCcon(ccon)
+	obj.con.ReturnCcon(ccon)
 
-	obj.Size = size
+	obj.size = size
 
 	return obj.Close()
 }
@@ -553,7 +627,7 @@ func (obj *DataObj) WriteBytes(data []byte) error {
 		return er
 	}
 
-	if obj.OpenedAs != C.O_RDWR || obj.OpenedAs != C.O_WRONLY {
+	if obj.openedAs != C.O_RDWR || obj.openedAs != C.O_WRONLY {
 		obj.Close()
 		obj.OpenRW()
 	}
@@ -564,18 +638,18 @@ func (obj *DataObj) WriteBytes(data []byte) error {
 
 	var err *C.char
 
-	ccon := obj.Con.GetCcon()
+	ccon := obj.con.GetCcon()
 
 	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), ccon, &err); status != 0 {
-		obj.Con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRods Write DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		obj.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Write DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
-	obj.Con.ReturnCcon(ccon)
+	obj.con.ReturnCcon(ccon)
 
-	obj.Size = size + obj.Offset
+	obj.size = size + obj.offset
 
-	return obj.LSeek(obj.Size)
+	return obj.LSeek(obj.size)
 }
 
 // Stat returns a map (key/value pairs) of the system meta information. The following keys can be used with the map:
@@ -602,15 +676,15 @@ func (obj *DataObj) Stat() (map[string]interface{}, error) {
 		statResult *C.rodsObjStat_t
 	)
 
-	path := C.CString(obj.Path)
+	path := C.CString(obj.path)
 
 	defer C.free(unsafe.Pointer(path))
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_stat_dataobject(path, &statResult, ccon, &err); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Close Stat Failed: %v, %v", obj.Path, C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRods Close Stat Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	result := make(map[string]interface{})
@@ -667,15 +741,15 @@ func (obj *DataObj) Meta() (*MetaCollection, error) {
 		return nil, er
 	}
 
-	if obj.MetaCol == nil {
+	if obj.metaCol == nil {
 		if mc, err := newMetaCollection(obj); err == nil {
-			obj.MetaCol = mc
+			obj.metaCol = mc
 		} else {
 			return nil, err
 		}
 	}
 
-	return obj.MetaCol, nil
+	return obj.metaCol, nil
 }
 
 // CopyTo copies the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the destination collection automatically to maintain correct state. Returns error.
@@ -692,39 +766,116 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 
 		// Is this a relative path?
 		if destinationCollectionString[0] != '/' {
-			destinationCollectionString = obj.Col.Path + "/" + destinationCollectionString
+			destinationCollectionString = obj.col.path + "/" + destinationCollectionString
 		}
 
 		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
 			destinationCollectionString += "/"
 		}
 
-		destination += destinationCollectionString + obj.Name
+		destination += destinationCollectionString + obj.name
 
 	} else {
-		destinationCollectionString = (iRodsCollection.(*Collection)).Path + "/"
-		destination = destinationCollectionString + obj.Name
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + obj.name
 	}
 
-	path := C.CString(obj.Path)
+	path := C.CString(obj.path)
 	dest := C.CString(destination)
+	resource := C.CString("")
 
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(dest))
+	defer C.free(unsafe.Pointer(resource))
 
-	ccon := obj.Con.GetCcon()
+	ccon := obj.con.GetCcon()
 
-	if status := C.gorods_copy_dataobject(path, dest, ccon, &err); status != 0 {
-		obj.Con.ReturnCcon(ccon)
+	if status := C.gorods_copy_dataobject(path, dest, C.int(0), resource, ccon, &err); status != 0 {
+		obj.con.ReturnCcon(ccon)
 		return newError(Fatal, fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
 	}
 
-	obj.Con.ReturnCcon(ccon)
+	obj.con.ReturnCcon(ccon)
 
 	// reload destination collection
 	if isString(iRodsCollection) {
 		// Find collection recursivly
-		if dc := obj.Con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+		if dc := obj.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+			(dc.(*Collection)).Refresh()
+		}
+	} else {
+		(iRodsCollection.(*Collection)).Refresh()
+	}
+
+	return nil
+}
+
+// CopyTo copies the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the destination collection automatically to maintain correct state. Returns error.
+func (obj *DataObj) CopyToOpts(iRodsCollection interface{}, opts DataObjOptions) error {
+
+	var (
+		err                         *C.char
+		resource                    *C.char
+		force                       int
+		destination                 string
+		destinationCollectionString string
+	)
+
+	if isString(iRodsCollection) {
+		destinationCollectionString = iRodsCollection.(string)
+
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = obj.col.path + "/" + destinationCollectionString
+		}
+
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + obj.name
+
+	} else {
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + obj.name
+	}
+
+	if opts.Force {
+		force = 1
+	} else {
+		force = 0
+	}
+
+	switch opts.Resource.(type) {
+	case string:
+		resource = C.CString(opts.Resource.(string))
+	case *Resource:
+		r := opts.Resource.(*Resource)
+		resource = C.CString(r.Name())
+	default:
+		newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	}
+
+	path := C.CString(obj.path)
+	dest := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(dest))
+	defer C.free(unsafe.Pointer(resource))
+
+	ccon := obj.con.GetCcon()
+
+	if status := C.gorods_copy_dataobject(path, dest, C.int(force), resource, ccon, &err); status != 0 {
+		obj.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
+	}
+
+	obj.con.ReturnCcon(ccon)
+
+	// reload destination collection
+	if isString(iRodsCollection) {
+		// Find collection recursivly
+		if dc := obj.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
 			(dc.(*Collection)).Refresh()
 		}
 	} else {
@@ -749,57 +900,61 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 
 		// Is this a relative path?
 		if destinationCollectionString[0] != '/' {
-			destinationCollectionString = obj.Col.Path + "/" + destinationCollectionString
+			destinationCollectionString = obj.col.path + "/" + destinationCollectionString
 		}
 
 		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
 			destinationCollectionString += "/"
 		}
 
-		destination += destinationCollectionString + obj.Name
+		destination += destinationCollectionString + obj.name
 
 	} else {
-		destinationCollectionString = (iRodsCollection.(*Collection)).Path + "/"
-		destination = destinationCollectionString + obj.Name
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + obj.name
 	}
 
-	path := C.CString(obj.Path)
+	path := C.CString(obj.path)
 	dest := C.CString(destination)
 
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(dest))
 
-	ccon := obj.Con.GetCcon()
+	ccon := obj.con.GetCcon()
 
 	if status := C.gorods_move_dataobject(path, dest, ccon, &err); status != 0 {
-		obj.Con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRods Move DataObject Failed S:%v, D:%v, %v", obj.Path, destination, C.GoString(err)))
+		obj.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Move DataObject Failed S:%v, D:%v, %v", obj.path, destination, C.GoString(err)))
 	}
 
-	obj.Con.ReturnCcon(ccon)
+	obj.con.ReturnCcon(ccon)
 
 	// Reload source collection, we are now detached
-	obj.Col.Refresh()
+	obj.col.Refresh()
 
 	// Find & reload destination collection
 	if isString(iRodsCollection) {
 		// Find collection recursivly
-		if dc := obj.Con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+		if dc := obj.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
 			destinationCollection = dc.(*Collection)
 
 			destinationCollection.Refresh()
 		} else {
+			opts := CollectionOptions{
+				Path:      destinationCollectionString,
+				Recursive: false,
+			}
 			// Can't find, load collection into memory
-			destinationCollection, _ = obj.Con.Collection(destinationCollectionString, false)
+			destinationCollection, _ = obj.con.Collection(opts)
 		}
 	} else {
 		destinationCollection = (iRodsCollection.(*Collection))
 		destinationCollection.Refresh()
 	}
 
-	// Reassign obj.Col to destination collection
-	obj.Col = destinationCollection
-	obj.Path = destinationCollection.Path + "/" + obj.Name
+	// Reassign obj.col to destination collection
+	obj.col = destinationCollection
+	obj.path = destinationCollection.path + "/" + obj.name
 
 	obj.chandle = C.int(-1)
 
@@ -815,8 +970,8 @@ func (obj *DataObj) Rename(newFileName string) error {
 
 	var err *C.char
 
-	source := obj.Path
-	destination := obj.Col.Path + "/" + newFileName
+	source := obj.path
+	destination := obj.col.path + "/" + newFileName
 
 	s := C.CString(source)
 	d := C.CString(destination)
@@ -824,15 +979,15 @@ func (obj *DataObj) Rename(newFileName string) error {
 	defer C.free(unsafe.Pointer(s))
 	defer C.free(unsafe.Pointer(d))
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_move_dataobject(s, d, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Rename DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		return newError(Fatal, fmt.Sprintf("iRods Rename DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
-	obj.Name = newFileName
-	obj.Path = destination
+	obj.name = newFileName
+	obj.path = destination
 
 	obj.chandle = C.int(-1)
 
@@ -844,12 +999,12 @@ func (obj *DataObj) Rename(newFileName string) error {
 
 // 	var err *C.char
 
-// 	path := C.CString(obj.Path)
+// 	path := C.CString(obj.path)
 
 // 	defer C.free(unsafe.Pointer(path))
 
-// 	if status := C.gorods_unlink_dataobject(path, C.int(1), obj.Con.ccon, &err); status != 0 {
-// 		return newError(Fatal, fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+// 	if status := C.gorods_unlink_dataobject(path, C.int(1), obj.con.ccon, &err); status != 0 {
+// 		return newError(Fatal, fmt.Sprintf("iRods Delete DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 // 	}
 
 // 	return nil
@@ -868,21 +1023,21 @@ func (obj *DataObj) Chksum() (string, error) {
 		chksumOut *C.char
 	)
 
-	path := C.CString(obj.Path)
+	path := C.CString(obj.path)
 
 	defer C.free(unsafe.Pointer(path))
 	defer C.free(unsafe.Pointer(chksumOut))
 
-	ccon := obj.Con.GetCcon()
-	defer obj.Con.ReturnCcon(ccon)
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_checksum_dataobject(path, &chksumOut, ccon, &err); status != 0 {
-		return "", newError(Fatal, fmt.Sprintf("iRods Chksum DataObject Failed: %v, %v", obj.Path, C.GoString(err)))
+		return "", newError(Fatal, fmt.Sprintf("iRods Chksum DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
-	obj.Checksum = C.GoString(chksumOut)
+	obj.checksum = C.GoString(chksumOut)
 
-	return obj.Checksum, nil
+	return obj.checksum, nil
 }
 
 // Verify returns true or false depending on whether the checksum md5 string matches
@@ -913,4 +1068,3 @@ func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
 
 	return obj
 }
-

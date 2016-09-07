@@ -24,7 +24,7 @@ type Metas []*Meta
 
 // MatchOne returns a single Meta struct from the slice, matching on Attribute, Value, and Units
 func (ms Metas) MatchOne(m *Meta) *Meta {
-	
+
 	if len(ms) > 0 {
 		for _, am := range ms {
 			if am.Attribute == m.Attribute && am.Value == m.Value && am.Units == m.Units {
@@ -60,7 +60,7 @@ func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
 
 	result := new(MetaCollection)
 	result.Obj = obj
-	result.Con = obj.GetCon()
+	result.Con = obj.Con()
 
 	if err := result.init(); err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
 }
 
 func (m *Meta) getTypeRodsString() string {
-	return getTypeString(m.Parent.Obj.GetType())
+	return getTypeString(m.Parent.Obj.Type())
 }
 
 // SetValue will modify metadata AVU value only
@@ -97,7 +97,7 @@ func (m *Meta) Rename(attributeName string) (*Meta, error) {
 func (m *Meta) Delete() (*MetaCollection, error) {
 
 	mT := C.CString(m.getTypeRodsString())
-	path := C.CString(m.Parent.Obj.GetPath())
+	path := C.CString(m.Parent.Obj.Path())
 	oa := C.CString(m.Attribute)
 	ov := C.CString(m.Value)
 	ou := C.CString(m.Units)
@@ -115,7 +115,7 @@ func (m *Meta) Delete() (*MetaCollection, error) {
 	if status := C.gorods_rm_meta(mT, path, oa, ov, ou, ccon, &err); status < 0 {
 		m.Parent.Con.ReturnCcon(ccon)
 
-		return m.Parent, newError(Fatal, fmt.Sprintf("iRods rm Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
+		return m.Parent, newError(Fatal, fmt.Sprintf("iRods rm Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
 	}
 
 	m.Parent.Con.ReturnCcon(ccon)
@@ -130,7 +130,7 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 
 	if attributeName != m.Attribute || value != m.Value || units != m.Units {
 		mT := C.CString(m.getTypeRodsString())
-		path := C.CString(m.Parent.Obj.GetPath())
+		path := C.CString(m.Parent.Obj.Path())
 		oa := C.CString(m.Attribute)
 		ov := C.CString(m.Value)
 		ou := C.CString(m.Units)
@@ -153,7 +153,7 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 
 		if status := C.gorods_mod_meta(mT, path, oa, ov, ou, na, nv, nu, ccon, &err); status < 0 {
 			m.Parent.Con.ReturnCcon(ccon)
-			e = newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
+			e = newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
 			return
 		}
 
@@ -170,10 +170,10 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 		return
 	}
 
-	if match := metaResult.MatchOne(&Meta {
+	if match := metaResult.MatchOne(&Meta{
 		Attribute: attributeName,
-		Value: value,
-		Units: units,
+		Value:     value,
+		Units:     units,
 	}); match != nil {
 		newMeta = match
 		return
@@ -208,16 +208,16 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	mc.Metas = make(Metas, 0)
 
-	name := C.CString(mc.Obj.GetName())
+	name := C.CString(mc.Obj.Name())
 
 	defer C.free(unsafe.Pointer(name))
 
 	ccon := mc.Con.GetCcon()
 	defer mc.Con.ReturnCcon(ccon)
 
-	switch mc.Obj.GetType() {
+	switch mc.Obj.Type() {
 	case DataObjType:
-		cwdGo := mc.Obj.GetCol().GetPath()
+		cwdGo := mc.Obj.Col().Path()
 		cwd := C.CString(cwdGo)
 
 		defer C.free(unsafe.Pointer(cwd))
@@ -230,7 +230,7 @@ func (mc *MetaCollection) ReadMeta() error {
 			}
 		}
 	case CollectionType:
-		cwdGo := filepath.Dir(mc.Obj.GetPath())
+		cwdGo := filepath.Dir(mc.Obj.Path())
 		cwd := C.CString(cwdGo)
 
 		defer C.free(unsafe.Pointer(cwd))
@@ -293,7 +293,7 @@ func (mc *MetaCollection) String() string {
 
 	var str string
 
-	str = "Metadata: " + mc.Obj.GetPath() + "\n"
+	str = "Metadata: " + mc.Obj.Path() + "\n"
 	for _, m := range mc.Metas {
 		str += "\t" + m.String() + "\n"
 	}
@@ -333,7 +333,7 @@ func (mc *MetaCollection) Get(attr string) (Metas, error) {
 	if len(result) == 0 {
 		return result, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
 	}
-	
+
 	return result, nil
 }
 
@@ -355,7 +355,6 @@ func (mc *MetaCollection) Each(iterator func(*Meta)) error {
 	for _, value := range mc.Metas {
 		iterator(value)
 	}
-
 
 	return nil
 }
@@ -401,7 +400,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		m.Parent = mc
 
 		mT := C.CString(m.getTypeRodsString())
-		path := C.CString(m.Parent.Obj.GetPath())
+		path := C.CString(m.Parent.Obj.Path())
 		na := C.CString(m.Attribute)
 		nv := C.CString(m.Value)
 		nu := C.CString(m.Units)
@@ -418,7 +417,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 
 		if status := C.gorods_add_meta(mT, path, na, nv, nu, ccon, &err); status < 0 {
 			m.Parent.Con.ReturnCcon(ccon)
-			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.GetPath(), C.GoString(err)))
+			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
 		}
 
 		m.Parent.Con.ReturnCcon(ccon)
@@ -437,5 +436,5 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 	} else {
 		return nil, er
 	}
-	
+
 }

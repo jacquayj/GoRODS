@@ -14,6 +14,14 @@
 #include "dataObjClose.h"
 #include "lsUtil.h"
 
+
+typedef struct {
+	int size;
+	int keySize;
+	char** hashKeys;
+	char** hashValues;
+} goRodsHashResult_t;
+
 typedef struct {
 	char* name;
 	char* value;
@@ -24,6 +32,11 @@ typedef struct {
 	int size;
 	goRodsMeta_t* metaArr;
 } goRodsMetaResult_t;
+
+typedef struct {
+	int size;
+	char** strArr;
+} goRodsStringResult_t;
 
 typedef struct {
 	char* name;
@@ -43,30 +56,79 @@ typedef struct {
 } goRodsPathResult_t;
 
 void* gorods_malloc(size_t size);
-int gorods_connect(rcComm_t** conn, char* password, char** err);
-int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err);
+int gorods_connect(rcComm_t** conn, char** err);
+int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char** err);
+int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPass, char** err) ;
 
-int gorods_open_collection(char* path, int* collHandle, rcComm_t* conn, char** err);
+int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err);
+void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
+void gorods_free_string_result(goRodsStringResult_t* result);
+void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
+int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupName, char** err);
+
+int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err);
+int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err);
+
+int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_change_user_password(char* userName, char* newPassword, char* myPassword, rcComm_t *conn, char** err);
+
+int gorods_get_resources(rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_resource(char* rescName, rcComm_t* conn, goRodsStringResult_t* result, char** err);
+
+int gorods_get_resource_result(rcComm_t *Conn, genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
+int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char** err);
+
+int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* result, rcComm_t* conn, char** err);
+
+int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* result, char** err);
+int gorods_get_user_group_result(int status, goRodsStringResult_t* result, genQueryOut_t *genQueryOut, char *descriptions[]);
+
+int gorods_remove_user_from_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err);
+
+int
+gorods_queryDataObjAcl (rcComm_t *conn, char *dataId, char *zoneHint,
+                 genQueryOut_t **genQueryOut);
+
+int gorods_delete_group(char* groupName, char* zoneName, rcComm_t *conn, char** err);
+int gorods_create_group(char* groupName, char* zoneName, rcComm_t *conn, char** err);
+
+int gorods_get_zones(rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_zone(char* zoneName, rcComm_t* conn, goRodsStringResult_t* result, char** err);
+int gorods_get_local_zone(rcComm_t* conn, char** zoneName, char** err);
+
+int gorods_create_user(char* userName, char* zoneName, char* type, rcComm_t *conn, char** err);
+int gorods_delete_user(char* userName, char* zoneName, rcComm_t *conn, char** err);
+
+int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
+              char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
+              rodsArguments_t* _rodsArgs, rcComm_t *conn, char** err);
+int gorods_add_user_to_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err);
+
+int gorods_open_collection(char* path, int trimRepls, int* collHandle, rcComm_t* conn, char** err);
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err);
 int gorods_close_collection(int handleInx, rcComm_t* conn, char** err);
 int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err);
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err);
 
-int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn, char** err);
+int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, rcComm_t* conn, char** err);
+int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int openFlag, int* handle, rcComm_t* conn, char** err);
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err);
 int gorods_lseek_dataobject(int handleInx, rodsLong_t offset, rcComm_t* conn, char** err);
 int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err);
 int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t* conn, char** err);
 int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, char* resource, int* handle, rcComm_t* conn, char** err);
 int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err);
-int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
+int gorods_copy_dataobject(char* source, char* destination, int force, char* resource, rcComm_t* conn, char** err);
 int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
 int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);
 int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err);
 int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* conn, char** err);
 int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err);
 void gorods_free_acl_result(goRodsACLResult_t* result);
+
+int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err);
 
 
 void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaResult_t* result);

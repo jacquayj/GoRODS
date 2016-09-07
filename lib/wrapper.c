@@ -15,15 +15,14 @@ void* gorods_malloc(size_t size) {
 	return mem;
 }
 
-int gorods_connect(rcComm_t** conn, char* password, char** err) {
-
+int gorods_connect(rcComm_t** conn, char** err) {
     rodsEnv myEnv;
     int status;
 
     status = getRodsEnv(&myEnv);
     if ( status != 0 ) {
         *err = "getRodsEnv failed";
-        return -1;
+        return status;
     }
 
     rErrMsg_t errMsg;
@@ -33,19 +32,78 @@ int gorods_connect(rcComm_t** conn, char* password, char** err) {
         *err = "rcConnect failed";
         return -1;
     }
-    
-    if ( password != NULL ) {
-    	status = clientLoginWithPassword(*conn, password);
-    } else {
-    	status = clientLogin(*conn, 0, 0);
-    }
-    
-    if ( status != 0 ) {
-        *err = "clientLogin failed. Invalid password?";
+
+    return 0;
+}
+
+int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char** err) {
+
+    rErrMsg_t errMsg;
+    *conn = rcConnect(host, port, username, zone, 1, &errMsg);
+
+    if ( !*conn ) {
+        *err = "rcConnect failed";
         return -1;
     }
 
     return 0;
+}
+
+int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPass, char** err) {
+
+    pamAuthRequestInp_t pamAuthReqInp;
+    pamAuthRequestOut_t *pamAuthReqOut = NULL;
+    
+    int status = 0;
+    int doStty = 0;
+    int len = 0;
+    char myPassword[MAX_PASSWORD_LEN + 2];
+    char userName[NAME_LEN * 2];
+
+    strncpy(userName, conn->proxyUser.userName, NAME_LEN);
+    
+    if ( password[0] != '\0' ) {
+        strncpy(myPassword, password, sizeof(myPassword));
+    }
+
+    len = strlen(myPassword);
+    if ( myPassword[len - 1] == '\n' ) {
+        myPassword[len - 1] = '\0'; /* remove trailing \n */
+    }
+
+    /* since PAM requires a plain text password to be sent
+    to the server, ask the server to encrypt the current
+    communication socket. */
+    status = sslStart(conn);
+    if ( status ) {
+        *err = "sslStart error";
+        return status;
+    }
+
+    memset(&pamAuthReqInp, 0, sizeof(pamAuthReqInp));
+
+    pamAuthReqInp.pamPassword = myPassword;
+    pamAuthReqInp.pamUser = userName;
+    pamAuthReqInp.timeToLive = ttl;
+
+    status = rcPamAuthRequest(conn, &pamAuthReqInp, &pamAuthReqOut);
+    if ( status ) {
+        *err = "rcPamAuthRequest error";
+        sslEnd(conn);
+        return status;
+    }
+
+    memset(myPassword, 0, sizeof(myPassword));
+
+    /* can turn off SSL now. Have to request the server to do so.
+    Will also ignore any error returns, as future socket ops
+    are probably unaffected. */
+    sslEnd(conn);
+
+
+    *pamPass = strcpy(gorods_malloc(strlen(pamAuthReqOut->irodsPamPassword) + 1), pamAuthReqOut->irodsPamPassword);
+
+    return status;
 }
 
 int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
@@ -68,38 +126,20 @@ int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
     return status;
 }
 
-int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char* password, char** err) {
-    int status;
 
-    rErrMsg_t errMsg;
-    *conn = rcConnect(host, port, username, zone, 1, &errMsg);
 
-    if ( !*conn ) {
-        *err = "rcConnect failed";
-        return -1;
-    }
-    
-    if ( password != NULL ) {
-    	status = clientLoginWithPassword(*conn, password);
-    } else {
-    	status = clientLogin(*conn, 0, 0);
-    }
-    
-    if ( status != 0 ) {
-        *err = "clientLogin failed. Invalid password?";
-        return -1;
-    }
-
-    return 0;
-}
-
-int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) {
+int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* conn, char** err) {
 	collInp_t collOpenInp; 
 
 	bzero(&collOpenInp, sizeof(collOpenInp)); 
-	rstrcpy(collOpenInp.collName, path, MAX_NAME_LEN);
+	
+    rstrcpy(collOpenInp.collName, path, MAX_NAME_LEN);
 
-	collOpenInp.flags = VERY_LONG_METADATA_FG; 
+	collOpenInp.flags = VERY_LONG_METADATA_FG;
+
+    if ( trimRepls == 0 ) {
+        collOpenInp.flags |= NO_TRIM_REPL_FG;;
+    }
 
 	*handle = rcOpenCollection(conn, &collOpenInp); 
 	if ( *handle < 0 ) { 
@@ -110,6 +150,35 @@ int gorods_open_collection(char* path, int* handle, rcComm_t* conn, char** err) 
 	return 0;
 }
 
+
+int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, rcComm_t* conn, char** err) {
+    
+    int status;
+    dataObjInp_t dataObjInp;
+    char locFilePath[MAX_NAME_LEN];
+    bzero(&dataObjInp, sizeof(dataObjInp)); 
+
+    rstrcpy(dataObjInp.objPath, outPath, MAX_NAME_LEN); 
+    rstrcpy(locFilePath, inPath, MAX_NAME_LEN);
+
+    dataObjInp.createMode = mode;
+    dataObjInp.dataSize = size;
+
+    if ( resource != NULL && resource[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
+    }
+
+    if ( force > 0 ) {
+        addKeyVal(&dataObjInp.condInput, FORCE_FLAG_KW, ""); 
+    }
+
+    status = rcDataObjPut(conn, &dataObjInp, locFilePath); 
+    if ( status < 0 ) { 
+        *err = "rcDataObjPut failed";
+    }
+
+    return status;
+}
 
 int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err) {
 	
@@ -184,7 +253,7 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err) {
 	return 0;
 }
 
-int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn, char** err) {
+int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int openFlag, int* handle, rcComm_t* conn, char** err) {
 	dataObjInp_t dataObjInp; 
 	
 	bzero(&dataObjInp, sizeof(dataObjInp)); 
@@ -193,6 +262,9 @@ int gorods_open_dataobject(char* path, int openFlag, int* handle, rcComm_t* conn
 	// O_RDONLY, O_WRONLY, O_RDWR, O_TRUNC
 	dataObjInp.openFlags = openFlag; 
 	
+    addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resourceName); 
+    addKeyVal(&dataObjInp.condInput, REPL_NUM_KW, replNum);
+
 	*handle = rcDataObjOpen(conn, &dataObjInp); 
 	if ( *handle < 0 ) { 
 		*err = "rcDataObjOpen failed";
@@ -230,6 +302,889 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
+int gorods_get_local_zone(rcComm_t* conn, char** zoneName, char** err) {
+    int status, i;
+    simpleQueryInp_t simpleQueryInp;
+    simpleQueryOut_t *simpleQueryOut;
+    
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select zone_name from R_ZONE_MAIN where zone_type_name=?";
+    simpleQueryInp.arg1 = "local";
+    simpleQueryInp.maxBufSize = 1024;
+
+    status = rcSimpleQuery(conn, &simpleQueryInp, &simpleQueryOut);
+    if ( status < 0 ) {
+        *err = "Error getting local zone";
+        return status;
+    }
+
+    *zoneName = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+
+    i = strlen(*zoneName);
+    
+    for ( ; i > 1; i-- ) {
+        if ( *zoneName[i] == '\n' ) {
+            *zoneName[i] = '\0';
+            if ( *zoneName[i - 1] == ' ' ) {
+                *zoneName[i - 1] = '\0';
+            }
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int gorods_get_zones(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    
+    simpleQueryInp_t simpleQueryInp;
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+
+    simpleQueryInp.control = 0;
+
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select zone_name from R_ZONE_MAIN";
+    simpleQueryInp.maxBufSize = 1024;
+
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_zone(char* zoneName, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+
+    simpleQueryInp_t simpleQueryInp;
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+
+    simpleQueryInp.control = 0;
+    simpleQueryInp.form = 2;
+    simpleQueryInp.sql = "select * from R_ZONE_MAIN where zone_name=?";
+    simpleQueryInp.arg1 = zoneName;
+    simpleQueryInp.maxBufSize = 1024;
+
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_resources(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+    simpleQueryInp.control = 0;
+
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select resc_name from R_RESC_MAIN";
+    simpleQueryInp.maxBufSize = 1024;
+    
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_resource(char* rescName, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset( &simpleQueryInp, 0, sizeof( simpleQueryInp_t ) );
+    simpleQueryInp.control = 0;
+
+    simpleQueryInp.form = 2;
+    simpleQueryInp.sql = "select * from R_RESC_MAIN where resc_name=?";
+    simpleQueryInp.arg1 = rescName;
+    simpleQueryInp.maxBufSize = 1024;
+    
+   return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+
+int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+    simpleQueryInp.control = 0;
+    
+    simpleQueryInp.form = 2;
+    simpleQueryInp.sql = "select * from R_USER_MAIN where user_name=?";
+    simpleQueryInp.arg1 = user;
+    simpleQueryInp.maxBufSize = 1024;
+    
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+    simpleQueryInp_t simpleQueryInp;
+
+    memset(&simpleQueryInp, 0, sizeof(simpleQueryInp_t));
+    simpleQueryInp.control = 0;
+   
+    simpleQueryInp.form = 1;
+    simpleQueryInp.sql = "select user_name||'#'||zone_name from R_USER_MAIN where user_type_name != 'rodsgroup'";
+    simpleQueryInp.maxBufSize = 1024;
+    
+    return gorods_simple_query(simpleQueryInp, result, conn, err);
+}
+
+
+int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* result, rcComm_t* conn, char** err) {
+   
+    int status;
+    simpleQueryOut_t *simpleQueryOut;
+    status = rcSimpleQuery(conn, &simpleQueryInp, &simpleQueryOut);
+
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "No rows found";
+        return status;
+    }
+
+    if ( status == SYS_NO_API_PRIV ) {
+        *err = "rcSimpleQuery permission denied";
+        return status;
+    }
+
+    if ( status < 0 ) {
+        *err = "rcSimpleQuery failed with error";
+        return status;
+    }
+
+    result->size++;
+    result->strArr = gorods_malloc(result->size * sizeof(char*));
+
+    result->strArr[0] = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+
+
+    if ( simpleQueryOut->control > 0 ) {
+
+        simpleQueryInp.control = simpleQueryOut->control;
+
+        for ( ; simpleQueryOut->control > 0 && status == 0; ) {
+            status = rcSimpleQuery(conn, &simpleQueryInp, &simpleQueryOut);
+            
+            if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
+                *err = "rcSimpleQuery failed with error";
+                return status;
+            }
+
+            if ( status == 0 ) {
+
+            	int sz = result->size;
+
+            	result->size++;
+    			result->strArr = realloc(result->strArr, result->size * sizeof(char*));
+
+    			result->strArr[sz] = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+            }
+        }
+    }
+    return status;
+}
+
+
+int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* result, char** err) {
+    genQueryInp_t genQueryInp;
+    genQueryOut_t *genQueryOut;
+
+    int i1a[20];
+    int i1b[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int i2a[20];
+    char *condVal[10];
+    char v1[BIG_STR];
+    int i, status;
+
+    char *columnNames[] = {"group"};
+
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    i = 0;
+
+    i1a[i++] = COL_USER_NAME;
+    i1a[i++] = COL_USER_ID;
+    i1a[i++] = COL_USER_TYPE;
+    i1a[i++] = COL_USER_ZONE;
+    i1a[i++] = COL_USER_INFO;
+    i1a[i++] = COL_USER_COMMENT;
+    i1a[i++] = COL_USER_CREATE_TIME;
+    i1a[i++] = COL_USER_MODIFY_TIME;
+
+    i1a[0] = COL_USER_GROUP_NAME;
+
+    genQueryInp.selectInp.inx = i1a;
+    genQueryInp.selectInp.value = i1b;
+    genQueryInp.selectInp.len = 1;
+
+    i2a[0] = COL_USER_NAME;
+
+    snprintf(v1, BIG_STR, "='%s'", name);
+    condVal[0] = v1;
+
+    genQueryInp.sqlCondInp.inx = i2a;
+    genQueryInp.sqlCondInp.value = condVal;
+    genQueryInp.sqlCondInp.len = 1;
+    genQueryInp.condInput.len = 0;
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "Not a member of any group";
+        return CAT_NO_ROWS_FOUND;
+    }
+
+    if ( status != 0 ) {
+        *err = "rcGenQuery error";
+        return status;
+    }
+
+    gorods_get_user_group_result(status, result, genQueryOut, columnNames);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+       
+        gorods_get_user_group_result(status, result, genQueryOut, columnNames);
+    }
+
+    return 0;
+}
+
+int gorods_get_user_group_result(int status, goRodsStringResult_t* result, genQueryOut_t *genQueryOut, char *descriptions[]) {
+    
+    int i, j;
+
+    if ( result->size == 0 ) {
+        result->size = genQueryOut->rowCnt;
+        result->strArr = gorods_malloc(result->size * sizeof(char*));
+    } else {
+        result->size += genQueryOut->rowCnt;
+        result->strArr = realloc(result->strArr, result->size * sizeof(char*));
+    }
+
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            
+            char *tResult;
+           
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+            
+            result->strArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+
+        }
+    }
+
+    return 0;
+}
+
+
+int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) {
+    genQueryInp_t  genQueryInp;
+    genQueryOut_t *genQueryOut = 0;
+    int selectIndexes[10];
+    int selectValues[10];
+    int conditionIndexes[10];
+    char *conditionValues[10];
+    char conditionString1[BIG_STR];
+    char conditionString2[BIG_STR];
+    int status;
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    // if ( groupName != NULL && *groupName != '\0' ) {
+    //     printf( "Members of group %s:\n", groupName );
+    // }
+
+    selectIndexes[0] = COL_USER_NAME;
+    selectValues[0] = 0;
+    selectIndexes[1] = COL_USER_ZONE;
+    selectValues[1] = 0;
+    genQueryInp.selectInp.inx = selectIndexes;
+    genQueryInp.selectInp.value = selectValues;
+   
+    // if ( groupName != NULL && *groupName != '\0' ) {
+    //     genQueryInp.selectInp.len = 2;
+    // }
+    // else {
+        genQueryInp.selectInp.len = 1;
+    // }
+
+    conditionIndexes[0] = COL_USER_TYPE;
+    sprintf(conditionString1, "='rodsgroup'");
+    conditionValues[0] = conditionString1;
+
+    genQueryInp.sqlCondInp.inx = conditionIndexes;
+    genQueryInp.sqlCondInp.value = conditionValues;
+    genQueryInp.sqlCondInp.len = 1;
+
+    // if ( groupName != NULL && *groupName != '\0' ) {
+
+    //     sprintf( conditionString1, "!='rodsgroup'" );
+
+    //     conditionIndexes[1] = COL_USER_GROUP_NAME;
+    //     sprintf( conditionString2, "='%s'", groupName );
+    //     conditionValues[1] = conditionString2;
+    //     genQueryInp.sqlCondInp.len = 2;
+    // }
+
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    genQueryInp.condInput.len = 0;
+
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "No rows found";
+        return status;
+    } 
+
+    gorods_build_group_result(genQueryOut, result);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        if ( status == 0 ) {
+            gorods_build_group_result(genQueryOut, result);
+        }
+    }
+
+    return 0;
+}
+
+int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupName, char** err) {
+    genQueryInp_t  genQueryInp;
+    genQueryOut_t *genQueryOut = 0;
+    int selectIndexes[10];
+    int selectValues[10];
+    int conditionIndexes[10];
+    char *conditionValues[10];
+    char conditionString1[BIG_STR];
+    char conditionString2[BIG_STR];
+    int status;
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    selectIndexes[0] = COL_USER_NAME;
+    selectValues[0] = 0;
+    selectIndexes[1] = COL_USER_ZONE;
+    selectValues[1] = 0;
+    genQueryInp.selectInp.inx = selectIndexes;
+    genQueryInp.selectInp.value = selectValues;
+   
+   	genQueryInp.selectInp.len = 2;
+ 
+    conditionIndexes[0] = COL_USER_TYPE;
+    sprintf(conditionString1, "='rodsgroup'");
+    conditionValues[0] = conditionString1;
+
+    genQueryInp.sqlCondInp.inx = conditionIndexes;
+    genQueryInp.sqlCondInp.value = conditionValues;
+    genQueryInp.sqlCondInp.len = 1;
+
+    sprintf(conditionString1, "!='rodsgroup'");
+
+    conditionIndexes[1] = COL_USER_GROUP_NAME;
+    sprintf(conditionString2, "='%s'", groupName);
+    conditionValues[1] = conditionString2;
+    genQueryInp.sqlCondInp.len = 2;
+
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    genQueryInp.condInput.len = 0;
+
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        *err = "No rows found";
+        return status;
+    } 
+
+    gorods_build_group_user_result(genQueryOut, result);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        if ( status == 0 ) {
+            gorods_build_group_user_result(genQueryOut, result);
+        }
+    }
+
+    return 0;
+}
+
+int gorods_add_user_to_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err) {
+	int status;
+
+	status = gorods_general_admin(1, "modify", "group", groupName, "add", userName, zoneName, "", "", "", "", 0, conn, err);
+
+
+	return status;
+}
+
+int gorods_remove_user_from_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(1, "modify", "group", groupName, "remove", userName, zoneName, "", "", "", "", 0, conn, err);
+
+
+    return status;
+}
+
+int gorods_delete_group(char* groupName, char* zoneName, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(0, "rm", "user", groupName,
+        zoneName, "", "", "", "", "", "", 0, conn, err);
+
+    // generalAdmin( 0, "rm", "user", cmdToken[1],
+    //                  myEnv.rodsZone, "", "", "", "", "", "" );
+
+    return status;
+}
+
+int gorods_create_group(char* groupName, char* zoneName, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(0, "add", "user", groupName, "rodsgroup",
+        zoneName, "", "", "", "", "", 0, conn, err);
+
+    // generalAdmin( 0, "add", "user", cmdToken[1], "rodsgroup",
+    //                   myEnv.rodsZone, "", "", "", "", "" );
+
+    return status;
+}
+
+int gorods_delete_user(char* userName, char* zoneName, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(0, "rm", "user", userName,
+        zoneName, "", "", "", "", "", "", 0, conn, err);
+
+    // generalAdmin( 0, "rm", "user", cmdToken[1],
+    //                  myEnv.rodsZone, "", "", "", "", "", "" );
+
+    return status;
+}
+
+int gorods_create_user(char* userName, char* zoneName, char* type, rcComm_t *conn, char** err) {
+    int status;
+
+    status = gorods_general_admin(0, "add", "user", userName, type,
+        zoneName, "", "", "", "", "", 0, conn, err);
+
+    // generalAdmin( 0, "add", "user", cmdToken[1], "rodsgroup",
+    //                   myEnv.rodsZone, "", "", "", "", "" );
+
+    return status;
+}
+
+int gorods_change_user_password(char* userName, char* newPassword, char* myPassword, rcComm_t *conn, char** err) {
+
+    char buf0[MAX_PASSWORD_LEN + 10];
+    char buf1[MAX_PASSWORD_LEN + 10];
+    char buf2[MAX_PASSWORD_LEN + 100];
+
+    int i, len, lcopy;
+    char *key2;
+    /* this is a random string used to pad, arbitrary, but must match
+       the server side: */
+    char rand[] = "1gCBizHWbwIYyWLoysGzTe6SyzqFKMniZX05faZHWAwQKXf6Fs";
+
+    strncpy(buf0, newPassword, MAX_PASSWORD_LEN);
+    len = strlen(newPassword);
+    lcopy = MAX_PASSWORD_LEN - 10 - len;
+    
+    if ( lcopy > 15 ) { /* server will look for 15 characters of random string */
+        strncat(buf0, rand, lcopy);
+    }
+
+    strncpy(buf1, myPassword, MAX_PASSWORD_LEN);
+
+    key2 = getSessionSignatureClientside();
+    obfEncodeByKeyV2(buf0, buf1, key2, buf2);
+    newPassword = buf2;
+        
+    return gorods_general_admin(0, "modify", "user", userName, "password", newPassword, "", "", "", "", "", 0, conn, err);
+
+}
+
+int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, char *arg3,
+              char *arg4, char *arg5, char *arg6, char *arg7, char* arg8, char* arg9,
+              rodsArguments_t* _rodsArgs, rcComm_t *conn, char** err) {
+    /* If userOption is 1, try userAdmin if generalAdmin gets a permission
+     * failure */
+
+	//_rodsArgs = 0;
+
+    generalAdminInp_t generalAdminInp;
+    userAdminInp_t userAdminInp;
+    int status;
+    char *funcName;
+
+    if ( _rodsArgs && _rodsArgs->dryrun ) {
+        arg3 = "--dryrun";
+    }
+
+    generalAdminInp.arg0 = arg0;
+    generalAdminInp.arg1 = arg1;
+    generalAdminInp.arg2 = arg2;
+    generalAdminInp.arg3 = arg3;
+    generalAdminInp.arg4 = arg4;
+    generalAdminInp.arg5 = arg5;
+    generalAdminInp.arg6 = arg6;
+    generalAdminInp.arg7 = arg7;
+    generalAdminInp.arg8 = arg8;
+    generalAdminInp.arg9 = arg9;
+
+    status = rcGeneralAdmin(conn, &generalAdminInp);
+
+    funcName = "rcGeneralAdmin";
+
+    if ( userOption == 1 && status == SYS_NO_API_PRIV ) {
+        userAdminInp.arg0 = arg0;
+        userAdminInp.arg1 = arg1;
+        userAdminInp.arg2 = arg2;
+        userAdminInp.arg3 = arg3;
+        userAdminInp.arg4 = arg4;
+        userAdminInp.arg5 = arg5;
+        userAdminInp.arg6 = arg6;
+        userAdminInp.arg7 = arg7;
+        userAdminInp.arg8 = arg8;
+        userAdminInp.arg9 = arg9;
+        status = rcUserAdmin(conn, &userAdminInp);
+        funcName = "rcGeneralAdmin and rcUserAdmin";
+    }
+
+    // =-=-=-=-=-=-=-
+    // JMC :: for 'dryrun' option on rmresc we need to capture the
+    //     :: return value and simply output either SUCCESS or FAILURE
+    // rm resource dryrun BOOYA
+    if ( _rodsArgs &&
+            _rodsArgs->dryrun == 1 &&
+            0 == strcmp( arg0, "rm" ) &&
+            0 == strcmp( arg1, "resource" ) ) {
+        if ( 0 == status ) {
+            printf( "DRYRUN REMOVING RESOURCE [%s - %d] :: SUCCESS\n", arg2, status );
+        }
+        else {
+            printf( "DRYRUN REMOVING RESOURCE [%s - %d] :: FAILURE\n", arg2, status );
+        } // else
+    }
+    else if ( status == USER_INVALID_USERNAME_FORMAT ) {
+        *err = "Invalid username format";
+    }
+    else if ( status < 0 && status != CAT_SUCCESS_BUT_WITH_NO_INFO ) {
+       // char *mySubName = NULL;
+        //const char *myName = rodsErrorName(status, &mySubName);
+        //rodsLog( LOG_ERROR, "%s failed with error %d %s %s", funcName, status, myName, mySubName );
+        
+    	// Need to change error msg depending on the args, since this is a general purpose func
+        *err = "General failure";
+
+        if ( status == CAT_INVALID_USER_TYPE ) {
+
+        	*err = "Invalid user type specified";
+            //fprintf( stderr, "See 'lt user_type' for a list of valid user types.\n" );
+        }
+        
+        //	free(mySubName);
+
+        
+    } // else if status < 0
+
+    //printErrorStack( Conn->rError );
+    //freeRErrorContent( Conn->rError );
+
+    return status;
+}
+
+
+void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
+    
+	if ( result->size == 0 ) {
+    	result->size = genQueryOut->rowCnt;
+		result->strArr = gorods_malloc(result->size * sizeof(char*));
+    } else {
+    	result->size += genQueryOut->rowCnt;
+    	result->strArr = realloc(result->strArr, result->size * sizeof(char*));
+    }
+
+    int i, j;
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        char *tResult;
+        
+        char resultStr[255] = "";
+
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+            
+            if ( j > 0 ) {
+            	strcat(&resultStr[0], "#");
+            	strcat(&resultStr[0], tResult);
+            } else {
+               	strcat(&resultStr[0], tResult);
+            }
+        }
+
+        result->strArr[i] = strcpy(gorods_malloc(strlen(resultStr) + 1), resultStr);
+    }
+}
+
+
+void gorods_free_string_result(goRodsStringResult_t* result) {
+	int i;
+	for ( i = 0; i < result->size; i++ ) {
+		free(result->strArr[i]);
+	}
+	free(result->strArr);
+}
+
+void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
+    
+    if ( result->size == 0 ) {
+    	result->size = genQueryOut->rowCnt;
+		result->strArr = gorods_malloc(result->size * sizeof(char*));
+    } else {
+    	result->size += genQueryOut->rowCnt;
+    	result->strArr = realloc(result->strArr, result->size * sizeof(char*));
+    }
+
+    int i, j;
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        char *tResult;
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+        }
+        result->strArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+    }
+}
+
+
+
+int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
+
+    genQueryInp_t genQueryInp;
+    genQueryOut_t *genQueryOut;
+    int i1a[20];
+    int i1b[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int i2a[20];
+    char *condVal[10];
+    char v1[BIG_STR];
+    int i, status;
+
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    i = 0;
+    i1a[i++] = COL_R_RESC_NAME;
+
+    genQueryInp.selectInp.inx = i1a;
+    genQueryInp.selectInp.value = i1b;
+    genQueryInp.selectInp.len = i;
+
+    genQueryInp.sqlCondInp.inx = i2a;
+    genQueryInp.sqlCondInp.value = condVal;
+    
+    // =-=-=-=-=-=-=-
+    // JMC - backport 4629
+    i2a[0] = COL_R_RESC_NAME;
+    sprintf(v1, "!='%s'", BUNDLE_RESC); /* all but bundleResc */
+    condVal[0] = v1;
+    genQueryInp.sqlCondInp.len = 1;
+    // =-=-=-=-=-=-=-
+
+    genQueryInp.maxRows = 50;
+    genQueryInp.continueInx = 0;
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+    if ( status == CAT_NO_ROWS_FOUND ) {
+       
+        i1a[0] = COL_R_RESC_INFO;
+        genQueryInp.selectInp.len = 1;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+
+        if ( status == 0 ) {
+            *err = "None";
+            return -1;
+        }
+
+        if ( status == CAT_NO_ROWS_FOUND ) {
+            *err = "Resource does not exist";
+            return status;
+        }
+    }
+
+    gorods_get_resource_result(conn, genQueryOut, result);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+        
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        
+
+        gorods_get_resource_result(conn, genQueryOut, result);
+    }
+
+    return 0;
+}
+
+
+int gorods_get_resource_result(rcComm_t *Conn, genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
+
+    int i, j;
+
+    result->size = genQueryOut->rowCnt;
+    result->strArr = gorods_malloc(result->size * sizeof(char*));
+    
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+       
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            char *tResult;
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+
+            result->strArr[i] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+        }
+    }
+
+    return 0;
+}
+
+
+
+int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* accessLevel, int recursive, char** err) {
+
+	int status;
+	modAccessControlInp_t modAccessControlInp;
+
+	modAccessControlInp.recursiveFlag = recursive;
+	modAccessControlInp.accessLevel = accessLevel;
+	modAccessControlInp.userName = ugName;
+	modAccessControlInp.zone = zone;
+	modAccessControlInp.path = path;
+
+	status = rcModAccessControl(conn, &modAccessControlInp);	
+
+	if ( status < 0 ) {
+		*err = "rcModAccessControl failed";
+		return status;
+	}
+
+	return 0;
+}
+
+
+int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err) {
+    /*
+      NoDistinctFlag is 1 if the user is requesting 'distinct' to be skipped.
+     */
+    int i;
+    genQueryInp_t genQueryInp;
+    genQueryOut_t *genQueryOut = NULL;
+
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    i = fillGenQueryInpFromStrCond(selectConditionString, &genQueryInp);
+    if ( i < 0 ) {
+        return i;
+    }
+
+    if ( noDistinctFlag ) {
+        genQueryInp.options = NO_DISTINCT;
+    }
+
+    if ( upperCaseFlag ) {
+        genQueryInp.options = UPPER_CASE_WHERE;
+    }
+
+    if ( zoneName != 0 && zoneName[0] != '\0' ) {
+        addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneName);
+    }
+
+    genQueryInp.maxRows = MAX_SQL_ROWS;
+    genQueryInp.continueInx = 0;
+    i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( i < 0 ) {
+        return i;
+    }
+
+    i = gorods_build_iquest_result(genQueryOut, result, err);
+    if ( i < 0 ) {
+        return i;
+    }
+
+    while ( i == 0 && genQueryOut->continueInx > 0 ) {
+
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        if ( i < 0 ) {
+            return i;
+        }
+
+        i = gorods_build_iquest_result(genQueryOut, result, err);
+        if ( i < 0 ) {
+            return i;
+        }
+    }
+
+    return 0;
+
+}
+
+// typedef struct {
+//     int size;
+//     int keySize;
+//     char** hashKeys;
+//     char** hashValues;
+// } goRodsHashResult_t;
+
+
+int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err) {
+    int i = 0, n = 0, j = 0;
+    sqlResult_t *v[MAX_SQL_ATTR];
+    char * cname[MAX_SQL_ATTR];
+
+    n = genQueryOut->attriCnt;
+ 
+    for ( i = 0; i < n; i++ ) {
+        v[i] = &genQueryOut->sqlResult[i];
+        cname[i] = getAttrNameFromAttrId(v[i]->attriInx);
+        if ( cname[i] == NULL ) {
+            *err = "Error in gorods_build_iquest_result, column not found";
+            return NO_COLUMN_NAME_FOUND;
+        }
+    }
+
+    if ( result->size == 0 ) {
+        result->size = genQueryOut->rowCnt;
+        result->keySize = genQueryOut->attriCnt;
+        
+        int keySize = result->keySize * sizeof(char*);
+        int valuesSize = keySize * result->size;
+
+        result->hashKeys = gorods_malloc(keySize);
+        result->hashValues = gorods_malloc(valuesSize);
+
+        // Fill key arr
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            result->hashKeys[j] = strcpy(gorods_malloc(strlen(cname[j]) + 1), cname[j]);
+        }
+    } else {
+        result->size += genQueryOut->rowCnt;
+        int newSize = result->size * result->keySize;
+
+        result->hashValues = realloc(result->hashValues, newSize);
+    }
+
+ 
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+     
+        for ( j = 0; j < n; j++ ) {
+            
+            char* value = &v[j]->value[v[j]->len * i];
+
+            int rowStart = i * result->keySize;
+
+            result->hashValues[rowStart + j] = strcpy(gorods_malloc(strlen(value) + 1), value);
+        }
+        
+    }
+
+    return 0;
+}
+
+
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
@@ -262,14 +1217,12 @@ int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabl
     return status;
 }
 
-
-
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
     int i;
-    sqlResult_t *userName, *userZone, *dataAccess;
-    char *userNameStr, *userZoneStr, *dataAccessStr;
+    sqlResult_t *userName, *userZone, *dataAccess, *userType;
+    char *userNameStr, *userZoneStr, *dataAccessStr, *userTypeStr;
 
     /* First try a specific-query.  If this is defined, it should be
         used as it returns the group names without expanding them to
@@ -286,7 +1239,6 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
             char *tResult[10];
             char empty = 0;
-            char typeStr[8];
             tResult[3] = 0;
 
             for ( j = 0; j < 10; j++ ) {
@@ -296,22 +1248,13 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
                     tResult[j] += i * genQueryOut->sqlResult[j].len;
                 }
             }
-            typeStr[0] = '\0';
-            if ( tResult[3] != 0 && strncmp(tResult[3], "rodsgroup", 9) == 0 ) {
-                strncpy( typeStr, "g:", 3 );
-            }
 
             goRodsACL_t* acl = &(result->aclArr[i]);
 
 	        acl->name = strcpy(gorods_malloc(strlen(tResult[0]) + 1), tResult[0]);
 	        acl->zone = strcpy(gorods_malloc(strlen(tResult[1]) + 1), tResult[1]);
 	        acl->dataAccess = strcpy(gorods_malloc(strlen(tResult[2]) + 1), tResult[2]);
-
-	        if ( typeStr[0] == '\0' ) {
-	        	acl->acltype = "user";
-	        } else {
-	        	acl->acltype = "group";
-	        }
+            acl->acltype =  strcpy(gorods_malloc(strlen(tResult[3]) + 1), tResult[3]);
         }
 
         freeGenQueryOut(&genQueryOut);
@@ -343,6 +1286,12 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         return UNMATCHED_KEY_OR_INDEX;
     }
 
+    if ( ( userType = getSqlResultByInx( genQueryOut, COL_COLL_ACCESS_TYPE ) ) == NULL ) {
+        *err = "printCollAcl: getSqlResultByInx for COL_COLL_ACCESS_TYPE failed";
+        freeGenQueryOut(&genQueryOut);
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
     result->size = genQueryOut->rowCnt;
     result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
 
@@ -350,14 +1299,14 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
         userNameStr = &userName->value[userName->len * i];
         userZoneStr = &userZone->value[userZone->len * i];
         dataAccessStr = &dataAccess->value[dataAccess->len * i];
+        userTypeStr = &dataAccess->value[userType->len * i];
 
         goRodsACL_t* acl = &(result->aclArr[i]);
 
         acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
-        
-        acl->acltype = "unknown";
+        acl->acltype = strcpy(gorods_malloc(strlen(userTypeStr) + 1), userTypeStr);
     }
 
     freeGenQueryOut(&genQueryOut);
@@ -366,14 +1315,55 @@ int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t*
 }
 
 
+int
+gorods_queryDataObjAcl (rcComm_t *conn, char *dataId, char *zoneHint,
+                 genQueryOut_t **genQueryOut)
+{
+    genQueryInp_t genQueryInp;
+    int status;
+    char tmpStr[MAX_NAME_LEN];
+
+    if (dataId == NULL || genQueryOut == NULL) {
+        return (USER__NULL_INPUT_ERR);
+    }
+
+    memset (&genQueryInp, 0, sizeof (genQueryInp_t));
+
+    if (zoneHint != NULL) {
+       addKeyVal (&genQueryInp.condInput, ZONE_KW, zoneHint);
+    }
+
+    addInxIval (&genQueryInp.selectInp, COL_USER_NAME, 1);
+    addInxIval (&genQueryInp.selectInp, COL_USER_ZONE, 1);
+    addInxIval (&genQueryInp.selectInp, COL_DATA_ACCESS_NAME, 1);
+    addInxIval (&genQueryInp.selectInp, COL_USER_TYPE, 1);
+
+    snprintf (tmpStr, MAX_NAME_LEN, " = '%s'", dataId);
+
+    addInxVal (&genQueryInp.sqlCondInp, COL_DATA_ACCESS_DATA_ID, tmpStr);
+
+    snprintf (tmpStr, MAX_NAME_LEN, "='%s'", "access_type");
+
+    /* Currently necessary since other namespaces exist in the token table */
+    addInxVal (&genQueryInp.sqlCondInp, COL_DATA_TOKEN_NAMESPACE, tmpStr);
+
+    genQueryInp.maxRows = MAX_SQL_ROWS;
+
+    status =  rcGenQuery (conn, &genQueryInp, genQueryOut);
+
+    return (status);
+
+}
+
+
 int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* result, char* zoneHint, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
     int i;
-    sqlResult_t *userName, *userZone, *dataAccess;
-    char *userNameStr, *userZoneStr, *dataAccessStr;
+    sqlResult_t *userName, *userZone, *dataAccess, *userType;
+    char *userNameStr, *userZoneStr, *dataAccessStr, *userTypeStr;
 
-    status = queryDataObjAcl(conn, dataId, zoneHint, &genQueryOut);
+    status = gorods_queryDataObjAcl(conn, dataId, zoneHint, &genQueryOut);
 
     if ( status < 0 ) {
     	*err = "Error in queryDataObjAcl";
@@ -395,6 +1385,11 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
         return UNMATCHED_KEY_OR_INDEX;
     }
 
+    if ( ( userType = getSqlResultByInx( genQueryOut, COL_USER_TYPE ) ) == NULL ) {
+        *err = "printDataAcl: getSqlResultByInx for COL_USER_TYPE failed";
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
     result->size = genQueryOut->rowCnt;
     result->aclArr = gorods_malloc(sizeof(goRodsACL_t) * result->size);
 
@@ -402,13 +1397,14 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
         userNameStr = &userName->value[userName->len * i];
         userZoneStr = &userZone->value[userZone->len * i];
         dataAccessStr = &dataAccess->value[dataAccess->len * i];
+        userTypeStr = &userType->value[userType->len * i];
 
         goRodsACL_t* acl = &(result->aclArr[i]);
 
         acl->name = strcpy(gorods_malloc(strlen(userNameStr) + 1), userNameStr);
         acl->zone = strcpy(gorods_malloc(strlen(userZoneStr) + 1), userZoneStr);
         acl->dataAccess = strcpy(gorods_malloc(strlen(dataAccessStr) + 1), dataAccessStr);
-        acl->acltype = "unknown";
+        acl->acltype = strcpy(gorods_malloc(strlen(userTypeStr) + 1), userTypeStr);
     }
 
     freeGenQueryOut(&genQueryOut);
@@ -425,6 +1421,7 @@ void gorods_free_acl_result(goRodsACLResult_t* result) {
         free(acl->name);
         free(acl->zone);
         free(acl->dataAccess);
+        free(acl->acltype);
     }
 
     free(result->aclArr);
@@ -500,15 +1497,22 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 }
 
 
-int gorods_copy_dataobject(char* source, char* destination, rcComm_t* conn, char** err) {
+int gorods_copy_dataobject(char* source, char* destination, int force, char* resource, rcComm_t* conn, char** err) {
 	dataObjCopyInp_t dataObjCopyInp; 
 	bzero(&dataObjCopyInp, sizeof(dataObjCopyInp)); 
 
 	rstrcpy(dataObjCopyInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
 	rstrcpy(dataObjCopyInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
 
-	addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, FORCE_FLAG_KW, ""); 
 	addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, REG_CHKSUM_KW, ""); 
+
+    if ( resource != NULL && resource[0] != '\0' ) {
+        addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
+    }
+
+    if ( force > 0 ) {
+        addKeyVal(&dataObjCopyInp.destDataObjInp.condInput, FORCE_FLAG_KW, ""); 
+    }
 
 	int status = rcDataObjCopy(conn, &dataObjCopyInp); 
 	if ( status < 0 ) { 
@@ -604,7 +1608,9 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 			elem->resource = strcpy(gorods_malloc(strlen(elem->resource) + 1), elem->resource);
 			//elem->rescGrp = strcpy(gorods_malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
 			elem->phyPath = strcpy(gorods_malloc(strlen(elem->phyPath) + 1), elem->phyPath);
-		}
+            elem->resc_hier = strcpy(gorods_malloc(strlen(elem->resc_hier) + 1), elem->resc_hier);
+        
+        }
 
 		elem->ownerName = strcpy(gorods_malloc(strlen(elem->ownerName) + 1), elem->ownerName);
 		elem->collName = strcpy(gorods_malloc(strlen(elem->collName) + 1), elem->collName);
