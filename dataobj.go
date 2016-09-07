@@ -810,6 +810,81 @@ func (obj *DataObj) CopyTo(iRodsCollection interface{}) error {
 	return nil
 }
 
+// CopyTo copies the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the destination collection automatically to maintain correct state. Returns error.
+func (obj *DataObj) CopyToOpts(iRodsCollection interface{}, opts DataObjOptions) error {
+
+	var (
+		err                         *C.char
+		resource                    *C.char
+		force                       int
+		destination                 string
+		destinationCollectionString string
+	)
+
+	if isString(iRodsCollection) {
+		destinationCollectionString = iRodsCollection.(string)
+
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = obj.col.path + "/" + destinationCollectionString
+		}
+
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + obj.name
+
+	} else {
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + obj.name
+	}
+
+	if opts.Force {
+		force = 1
+	} else {
+		force = 0
+	}
+
+	switch opts.Resource.(type) {
+	case string:
+		resource = C.CString(opts.Resource.(string))
+	case *Resource:
+		r := opts.Resource.(*Resource)
+		resource = C.CString(r.Name())
+	default:
+		newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	}
+
+	path := C.CString(obj.path)
+	dest := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(dest))
+	defer C.free(unsafe.Pointer(resource))
+
+	ccon := obj.con.GetCcon()
+
+	if status := C.gorods_copy_dataobject(path, dest, C.int(force), resource, ccon, &err); status != 0 {
+		obj.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
+	}
+
+	obj.con.ReturnCcon(ccon)
+
+	// reload destination collection
+	if isString(iRodsCollection) {
+		// Find collection recursivly
+		if dc := obj.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+			(dc.(*Collection)).Refresh()
+		}
+	} else {
+		(iRodsCollection.(*Collection)).Refresh()
+	}
+
+	return nil
+}
+
 // MoveTo moves the data object to the specified collection. Supports Collection struct or string as input. Also refreshes the source and destination collections automatically to maintain correct state. Returns error.
 func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 
