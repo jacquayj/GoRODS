@@ -14,6 +14,14 @@
 #include "dataObjClose.h"
 #include "lsUtil.h"
 
+
+typedef struct {
+	int size;
+	int keySize;
+	char** hashKeys;
+	char** hashValues;
+} goRodsHashResult_t;
+
 typedef struct {
 	char* name;
 	char* value;
@@ -57,6 +65,9 @@ void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t*
 void gorods_free_string_result(goRodsStringResult_t* result);
 void gorods_build_group_user_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
 int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupName, char** err);
+
+int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err);
+int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err);
 
 int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err);
 int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err);

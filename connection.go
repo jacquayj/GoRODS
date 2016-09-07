@@ -12,6 +12,7 @@ import "C"
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -566,6 +567,76 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 		return col, nil
 	}
 
+}
+
+func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string, error) {
+	var (
+		result C.goRodsHashResult_t
+		err    *C.char
+		upper  int
+	)
+
+	result.size = C.int(0)
+
+	z, zErr := con.GetLocalZone()
+	if zErr != nil {
+		return nil, zErr
+	}
+
+	if upperCase {
+		upper = 1
+	}
+
+	cQueryString := C.CString(query)
+	cZoneName := C.CString(z.Name())
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cQueryString))
+
+	ccon := con.GetCcon()
+
+	if status := C.gorods_iquest_general(ccon, cQueryString, C.int(0), C.int(upper), cZoneName, &result, &err); status != 0 {
+		con.ReturnCcon(ccon)
+		if status == C.CAT_NO_ROWS_FOUND {
+			return make([]map[string]string, 0), nil
+		} else {
+			return nil, newError(Fatal, fmt.Sprintf("iRods iquest Failed: %v", C.GoString(err)))
+		}
+	}
+
+	con.ReturnCcon(ccon)
+	//defer C.gorods_free_string_result(&result)
+
+	unsafeKeyArr := unsafe.Pointer(result.hashKeys)
+	keyArrLen := int(result.keySize)
+
+	unsafeValArr := unsafe.Pointer(result.hashValues)
+	valArrLen := int(result.size) * keyArrLen
+
+	response := make([]map[string]string, int(result.size))
+
+	// Convert C array to slice
+	keySlice := (*[1 << 30]*C.char)(unsafeKeyArr)[:keyArrLen:keyArrLen]
+	valSlice := (*[1 << 30]*C.char)(unsafeValArr)[:valArrLen:valArrLen]
+
+	for n, val := range valSlice {
+		mapInx := n / keyArrLen
+
+		var key string
+
+		if n == 0 {
+			key = C.GoString(keySlice[0])
+		} else {
+			key = C.GoString(keySlice[int(math.Mod(float64(n), float64(keyArrLen)))])
+		}
+
+		if response[mapInx] == nil {
+			response[mapInx] = make(map[string]string)
+		}
+
+		response[mapInx][key] = C.GoString(val)
+	}
+
+	return response, nil
 }
 
 // DataObject directly returns a specific DataObj without the need to traverse collections. Must pass full path of data object.

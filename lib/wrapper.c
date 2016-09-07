@@ -1064,6 +1064,127 @@ int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* acc
 	return 0;
 }
 
+
+int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err) {
+    /*
+      NoDistinctFlag is 1 if the user is requesting 'distinct' to be skipped.
+     */
+    int i;
+    genQueryInp_t genQueryInp;
+    genQueryOut_t *genQueryOut = NULL;
+
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+
+    i = fillGenQueryInpFromStrCond(selectConditionString, &genQueryInp);
+    if ( i < 0 ) {
+        return i;
+    }
+
+    if ( noDistinctFlag ) {
+        genQueryInp.options = NO_DISTINCT;
+    }
+
+    if ( upperCaseFlag ) {
+        genQueryInp.options = UPPER_CASE_WHERE;
+    }
+
+    if ( zoneName != 0 && zoneName[0] != '\0' ) {
+        addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneName);
+    }
+
+    genQueryInp.maxRows = MAX_SQL_ROWS;
+    genQueryInp.continueInx = 0;
+    i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    if ( i < 0 ) {
+        return i;
+    }
+
+    i = gorods_build_iquest_result(genQueryOut, result, err);
+    if ( i < 0 ) {
+        return i;
+    }
+
+    while ( i == 0 && genQueryOut->continueInx > 0 ) {
+
+        genQueryInp.continueInx = genQueryOut->continueInx;
+        i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        if ( i < 0 ) {
+            return i;
+        }
+
+        i = gorods_build_iquest_result(genQueryOut, result, err);
+        if ( i < 0 ) {
+            return i;
+        }
+    }
+
+    return 0;
+
+}
+
+// typedef struct {
+//     int size;
+//     int keySize;
+//     char** hashKeys;
+//     char** hashValues;
+// } goRodsHashResult_t;
+
+
+int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err) {
+    int i = 0, n = 0, j = 0;
+    sqlResult_t *v[MAX_SQL_ATTR];
+    char * cname[MAX_SQL_ATTR];
+
+    n = genQueryOut->attriCnt;
+ 
+    for ( i = 0; i < n; i++ ) {
+        v[i] = &genQueryOut->sqlResult[i];
+        cname[i] = getAttrNameFromAttrId(v[i]->attriInx);
+        if ( cname[i] == NULL ) {
+            *err = "Error in gorods_build_iquest_result, column not found";
+            return NO_COLUMN_NAME_FOUND;
+        }
+    }
+
+    if ( result->size == 0 ) {
+        result->size = genQueryOut->rowCnt;
+        result->keySize = genQueryOut->attriCnt;
+        
+        int keySize = result->keySize * sizeof(char*);
+        int valuesSize = keySize * result->size;
+
+        result->hashKeys = gorods_malloc(keySize);
+        result->hashValues = gorods_malloc(valuesSize);
+
+        // Fill key arr
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            result->hashKeys[j] = strcpy(gorods_malloc(strlen(cname[j]) + 1), cname[j]);
+        }
+    } else {
+        result->size += genQueryOut->rowCnt;
+        int newSize = result->size * result->keySize;
+
+        result->hashValues = realloc(result->hashValues, newSize);
+    }
+
+ 
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+     
+        for ( j = 0; j < n; j++ ) {
+            
+            char* value = &v[j]->value[v[j]->len * i];
+
+            int rowStart = i * result->keySize;
+
+            result->hashValues[rowStart + j] = strcpy(gorods_malloc(strlen(value) + 1), value);
+        }
+        
+    }
+
+    return 0;
+}
+
+
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err) {
     genQueryOut_t *genQueryOut = NULL;
     int status;
