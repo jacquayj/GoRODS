@@ -895,7 +895,8 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 		destinationCollection       *Collection
 	)
 
-	if isString(iRodsCollection) {
+	switch iRodsCollection.(type) {
+	case string:
 		destinationCollectionString = iRodsCollection.(string)
 
 		// Is this a relative path?
@@ -908,10 +909,11 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 		}
 
 		destination += destinationCollectionString + obj.name
-
-	} else {
+	case *Collection:
 		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
 		destination = destinationCollectionString + obj.name
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods Move DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	path := C.CString(obj.path)
@@ -933,7 +935,8 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 	obj.col.Refresh()
 
 	// Find & reload destination collection
-	if isString(iRodsCollection) {
+	switch iRodsCollection.(type) {
+	case string:
 		// Find collection recursivly
 		if dc := obj.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
 			destinationCollection = dc.(*Collection)
@@ -947,9 +950,11 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 			// Can't find, load collection into memory
 			destinationCollection, _ = obj.con.Collection(opts)
 		}
-	} else {
+	case *Collection:
 		destinationCollection = (iRodsCollection.(*Collection))
 		destinationCollection.Refresh()
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods Move DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	// Reassign obj.col to destination collection

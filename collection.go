@@ -153,7 +153,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 
 			return col, nil
 		} else {
-			return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: this error should never happen"))
+			return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: Does the collection exist?"))
 		}
 	}
 
@@ -510,7 +510,88 @@ func (col *Collection) Close() error {
 	return nil
 }
 
-// Rename is equivalent to the Linux mv command except that the data object must stay within the current collection (directory), returns error.
+// MoveTo moves the collection to the specified collection. Supports Collection struct or string as input. Also refreshes the source and destination collections automatically to maintain correct state. Returns error.
+func (col *Collection) MoveTo(iRodsCollection interface{}) error {
+
+	var (
+		err                         *C.char
+		destination                 string
+		destinationCollectionString string
+		destinationCollection       *Collection
+	)
+
+	switch iRodsCollection.(type) {
+	case string:
+		destinationCollectionString = iRodsCollection.(string)
+
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = path.Dir(col.path) + "/" + destinationCollectionString
+		}
+
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + col.name
+	case *Collection:
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + col.name
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed, unknown variable type passed as collection"))
+	}
+
+	path := C.CString(col.path)
+	dest := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(dest))
+
+	ccon := col.con.GetCcon()
+
+	if status := C.gorods_move_dataobject(path, dest, C.RENAME_COLL, ccon, &err); status != 0 {
+		col.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed: %v, D:%v, %v", col.path, destination, C.GoString(err)))
+	}
+
+	col.con.ReturnCcon(ccon)
+
+	// Reload source collection, we are now detached
+	col.parent.Refresh()
+
+	// Find & reload destination collection
+	switch iRodsCollection.(type) {
+	case string:
+		// Find collection recursivly
+		if dc := col.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
+			destinationCollection = dc.(*Collection)
+
+			destinationCollection.Refresh()
+		} else {
+			opts := CollectionOptions{
+				Path:      destinationCollectionString,
+				Recursive: false,
+			}
+			// Can't find, load collection into memory
+			destinationCollection, _ = col.con.Collection(opts)
+		}
+	case *Collection:
+		destinationCollection = (iRodsCollection.(*Collection))
+		destinationCollection.Refresh()
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed, unknown variable type passed as collection"))
+	}
+
+	// Reassign obj.col to destination collection
+	col.parent = destinationCollection
+	col.path = destinationCollection.path + "/" + col.name
+
+	col.chandle = C.int(-1)
+
+	return nil
+}
+
+// Rename is equivalent to the Linux mv command except that the collection must stay within it's current collection (directory), returns error.
 func (col *Collection) Rename(newFileName string) error {
 
 	if strings.Contains(newFileName, "/") {
