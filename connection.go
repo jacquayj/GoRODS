@@ -647,11 +647,6 @@ func (con *Connection) DataObject(dataObjPath string) (dataobj *DataObj, err err
 	return
 }
 
-// SearchDataObjects searchs for and returns DataObjs slice based on a search string. Use '%' as a wildcard. Equivalent to ilocate command
-func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, err error) {
-	return nil, nil
-}
-
 // QueryMeta
 func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error) {
 

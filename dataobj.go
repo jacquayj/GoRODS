@@ -922,7 +922,7 @@ func (obj *DataObj) MoveTo(iRodsCollection interface{}) error {
 
 	ccon := obj.con.GetCcon()
 
-	if status := C.gorods_move_dataobject(path, dest, ccon, &err); status != 0 {
+	if status := C.gorods_move_dataobject(path, dest, C.RENAME_DATA_OBJ, ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
 		return newError(Fatal, fmt.Sprintf("iRods Move DataObject Failed S:%v, D:%v, %v", obj.path, destination, C.GoString(err)))
 	}
@@ -982,7 +982,7 @@ func (obj *DataObj) Rename(newFileName string) error {
 	ccon := obj.con.GetCcon()
 	defer obj.con.ReturnCcon(ccon)
 
-	if status := C.gorods_move_dataobject(s, d, ccon, &err); status != 0 {
+	if status := C.gorods_move_dataobject(s, d, C.RENAME_DATA_OBJ, ccon, &err); status != 0 {
 		return newError(Fatal, fmt.Sprintf("iRods Rename DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 

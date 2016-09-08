@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -505,6 +506,39 @@ func (col *Collection) Close() error {
 
 		col.chandle = C.int(-1)
 	}
+
+	return nil
+}
+
+// Rename is equivalent to the Linux mv command except that the data object must stay within the current collection (directory), returns error.
+func (col *Collection) Rename(newFileName string) error {
+
+	if strings.Contains(newFileName, "/") {
+		return newError(Fatal, fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
+	}
+
+	var err *C.char
+
+	source := col.path
+	destination := path.Dir(col.path) + "/" + newFileName
+
+	s := C.CString(source)
+	d := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(s))
+	defer C.free(unsafe.Pointer(d))
+
+	ccon := col.con.GetCcon()
+	defer col.con.ReturnCcon(ccon)
+
+	if status := C.gorods_move_dataobject(s, d, C.RENAME_COLL, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Rename Collection Failed: %v, %v", col.path, C.GoString(err)))
+	}
+
+	col.name = newFileName
+	col.path = destination
+
+	col.chandle = C.int(-1)
 
 	return nil
 }

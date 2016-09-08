@@ -1538,14 +1538,20 @@ int gorods_copy_dataobject(char* source, char* destination, int force, char* res
 	return 0;
 }
 
-int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err) {
-	dataObjCopyInp_t dataObjCopyInp; 
-	bzero(&dataObjCopyInp, sizeof(dataObjCopyInp)); 
+int gorods_move_dataobject(char* source, char* destination, int objType, rcComm_t* conn, char** err) {
+	dataObjCopyInp_t dataObjRenameInp; 
+	bzero(&dataObjRenameInp, sizeof(dataObjRenameInp)); 
 
-	rstrcpy(dataObjCopyInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
-	rstrcpy(dataObjCopyInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
+    if ( objType == DATA_OBJ_T ) {
+        dataObjRenameInp.srcDataObjInp.oprType = dataObjRenameInp.destDataObjInp.oprType = RENAME_DATA_OBJ;
+    } else if ( objType == COLL_OBJ_T ) {
+        dataObjRenameInp.srcDataObjInp.oprType = dataObjRenameInp.destDataObjInp.oprType = RENAME_COLL;
+    }
 
-	int status = rcDataObjRename(conn, &dataObjCopyInp); 
+	rstrcpy(dataObjRenameInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
+	rstrcpy(dataObjRenameInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
+
+	int status = rcDataObjRename(conn, &dataObjRenameInp); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjRename failed";
 		return -1;
