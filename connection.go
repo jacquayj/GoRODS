@@ -49,6 +49,8 @@ const (
 	Read
 	Write
 	Own
+	Inherit
+	NoInherit
 	Local
 	Remote
 	PAMAuth
@@ -192,24 +194,28 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	return nil
 }
 
-func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
+func chmod(obj IRodsObj, user string, accessLevel int, recursive bool, includeZone bool) error {
 	var (
 		err        *C.char
 		cRecursive C.int
+		zone       string
 	)
 
-	if accessLevel != Null && accessLevel != Read && accessLevel != Write && accessLevel != Own {
+	if accessLevel != Null && accessLevel != Read && accessLevel != Write && accessLevel != Own && accessLevel != Inherit && accessLevel != NoInherit {
 		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be Null | Read | Write | Own"))
 	}
 
-	zone, zErr := obj.Con().GetLocalZone()
-	if zErr != nil {
-		return zErr
+	if includeZone {
+		if z, err := obj.Con().GetLocalZone(); err == nil {
+			zone = z.Name()
+		} else {
+			return err
+		}
 	}
 
 	cUser := C.CString(user)
 	cPath := C.CString(obj.Path())
-	cZone := C.CString(zone.Name())
+	cZone := C.CString(zone)
 	cAccessLevel := C.CString(getTypeString(accessLevel))
 	defer C.free(unsafe.Pointer(cUser))
 	defer C.free(unsafe.Pointer(cPath))

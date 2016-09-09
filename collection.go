@@ -245,6 +245,16 @@ func (col *Collection) All() (IRodsObjs, error) {
 	return col.dataObjects, nil
 }
 
+func (col *Collection) SetInheritance(inherits bool, recursive bool) error {
+	var ih int
+	if inherits {
+		ih = Inherit
+	} else {
+		ih = NoInherit
+	}
+	return chmod(col, "", ih, recursive, false)
+}
+
 // Inheritance returns true or false, depending on the collection's inheritance setting
 func (col *Collection) Inheritance() (bool, error) {
 
@@ -273,7 +283,7 @@ func (col *Collection) Inheritance() (bool, error) {
 // Chmod changes the permissions/ACL of the collection
 // accessLevel: Null | Read | Write | Own
 func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
-	return chmod(col, userOrGroup, accessLevel, recursive)
+	return chmod(col, userOrGroup, accessLevel, recursive, true)
 }
 
 // GetACL retuns a slice of ACL structs. Example of slice in string format:

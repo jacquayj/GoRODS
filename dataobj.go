@@ -241,7 +241,7 @@ func (obj *DataObj) ACL() (ACLs, error) {
 // Chmod changes the permissions/ACL of a data object
 // accessLevel: Null | Read | Write | Own
 func (obj *DataObj) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
-	return chmod(obj, userOrGroup, accessLevel, recursive)
+	return chmod(obj, userOrGroup, accessLevel, recursive, true)
 }
 
 // Type gets the type
