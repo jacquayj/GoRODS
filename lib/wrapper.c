@@ -1199,6 +1199,27 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
     return 0;
 }
 
+int gorods_phymv_dataobject(rcComm_t *conn, char* objPath, char* sourceResource, char* destResource, char** err) {
+
+    int status;
+    dataObjInp_t dataObjInp; 
+    bzero(&dataObjInp, sizeof(dataObjInp)); 
+
+    rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN);
+
+    addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, sourceResource); 
+    addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, destResource); 
+
+    status = rcDataObjPhymv(conn, &dataObjInp); 
+    if ( status < 0 ) { 
+        *err = "rcDataObjPhymv failed";
+        return status;
+    }
+
+    return 0;
+
+}
+
 int gorods_repl_dataobject(rcComm_t *conn, char* objPath, char* resourceName, int backupMode, int createMode, rodsLong_t dataSize, char** err) {
     
     int status;

@@ -1075,10 +1075,38 @@ func (obj *DataObj) Verify(md5Checksum string) bool {
 	return false
 }
 
-// NEED TO IMPLEMENT
-func (obj *DataObj) MoveToResource(destinationResource string) *DataObj {
+func (obj *DataObj) MoveToResource(targetResource interface{}) error {
 
-	return obj
+	var (
+		err         *C.char
+		resourceStr string
+	)
+
+	switch targetResource.(type) {
+	case string:
+		resourceStr = targetResource.(string)
+	case *Resource:
+		resourceStr = (targetResource.(*Resource)).Name()
+	default:
+		return newError(Fatal, fmt.Sprintf("Unknown type passed as targetResource"))
+
+	}
+
+	cSourceResource := C.CString(obj.resource.name)
+	cPath := C.CString(obj.Path())
+	cResource := C.CString(resourceStr)
+	defer C.free(unsafe.Pointer(cSourceResource))
+	defer C.free(unsafe.Pointer(cPath))
+	defer C.free(unsafe.Pointer(cResource))
+
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
+
+	if status := C.gorods_phymv_dataobject(ccon, cPath, cSourceResource, cResource, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods MoveToResource Failed: %v, %v", obj.path, C.GoString(err)))
+	}
+
+	return nil
 }
 
 func (obj *DataObj) Replicate(targetResource interface{}, opts DataObjOptions) error {
