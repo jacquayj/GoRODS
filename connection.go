@@ -541,8 +541,8 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 	recursive := opts.Recursive
 
 	// Check the cache
-	//if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
-	if collection := con.OpenedObjs.FindRecursive(startPath); true {
+	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
+		//if collection := con.OpenedObjs.FindRecursive(startPath); true {
 
 		// Load collection, no cache found
 		if col, err := getCollection(opts, con); err == nil {

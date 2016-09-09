@@ -562,25 +562,23 @@ func (col *Collection) MoveTo(iRodsCollection interface{}) error {
 	// Find & reload destination collection
 	switch iRodsCollection.(type) {
 	case string:
-		// Find collection recursivly
-		if dc := col.con.OpenedObjs.FindRecursive(destinationCollectionString); dc != nil {
-			destinationCollection = dc.(*Collection)
+		var colEr error
 
-			destinationCollection.Refresh()
-		} else {
-			opts := CollectionOptions{
-				Path:      destinationCollectionString,
-				Recursive: false,
-			}
-			// Can't find, load collection into memory
-			destinationCollection, _ = col.con.Collection(opts)
+		// Can't find, load collection into memory
+		destinationCollection, colEr = col.con.Collection(CollectionOptions{
+			Path:      destinationCollectionString,
+			Recursive: false,
+		})
+		if colEr != nil {
+			return colEr
 		}
 	case *Collection:
 		destinationCollection = (iRodsCollection.(*Collection))
-		destinationCollection.Refresh()
 	default:
 		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed, unknown variable type passed as collection"))
 	}
+
+	destinationCollection.Refresh()
 
 	// Reassign obj.col to destination collection
 	col.parent = destinationCollection
