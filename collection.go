@@ -639,6 +639,80 @@ func (col *Collection) CopyTo(iRodsCollection interface{}) error {
 	return nil
 }
 
+func (col *Collection) Replicate(targetResource interface{}, opts DataObjOptions) error {
+
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.Replicate(targetResource, opts); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.Replicate(targetResource, opts); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			if !c.trimRepls {
+				c.Refresh()
+			}
+		}
+	} else {
+		return er
+	}
+
+	if !col.trimRepls {
+		col.Refresh()
+	}
+
+	return nil
+}
+
+func (col *Collection) Backup(targetResource interface{}, opts DataObjOptions) error {
+
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.Backup(targetResource, opts); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.Backup(targetResource, opts); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			if !c.trimRepls {
+				c.Refresh()
+			}
+		}
+	} else {
+		return er
+	}
+
+	if !col.trimRepls {
+		col.Refresh()
+	}
+
+	return nil
+}
+
 // MoveTo moves the collection to the specified collection. Supports Collection struct or string as input. Also refreshes the source and destination collections automatically to maintain correct state. Returns error.
 func (col *Collection) MoveTo(iRodsCollection interface{}) error {
 

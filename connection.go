@@ -89,6 +89,9 @@ type IRodsObj interface {
 	Chmod(string, int, bool) error
 	GrantAccess(AccessObject, int, bool) error
 
+	Replicate(interface{}, DataObjOptions) error
+	Backup(interface{}, DataObjOptions) error
+
 	Meta() (*MetaCollection, error)
 	Attribute(string) (Metas, error)
 	AddMeta(Meta) (*Meta, error)
