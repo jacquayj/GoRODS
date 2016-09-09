@@ -87,6 +87,7 @@ type IRodsObj interface {
 	Rm(bool, bool) error
 
 	Chmod(string, int, bool) error
+	GrantAccess(AccessObject, int, bool) error
 
 	Meta() (*MetaCollection, error)
 	Attribute(string) (Metas, error)

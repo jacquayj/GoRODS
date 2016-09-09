@@ -280,6 +280,10 @@ func (col *Collection) Inheritance() (bool, error) {
 	return false, nil
 }
 
+func (col *Collection) GrantAccess(userOrGroup AccessObject, accessLevel int, recursive bool) error {
+	return chmod(col, userOrGroup.Name(), accessLevel, recursive, true)
+}
+
 // Chmod changes the permissions/ACL of the collection
 // accessLevel: Null | Read | Write | Own
 func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool) error {

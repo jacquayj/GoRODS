@@ -244,6 +244,10 @@ func (obj *DataObj) Chmod(userOrGroup string, accessLevel int, recursive bool) e
 	return chmod(obj, userOrGroup, accessLevel, recursive, true)
 }
 
+func (obj *DataObj) GrantAccess(userOrGroup AccessObject, accessLevel int, recursive bool) error {
+	return chmod(obj, userOrGroup.Name(), accessLevel, recursive, true)
+}
+
 // Type gets the type
 func (obj *DataObj) Type() int {
 	return obj.typ
