@@ -1199,6 +1199,31 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
     return 0;
 }
 
+int gorods_repl_dataobject(rcComm_t *conn, char* objPath, char* resourceName, int backupMode, int createMode, rodsLong_t dataSize, char** err) {
+    
+    int status;
+    dataObjInp_t dataObjInp; 
+    bzero(&dataObjInp, sizeof(dataObjInp));
+
+    rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN); 
+    dataObjInp.createMode = createMode;
+    dataObjInp.dataSize = dataSize;
+
+    if ( backupMode > 0 ) {
+        addKeyVal(&dataObjInp.condInput, BACKUP_RESC_NAME_KW, resourceName);
+    } else {
+        addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resourceName);
+    }
+
+    status = rcDataObjRepl(conn, &dataObjInp); 
+    if ( status < 0 ) { 
+        *err = "rcDataObjRepl failed";
+        return status;
+    }
+
+    return 0;
+}
+
 
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err) {
     genQueryOut_t *genQueryOut = NULL;
