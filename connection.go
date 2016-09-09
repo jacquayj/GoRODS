@@ -68,6 +68,9 @@ type IRodsObj interface {
 	CreateTime() time.Time
 	ModifyTime() time.Time
 
+	CopyTo(interface{}) error
+	MoveTo(interface{}) error
+
 	// irm -rf
 	Destroy() error
 

@@ -510,6 +510,80 @@ func (col *Collection) Close() error {
 	return nil
 }
 
+func (col *Collection) CopyTo(iRodsCollection interface{}) error {
+
+	// Get reference to destination collection (just like MoveTo)
+	var (
+		destination                 string
+		destinationCollectionString string
+		destinationCollection       *Collection
+	)
+
+	switch iRodsCollection.(type) {
+	case string:
+		destinationCollectionString = iRodsCollection.(string)
+
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = path.Dir(col.path) + "/" + destinationCollectionString
+		}
+
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + col.name
+	case *Collection:
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + col.name
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods CopyTo Failed, unknown variable type passed as collection"))
+	}
+
+	var colEr error
+
+	// load destination collection into memory
+	if destinationCollection, colEr = col.con.Collection(CollectionOptions{
+		Path:      destinationCollectionString,
+		Recursive: false,
+	}); colEr != nil {
+		return colEr
+	}
+
+	// Create collection with same name in destination as sub-collection
+	if newCol, err := destinationCollection.CreateSubCollection(col.name); err == nil {
+
+		// loop through data objects, copy each to new sub-collection
+		if objs, er := col.DataObjs(); er == nil {
+			for _, obj := range objs {
+				if e := obj.CopyTo(newCol); e != nil {
+					return e
+				}
+			}
+		} else {
+			return er
+		}
+
+		// Loop through collections -> run recursive copyTo util?
+		if cols, er := col.Collections(); er == nil {
+			for _, aCol := range cols {
+				if er := aCol.CopyTo(newCol); er != nil {
+					return er
+				}
+			}
+		} else {
+			return er
+		}
+
+		newCol.Refresh()
+
+	} else {
+		return err
+	}
+
+	return nil
+}
+
 // MoveTo moves the collection to the specified collection. Supports Collection struct or string as input. Also refreshes the source and destination collections automatically to maintain correct state. Returns error.
 func (col *Collection) MoveTo(iRodsCollection interface{}) error {
 
