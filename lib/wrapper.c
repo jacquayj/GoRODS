@@ -1199,6 +1199,38 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
     return 0;
 }
 
+int gorods_trimrepls_dataobject(rcComm_t *conn, char* objPath, char* ageStr, char* resource, char* keepCopiesStr, char** err) {
+
+    int status;
+    dataObjInp_t dataObjInp; 
+    bzero(&dataObjInp, sizeof(dataObjInp));
+
+    rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN); 
+
+    if ( keepCopiesStr != NULL && keepCopiesStr[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, COPIES_KW, keepCopiesStr);
+    }
+
+    if ( ageStr != NULL && ageStr[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, AGE_KW, ageStr);
+    }
+
+    if ( resource != NULL && resource[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resource); 
+    }
+    
+    status = rcDataObjTrim(conn, &dataObjInp);
+
+    if ( status < 0 ) { 
+        *err = "rcDataObjTrim failed";
+        return status;
+    }
+
+    return 0;
+
+}
+
+
 int gorods_phymv_dataobject(rcComm_t *conn, char* objPath, char* sourceResource, char* destResource, char** err) {
 
     int status;

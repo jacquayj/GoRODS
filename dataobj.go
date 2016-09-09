@@ -1075,6 +1075,47 @@ func (obj *DataObj) Verify(md5Checksum string) bool {
 	return false
 }
 
+type TrimOptions struct {
+	NumCopiesKeep  int
+	MinAgeMins     int
+	TargetResource interface{}
+}
+
+func (obj *DataObj) TrimRepls(opts TrimOptions) error {
+	var (
+		err         *C.char
+		resourceStr string
+	)
+
+	switch opts.TargetResource.(type) {
+	case string:
+		resourceStr = opts.TargetResource.(string)
+	case *Resource:
+		resourceStr = (opts.TargetResource.(*Resource)).Name()
+	default:
+		return newError(Fatal, fmt.Sprintf("Unknown type passed as targetResource"))
+
+	}
+
+	cNumCopies := C.CString(strconv.Itoa(opts.NumCopiesKeep))
+	cAgeStr := C.CString(strconv.Itoa(opts.MinAgeMins))
+	cPath := C.CString(obj.Path())
+	cResource := C.CString(resourceStr)
+	defer C.free(unsafe.Pointer(cNumCopies))
+	defer C.free(unsafe.Pointer(cAgeStr))
+	defer C.free(unsafe.Pointer(cPath))
+	defer C.free(unsafe.Pointer(cResource))
+
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
+
+	if status := C.gorods_trimrepls_dataobject(ccon, cPath, cAgeStr, cResource, cNumCopies, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods TrimRepls Failed: %v, %v", obj.path, C.GoString(err)))
+	}
+
+	return nil
+}
+
 func (obj *DataObj) MoveToResource(targetResource interface{}) error {
 
 	var (
@@ -1171,11 +1212,4 @@ func (obj *DataObj) Backup(targetResource interface{}, opts DataObjOptions) erro
 	}
 
 	return nil
-}
-
-// NEED TO IMPLEMENT
-func (obj *DataObj) ReplSettings(resource map[string]interface{}) *DataObj {
-	//https://wiki.irods.org/doxygen_api/html/rc_data_obj_trim_8c_a7e4713d4b7617690e484fbada8560663.html
-
-	return obj
 }
