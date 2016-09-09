@@ -92,6 +92,7 @@ type IRodsObj interface {
 	Replicate(interface{}, DataObjOptions) error
 	Backup(interface{}, DataObjOptions) error
 	MoveToResource(interface{}) error
+	TrimRepls(TrimOptions) error
 
 	Meta() (*MetaCollection, error)
 	Attribute(string) (Metas, error)

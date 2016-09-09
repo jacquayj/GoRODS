@@ -639,6 +639,39 @@ func (col *Collection) CopyTo(iRodsCollection interface{}) error {
 	return nil
 }
 
+func (col *Collection) TrimRepls(opts TrimOptions) error {
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.TrimRepls(opts); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.TrimRepls(opts); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			c.Refresh()
+
+		}
+	} else {
+		return er
+	}
+
+	col.Refresh()
+
+	return nil
+}
+
 func (col *Collection) MoveToResource(targetResource interface{}) error {
 
 	// loop through data objects
