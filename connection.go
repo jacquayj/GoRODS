@@ -70,6 +70,7 @@ type IRodsObj interface {
 
 	CopyTo(interface{}) error
 	MoveTo(interface{}) error
+	DownloadTo(string) error
 
 	// irm -rf
 	Destroy() error

@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -455,6 +456,46 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 	}
 }
 
+func (col *Collection) DownloadTo(localPath string) error {
+
+	if dir, err := os.Stat(localPath); err == nil && dir.IsDir() {
+		if localPath[len(localPath)-1] != '/' {
+			localPath += "/"
+		}
+		if objs, er := col.DataObjs(); er == nil {
+			for _, obj := range objs {
+				if e := obj.DownloadTo(localPath + obj.Name()); e != nil {
+					return e
+				}
+			}
+		} else {
+			return er
+		}
+
+		if cols, er := col.Collections(); er == nil {
+			for _, col := range cols {
+
+				newDir := localPath + col.Name()
+
+				if e := os.Mkdir(newDir, 0777); e != nil {
+					return e
+				}
+
+				if e := col.DownloadTo(newDir); e != nil {
+					return e
+				}
+			}
+		} else {
+			return er
+		}
+
+	} else {
+		return newError(Fatal, fmt.Sprintf("iRods DownloadTo Failed: localPath doesn't exist or isn't a directory"))
+	}
+
+	return nil
+}
+
 // Open connects to iRods and sets the handle for Collection.
 // Usually called by Collection.init()
 func (col *Collection) Open() error {
@@ -575,7 +616,7 @@ func (col *Collection) CopyTo(iRodsCollection interface{}) error {
 			return er
 		}
 
-		newCol.Refresh()
+		newCol.Refresh() // <- is this required?
 
 	} else {
 		return err
