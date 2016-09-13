@@ -8,6 +8,8 @@ import "C"
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -152,7 +154,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 
 			return col, nil
 		} else {
-			return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: this error should never happen"))
+			return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: Does the collection exist?"))
 		}
 	}
 
@@ -243,6 +245,16 @@ func (col *Collection) All() (IRodsObjs, error) {
 	return col.dataObjects, nil
 }
 
+func (col *Collection) SetInheritance(inherits bool, recursive bool) error {
+	var ih int
+	if inherits {
+		ih = Inherit
+	} else {
+		ih = NoInherit
+	}
+	return chmod(col, "", ih, recursive, false)
+}
+
 // Inheritance returns true or false, depending on the collection's inheritance setting
 func (col *Collection) Inheritance() (bool, error) {
 
@@ -268,10 +280,14 @@ func (col *Collection) Inheritance() (bool, error) {
 	return false, nil
 }
 
+func (col *Collection) GrantAccess(userOrGroup AccessObject, accessLevel int, recursive bool) error {
+	return chmod(col, userOrGroup.Name(), accessLevel, recursive, true)
+}
+
 // Chmod changes the permissions/ACL of the collection
 // accessLevel: Null | Read | Write | Own
 func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
-	return chmod(col, userOrGroup, accessLevel, recursive)
+	return chmod(col, userOrGroup, accessLevel, recursive, true)
 }
 
 // GetACL retuns a slice of ACL structs. Example of slice in string format:
@@ -454,6 +470,46 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 	}
 }
 
+func (col *Collection) DownloadTo(localPath string) error {
+
+	if dir, err := os.Stat(localPath); err == nil && dir.IsDir() {
+		if localPath[len(localPath)-1] != '/' {
+			localPath += "/"
+		}
+		if objs, er := col.DataObjs(); er == nil {
+			for _, obj := range objs {
+				if e := obj.DownloadTo(localPath + obj.Name()); e != nil {
+					return e
+				}
+			}
+		} else {
+			return er
+		}
+
+		if cols, er := col.Collections(); er == nil {
+			for _, col := range cols {
+
+				newDir := localPath + col.Name()
+
+				if e := os.Mkdir(newDir, 0777); e != nil {
+					return e
+				}
+
+				if e := col.DownloadTo(newDir); e != nil {
+					return e
+				}
+			}
+		} else {
+			return er
+		}
+
+	} else {
+		return newError(Fatal, fmt.Sprintf("iRods DownloadTo Failed: localPath doesn't exist or isn't a directory"))
+	}
+
+	return nil
+}
+
 // Open connects to iRods and sets the handle for Collection.
 // Usually called by Collection.init()
 func (col *Collection) Open() error {
@@ -505,6 +561,333 @@ func (col *Collection) Close() error {
 
 		col.chandle = C.int(-1)
 	}
+
+	return nil
+}
+
+func (col *Collection) CopyTo(iRodsCollection interface{}) error {
+
+	// Get reference to destination collection (just like MoveTo)
+	var (
+		destination                 string
+		destinationCollectionString string
+		destinationCollection       *Collection
+	)
+
+	switch iRodsCollection.(type) {
+	case string:
+		destinationCollectionString = iRodsCollection.(string)
+
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = path.Dir(col.path) + "/" + destinationCollectionString
+		}
+
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + col.name
+	case *Collection:
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + col.name
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods CopyTo Failed, unknown variable type passed as collection"))
+	}
+
+	var colEr error
+
+	// load destination collection into memory
+	if destinationCollection, colEr = col.con.Collection(CollectionOptions{
+		Path:      destinationCollectionString,
+		Recursive: false,
+	}); colEr != nil {
+		return colEr
+	}
+
+	// Create collection with same name in destination as sub-collection
+	if newCol, err := destinationCollection.CreateSubCollection(col.name); err == nil {
+
+		// loop through data objects, copy each to new sub-collection
+		if objs, er := col.DataObjs(); er == nil {
+			for _, obj := range objs {
+				if e := obj.CopyTo(newCol); e != nil {
+					return e
+				}
+			}
+		} else {
+			return er
+		}
+
+		// Loop through collections -> run recursive copyTo util?
+		if cols, er := col.Collections(); er == nil {
+			for _, aCol := range cols {
+				if er := aCol.CopyTo(newCol); er != nil {
+					return er
+				}
+			}
+		} else {
+			return er
+		}
+
+		newCol.Refresh() // <- is this required?
+
+	} else {
+		return err
+	}
+
+	return nil
+}
+
+func (col *Collection) TrimRepls(opts TrimOptions) error {
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.TrimRepls(opts); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.TrimRepls(opts); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			c.Refresh()
+
+		}
+	} else {
+		return er
+	}
+
+	col.Refresh()
+
+	return nil
+}
+
+func (col *Collection) MoveToResource(targetResource interface{}) error {
+
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.MoveToResource(targetResource); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.MoveToResource(targetResource); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			c.Refresh()
+
+		}
+	} else {
+		return er
+	}
+
+	col.Refresh()
+
+	return nil
+}
+
+func (col *Collection) Replicate(targetResource interface{}, opts DataObjOptions) error {
+
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.Replicate(targetResource, opts); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.Replicate(targetResource, opts); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			if !c.trimRepls {
+				c.Refresh()
+			}
+		}
+	} else {
+		return er
+	}
+
+	if !col.trimRepls {
+		col.Refresh()
+	}
+
+	return nil
+}
+
+func (col *Collection) Backup(targetResource interface{}, opts DataObjOptions) error {
+
+	// loop through data objects
+	if objs, er := col.DataObjs(); er == nil {
+		for _, obj := range objs {
+			if e := obj.Backup(targetResource, opts); e != nil {
+				return e
+			}
+		}
+	} else {
+		return er
+	}
+
+	// Loop through collections
+	if cols, er := col.Collections(); er == nil {
+		for _, aCol := range cols {
+			if er := aCol.Backup(targetResource, opts); er != nil {
+				return er
+			}
+
+			c := aCol.(*Collection)
+
+			if !c.trimRepls {
+				c.Refresh()
+			}
+		}
+	} else {
+		return er
+	}
+
+	if !col.trimRepls {
+		col.Refresh()
+	}
+
+	return nil
+}
+
+// MoveTo moves the collection to the specified collection. Supports Collection struct or string as input. Also refreshes the source and destination collections automatically to maintain correct state. Returns error.
+func (col *Collection) MoveTo(iRodsCollection interface{}) error {
+
+	var (
+		err                         *C.char
+		destination                 string
+		destinationCollectionString string
+		destinationCollection       *Collection
+	)
+
+	switch iRodsCollection.(type) {
+	case string:
+		destinationCollectionString = iRodsCollection.(string)
+
+		// Is this a relative path?
+		if destinationCollectionString[0] != '/' {
+			destinationCollectionString = path.Dir(col.path) + "/" + destinationCollectionString
+		}
+
+		if destinationCollectionString[len(destinationCollectionString)-1] != '/' {
+			destinationCollectionString += "/"
+		}
+
+		destination += destinationCollectionString + col.name
+	case *Collection:
+		destinationCollectionString = (iRodsCollection.(*Collection)).path + "/"
+		destination = destinationCollectionString + col.name
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed, unknown variable type passed as collection"))
+	}
+
+	path := C.CString(col.path)
+	dest := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(path))
+	defer C.free(unsafe.Pointer(dest))
+
+	ccon := col.con.GetCcon()
+
+	if status := C.gorods_move_dataobject(path, dest, C.RENAME_COLL, ccon, &err); status != 0 {
+		col.con.ReturnCcon(ccon)
+		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed: %v, D:%v, %v", col.path, destination, C.GoString(err)))
+	}
+
+	col.con.ReturnCcon(ccon)
+
+	// Reload source collection, we are now detached
+	col.parent.Refresh()
+
+	// Find & reload destination collection
+	switch iRodsCollection.(type) {
+	case string:
+		var colEr error
+
+		// Can't find, load collection into memory
+		destinationCollection, colEr = col.con.Collection(CollectionOptions{
+			Path:      destinationCollectionString,
+			Recursive: false,
+		})
+		if colEr != nil {
+			return colEr
+		}
+	case *Collection:
+		destinationCollection = (iRodsCollection.(*Collection))
+	default:
+		return newError(Fatal, fmt.Sprintf("iRods Move Collection Failed, unknown variable type passed as collection"))
+	}
+
+	destinationCollection.Refresh()
+
+	// Reassign obj.col to destination collection
+	col.parent = destinationCollection
+	col.path = destinationCollection.path + "/" + col.name
+
+	col.chandle = C.int(-1)
+
+	return nil
+}
+
+// Rename is equivalent to the Linux mv command except that the collection must stay within it's current collection (directory), returns error.
+func (col *Collection) Rename(newFileName string) error {
+
+	if strings.Contains(newFileName, "/") {
+		return newError(Fatal, fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
+	}
+
+	var err *C.char
+
+	source := col.path
+	destination := path.Dir(col.path) + "/" + newFileName
+
+	s := C.CString(source)
+	d := C.CString(destination)
+
+	defer C.free(unsafe.Pointer(s))
+	defer C.free(unsafe.Pointer(d))
+
+	ccon := col.con.GetCcon()
+	defer col.con.ReturnCcon(ccon)
+
+	if status := C.gorods_move_dataobject(s, d, C.RENAME_COLL, ccon, &err); status != 0 {
+		return newError(Fatal, fmt.Sprintf("iRods Rename Collection Failed: %v, %v", col.path, C.GoString(err)))
+	}
+
+	col.name = newFileName
+	col.path = destination
+
+	col.chandle = C.int(-1)
 
 	return nil
 }

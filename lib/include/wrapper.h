@@ -68,6 +68,7 @@ int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupNa
 
 int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err);
 int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err);
+void gorods_free_map_result(goRodsHashResult_t* result);
 
 int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err);
 int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err);
@@ -112,6 +113,9 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err);
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err);
 
+int gorods_trimrepls_dataobject(rcComm_t *conn, char* objPath, char* ageStr, char* resource, char* keepCopiesStr, char** err);
+int gorods_phymv_dataobject(rcComm_t *conn, char* objPath, char* sourceResource, char* destResource, char** err);
+int gorods_repl_dataobject(rcComm_t *conn, char* objPath, char* resourceName, int backupMode, int createMode, rodsLong_t dataSize, char** err);
 int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, rcComm_t* conn, char** err);
 int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int openFlag, int* handle, rcComm_t* conn, char** err);
 int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer, int* bytesRead, rcComm_t* conn, char** err);
@@ -121,7 +125,7 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, char* resource, int* handle, rcComm_t* conn, char** err);
 int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, char** err);
 int gorods_copy_dataobject(char* source, char* destination, int force, char* resource, rcComm_t* conn, char** err);
-int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err);
+int gorods_move_dataobject(char* source, char* destination, int objType, rcComm_t* conn, char** err);
 int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err);
 int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, char** err);
 int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* conn, char** err);

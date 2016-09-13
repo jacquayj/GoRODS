@@ -51,6 +51,10 @@ func getTypeString(typ int) string {
 		return "write"
 	case Own:
 		return "own"
+	case Inherit:
+		return "inherit"
+	case NoInherit:
+		return "noinherit"
 	case Local:
 		return "local"
 	case Remote:

@@ -49,6 +49,8 @@ const (
 	Read
 	Write
 	Own
+	Inherit
+	NoInherit
 	Local
 	Remote
 	PAMAuth
@@ -68,6 +70,10 @@ type IRodsObj interface {
 	CreateTime() time.Time
 	ModifyTime() time.Time
 
+	CopyTo(interface{}) error
+	MoveTo(interface{}) error
+	DownloadTo(string) error
+
 	// irm -rf
 	Destroy() error
 
@@ -81,6 +87,12 @@ type IRodsObj interface {
 	Rm(bool, bool) error
 
 	Chmod(string, int, bool) error
+	GrantAccess(AccessObject, int, bool) error
+
+	Replicate(interface{}, DataObjOptions) error
+	Backup(interface{}, DataObjOptions) error
+	MoveToResource(interface{}) error
+	TrimRepls(TrimOptions) error
 
 	Meta() (*MetaCollection, error)
 	Attribute(string) (Metas, error)
@@ -188,24 +200,28 @@ func findRecursiveHelper(objs IRodsObjs, path string) IRodsObj {
 	return nil
 }
 
-func chmod(obj IRodsObj, user string, accessLevel int, recursive bool) error {
+func chmod(obj IRodsObj, user string, accessLevel int, recursive bool, includeZone bool) error {
 	var (
 		err        *C.char
 		cRecursive C.int
+		zone       string
 	)
 
-	if accessLevel != Null && accessLevel != Read && accessLevel != Write && accessLevel != Own {
+	if accessLevel != Null && accessLevel != Read && accessLevel != Write && accessLevel != Own && accessLevel != Inherit && accessLevel != NoInherit {
 		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be Null | Read | Write | Own"))
 	}
 
-	zone, zErr := obj.Con().GetLocalZone()
-	if zErr != nil {
-		return zErr
+	if includeZone {
+		if z, err := obj.Con().GetLocalZone(); err == nil {
+			zone = z.Name()
+		} else {
+			return err
+		}
 	}
 
 	cUser := C.CString(user)
 	cPath := C.CString(obj.Path())
-	cZone := C.CString(zone.Name())
+	cZone := C.CString(zone)
 	cAccessLevel := C.CString(getTypeString(accessLevel))
 	defer C.free(unsafe.Pointer(cUser))
 	defer C.free(unsafe.Pointer(cPath))
@@ -257,15 +273,15 @@ type Connection struct {
 	OpenedObjs IRodsObjs
 }
 
-// New creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
+// NewConnection creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
 // constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password
 // should be set unless using an anonymous user account with tickets.
-func New(opts ConnectionOptions) (*Connection, error) {
+func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
 
-	con.Options = &opts
+	con.Options = opts
 
 	var (
 		status    C.int
@@ -497,6 +513,12 @@ func (con *Connection) SetTicket(t string) error {
 // Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
 
+	for _, obj := range con.OpenedObjs {
+		if er := obj.Close(); er != nil {
+			return er
+		}
+	}
+
 	ccon := con.GetCcon()
 	defer con.ReturnCcon(ccon)
 
@@ -541,8 +563,8 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 	recursive := opts.Recursive
 
 	// Check the cache
-	//if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
-	if collection := con.OpenedObjs.FindRecursive(startPath); true {
+	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
+		//if collection := con.OpenedObjs.FindRecursive(startPath); true {
 
 		// Load collection, no cache found
 		if col, err := getCollection(opts, con); err == nil {
@@ -604,7 +626,7 @@ func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string
 	}
 
 	con.ReturnCcon(ccon)
-	//defer C.gorods_free_string_result(&result)
+	defer C.gorods_free_map_result(&result)
 
 	unsafeKeyArr := unsafe.Pointer(result.hashKeys)
 	keyArrLen := int(result.keySize)
@@ -645,11 +667,6 @@ func (con *Connection) DataObject(dataObjPath string) (dataobj *DataObj, err err
 	dataobj, err = getDataObj(dataObjPath, con)
 
 	return
-}
-
-// SearchDataObjects searchs for and returns DataObjs slice based on a search string. Use '%' as a wildcard. Equivalent to ilocate command
-func (con *Connection) SearchDataObjects(dataObjPath string) (dataobj *DataObj, err error) {
-	return nil, nil
 }
 
 // QueryMeta
@@ -1067,18 +1084,16 @@ func (con *Connection) GetLocalZone() (*Zone, error) {
 		err       *C.char
 	)
 
-	ccon := con.GetCcon()
-
-	if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
-		if con.Options.Zone != "" {
-			cZoneName = C.CString(con.Options.Zone)
-		} else {
+	if con.Options.Zone == "" {
+		ccon := con.GetCcon()
+		if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
 			con.ReturnCcon(ccon)
 			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: %v", C.GoString(err)))
 		}
+		con.ReturnCcon(ccon)
+	} else {
+		cZoneName = C.CString(con.Options.Zone)
 	}
-
-	con.ReturnCcon(ccon)
 
 	defer C.free(unsafe.Pointer(cZoneName))
 

@@ -1065,6 +1065,29 @@ int gorods_chmod(rcComm_t *conn, char* path, char* zone, char* ugName, char* acc
 }
 
 
+// typedef struct {
+//     int size;
+//     int keySize;
+//     char** hashKeys;
+//     char** hashValues;
+// } goRodsHashResult_t;
+
+
+void gorods_free_map_result(goRodsHashResult_t* result) {
+
+    int i;
+    for ( i = 0; i < result->keySize; i++ ) {
+        free(result->hashKeys[i]);
+    }
+    free(result->hashKeys);
+
+    for ( i = 0; i < (result->size * result->keySize); i++ ) {
+        free(result->hashValues[i]);
+    }
+    free(result->hashValues);
+
+}
+
 int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err) {
     /*
       NoDistinctFlag is 1 if the user is requesting 'distinct' to be skipped.
@@ -1122,14 +1145,6 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
 
 }
 
-// typedef struct {
-//     int size;
-//     int keySize;
-//     char** hashKeys;
-//     char** hashValues;
-// } goRodsHashResult_t;
-
-
 int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* result, char** err) {
     int i = 0, n = 0, j = 0;
     sqlResult_t *v[MAX_SQL_ATTR];
@@ -1179,6 +1194,84 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
             result->hashValues[rowStart + j] = strcpy(gorods_malloc(strlen(value) + 1), value);
         }
         
+    }
+
+    return 0;
+}
+
+int gorods_trimrepls_dataobject(rcComm_t *conn, char* objPath, char* ageStr, char* resource, char* keepCopiesStr, char** err) {
+
+    int status;
+    dataObjInp_t dataObjInp; 
+    bzero(&dataObjInp, sizeof(dataObjInp));
+
+    rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN); 
+
+    if ( keepCopiesStr != NULL && keepCopiesStr[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, COPIES_KW, keepCopiesStr);
+    }
+
+    if ( ageStr != NULL && ageStr[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, AGE_KW, ageStr);
+    }
+
+    if ( resource != NULL && resource[0] != '\0' ) {
+        addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resource); 
+    }
+    
+    status = rcDataObjTrim(conn, &dataObjInp);
+
+    if ( status < 0 ) { 
+        *err = "rcDataObjTrim failed";
+        return status;
+    }
+
+    return 0;
+
+}
+
+
+int gorods_phymv_dataobject(rcComm_t *conn, char* objPath, char* sourceResource, char* destResource, char** err) {
+
+    int status;
+    dataObjInp_t dataObjInp; 
+    bzero(&dataObjInp, sizeof(dataObjInp)); 
+
+    rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN);
+
+    addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, sourceResource); 
+    addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, destResource); 
+
+    status = rcDataObjPhymv(conn, &dataObjInp); 
+    if ( status < 0 ) { 
+        *err = "rcDataObjPhymv failed";
+        return status;
+    }
+
+    return 0;
+
+}
+
+int gorods_repl_dataobject(rcComm_t *conn, char* objPath, char* resourceName, int backupMode, int createMode, rodsLong_t dataSize, char** err) {
+    
+    int status;
+    dataObjInp_t dataObjInp; 
+    bzero(&dataObjInp, sizeof(dataObjInp));
+
+    rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN); 
+    dataObjInp.createMode = createMode;
+    dataObjInp.dataSize = dataSize;
+
+    if ( backupMode > 0 ) {
+        addKeyVal(&dataObjInp.condInput, BACKUP_RESC_NAME_KW, resourceName);
+    } else {
+        addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resourceName);
+    }
+
+    status = rcDataObjRepl(conn, &dataObjInp); 
+    if ( status < 0 ) { 
+        *err = "rcDataObjRepl failed";
+        return status;
     }
 
     return 0;
@@ -1523,14 +1616,20 @@ int gorods_copy_dataobject(char* source, char* destination, int force, char* res
 	return 0;
 }
 
-int gorods_move_dataobject(char* source, char* destination, rcComm_t* conn, char** err) {
-	dataObjCopyInp_t dataObjCopyInp; 
-	bzero(&dataObjCopyInp, sizeof(dataObjCopyInp)); 
+int gorods_move_dataobject(char* source, char* destination, int objType, rcComm_t* conn, char** err) {
+	dataObjCopyInp_t dataObjRenameInp; 
+	bzero(&dataObjRenameInp, sizeof(dataObjRenameInp)); 
 
-	rstrcpy(dataObjCopyInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
-	rstrcpy(dataObjCopyInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
+    if ( objType == DATA_OBJ_T ) {
+        dataObjRenameInp.srcDataObjInp.oprType = dataObjRenameInp.destDataObjInp.oprType = RENAME_DATA_OBJ;
+    } else if ( objType == COLL_OBJ_T ) {
+        dataObjRenameInp.srcDataObjInp.oprType = dataObjRenameInp.destDataObjInp.oprType = RENAME_COLL;
+    }
 
-	int status = rcDataObjRename(conn, &dataObjCopyInp); 
+	rstrcpy(dataObjRenameInp.destDataObjInp.objPath, destination, MAX_NAME_LEN); 
+	rstrcpy(dataObjRenameInp.srcDataObjInp.objPath, source, MAX_NAME_LEN); 
+
+	int status = rcDataObjRename(conn, &dataObjRenameInp); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjRename failed";
 		return -1;
