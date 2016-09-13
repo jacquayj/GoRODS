@@ -278,10 +278,10 @@ type Connection struct {
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password
 // should be set unless using an anonymous user account with tickets.
-func New(opts ConnectionOptions) (*Connection, error) {
+func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	con := new(Connection)
 
-	con.Options = &opts
+	con.Options = opts
 
 	var (
 		status    C.int
@@ -512,6 +512,12 @@ func (con *Connection) SetTicket(t string) error {
 
 // Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
+
+	for _, obj := range con.OpenedObjs {
+		if er := obj.Close(); er != nil {
+			return er
+		}
+	}
 
 	ccon := con.GetCcon()
 	defer con.ReturnCcon(ccon)
@@ -1078,18 +1084,16 @@ func (con *Connection) GetLocalZone() (*Zone, error) {
 		err       *C.char
 	)
 
-	ccon := con.GetCcon()
-
-	if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
-		if con.Options.Zone != "" {
-			cZoneName = C.CString(con.Options.Zone)
-		} else {
+	if con.Options.Zone == "" {
+		ccon := con.GetCcon()
+		if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
 			con.ReturnCcon(ccon)
 			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: %v", C.GoString(err)))
 		}
+		con.ReturnCcon(ccon)
+	} else {
+		cZoneName = C.CString(con.Options.Zone)
 	}
-
-	con.ReturnCcon(ccon)
 
 	defer C.free(unsafe.Pointer(cZoneName))
 
