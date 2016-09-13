@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// AccessObject is an interface for Users and Groups, used within ACL slices to denote the access level of a DataObj or Collection
 type AccessObject interface {
 	Name() string
 	Zone() *Zone
@@ -22,14 +23,17 @@ type AccessObject interface {
 	Con() *Connection
 }
 
+// ACL is used to describe the access level that a particular AccessObject (User/Group) has on a DataObj or Collection
 type ACL struct {
 	AccessObject AccessObject
 	AccessLevel  int
 	Type         int
 }
 
+// ACLs is a slice of ACL pointers
 type ACLs []*ACL
 
+// User is a shortcut to cast the AccessObject as it's underlying data structure type (*User)
 func (acl *ACL) User() *User {
 	if acl.Type == UserType {
 		return acl.AccessObject.(*User)
@@ -38,6 +42,7 @@ func (acl *ACL) User() *User {
 	return nil
 }
 
+// Group is a shortcut to cast the AccessObject as it's underlying data structure type (*Group)
 func (acl *ACL) Group() *Group {
 	if acl.Type == GroupType {
 		return acl.AccessObject.(*Group)
@@ -46,6 +51,8 @@ func (acl *ACL) Group() *Group {
 	return nil
 }
 
+// String returns a formatted string describing the ACL struct
+// example: g:designers#tempZone:read
 func (acl *ACL) String() string {
 	typeString := getTypeString(acl.Type)
 
