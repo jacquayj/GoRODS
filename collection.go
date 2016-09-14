@@ -41,6 +41,9 @@ type Collection struct {
 	chandle C.int
 }
 
+// CollectionOptions stores options relating to collection initialization.
+// Path is the full path of the collection you're requesting.
+// Recursive if set to true will load sub collections into memory, until the end of the collection "tree" is found.
 type CollectionOptions struct {
 	Path      string
 	Recursive bool
@@ -305,6 +308,7 @@ func (col *Collection) All() (IRodsObjs, error) {
 	return col.dataObjects, nil
 }
 
+// SetInheritance sets the inheritance option of the collection. If true, sub-collections and data objects inherit the permissions (ACL) of this collection.
 func (col *Collection) SetInheritance(inherits bool, recursive bool) error {
 	var ih int
 	if inherits {
@@ -340,6 +344,7 @@ func (col *Collection) Inheritance() (bool, error) {
 	return false, nil
 }
 
+// GrantAccess will add permissions (ACL) to the collection
 func (col *Collection) GrantAccess(userOrGroup AccessObject, accessLevel int, recursive bool) error {
 	return chmod(col, userOrGroup.Name(), accessLevel, recursive, true)
 }
@@ -350,7 +355,7 @@ func (col *Collection) Chmod(userOrGroup string, accessLevel int, recursive bool
 	return chmod(col, userOrGroup, accessLevel, recursive, true)
 }
 
-// GetACL retuns a slice of ACL structs. Example of slice in string format:
+// ACL returns a slice of ACL structs. Example of slice in string format:
 // [rods#tempZone:own
 // developers#tempZone:modify object
 // designers#tempZone:read object]
@@ -416,6 +421,7 @@ func (col *Collection) OwnerName() string {
 	return col.ownerName
 }
 
+// Owner returns a User struct, representing the user who owns the collection
 func (col *Collection) Owner() *User {
 	return col.owner
 }
@@ -530,6 +536,7 @@ func (col *Collection) DeleteMeta(attr string) (*MetaCollection, error) {
 	}
 }
 
+// DownloadTo recursively downloads all data objects and collections contained within the collection, into the path specified
 func (col *Collection) DownloadTo(localPath string) error {
 
 	if dir, err := os.Stat(localPath); err == nil && dir.IsDir() {
@@ -625,6 +632,8 @@ func (col *Collection) Close() error {
 	return nil
 }
 
+// CopyTo copies all collections and data objects contained withing the collection to the specified collection.
+// Accepts string or *Collection types.
 func (col *Collection) CopyTo(iRodsCollection interface{}) error {
 
 	// Get reference to destination collection (just like MoveTo)
@@ -699,6 +708,7 @@ func (col *Collection) CopyTo(iRodsCollection interface{}) error {
 	return nil
 }
 
+// TrimRepls recursively trims data object replicas (removes from resource servers), using the rules defined in opts
 func (col *Collection) TrimRepls(opts TrimOptions) error {
 	// loop through data objects
 	if objs, er := col.DataObjs(); er == nil {
@@ -732,6 +742,8 @@ func (col *Collection) TrimRepls(opts TrimOptions) error {
 	return nil
 }
 
+// MoveToResource recursively moves all data objects contained within the collection to the specified resource.
+// Accepts string or *Resource type.
 func (col *Collection) MoveToResource(targetResource interface{}) error {
 
 	// loop through data objects
@@ -766,6 +778,8 @@ func (col *Collection) MoveToResource(targetResource interface{}) error {
 	return nil
 }
 
+// Replicate recursively copies all data objects contained within the collection to the specified resource.
+// Accepts string or *Resource type for targetResource parameter.
 func (col *Collection) Replicate(targetResource interface{}, opts DataObjOptions) error {
 
 	// loop through data objects
@@ -803,6 +817,7 @@ func (col *Collection) Replicate(targetResource interface{}, opts DataObjOptions
 	return nil
 }
 
+// Backup is similar to Replicate. In backup mode, if a good copy already exists in this resource group or resource, don't make another one.
 func (col *Collection) Backup(targetResource interface{}, opts DataObjOptions) error {
 
 	// loop through data objects
@@ -1024,6 +1039,7 @@ func (col *Collection) ReadCollection() error {
 	return col.Close()
 }
 
+// Put reads the entire file from localPath and adds it the collection, using the options specified.
 func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, error) {
 
 	var (
