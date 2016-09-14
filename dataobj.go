@@ -239,12 +239,13 @@ func (obj *DataObj) ACL() (ACLs, error) {
 
 }
 
-// Chmod changes the permissions/ACL of a data object
+// Chmod changes the permissions/ACL of a data object.
 // accessLevel: Null | Read | Write | Own
 func (obj *DataObj) Chmod(userOrGroup string, accessLevel int, recursive bool) error {
 	return chmod(obj, userOrGroup, accessLevel, recursive, true)
 }
 
+// GrantAccess will add permissions (ACL) to the data object.
 func (obj *DataObj) GrantAccess(userOrGroup AccessObject, accessLevel int, recursive bool) error {
 	return chmod(obj, userOrGroup.Name(), accessLevel, recursive, true)
 }
@@ -284,6 +285,7 @@ func (obj *DataObj) Owner() *User {
 	return obj.owner
 }
 
+// Resource returns the *Resource where the data object is stored
 func (obj *DataObj) Resource() *Resource {
 	return obj.resource
 }
@@ -292,10 +294,12 @@ func (obj *DataObj) DataId() string {
 	return obj.dataId
 }
 
+// PhyPath is the actual location where the data object is stored on the iRODS server.
 func (obj *DataObj) PhyPath() string {
 	return obj.phyPath
 }
 
+// ReplNum returns the replica index of the data object
 func (obj *DataObj) ReplNum() int {
 	return obj.replNum
 }
@@ -308,24 +312,27 @@ func (obj *DataObj) ReplStatus() int {
 	return obj.replStatus
 }
 
+// Checksum returns the hash of the data object data
 func (obj *DataObj) Checksum() string {
 	return obj.checksum
 }
 
+// Offset returns the offset bytes for the pointer of the data object. LSeek will change this value.
 func (obj *DataObj) Offset() int64 {
 	return obj.offset
 }
 
+// Size returns the size in bytes of the data object
 func (obj *DataObj) Size() int64 {
 	return obj.size
 }
 
-// GetCreateTime returns the create time of the data object
+// CreateTime returns the create time of the data object
 func (obj *DataObj) CreateTime() time.Time {
 	return obj.createTime
 }
 
-// GetModifyTime returns the modify time of the data object
+// ModifyTime returns the modify time of the data object
 func (obj *DataObj) ModifyTime() time.Time {
 	return obj.modifyTime
 }
@@ -1076,12 +1083,17 @@ func (obj *DataObj) Verify(md5Checksum string) bool {
 	return false
 }
 
+// TrimOptions store the options for trim operations.
+// NumCopiesKeep is the miniumum number of data object replicas to maintain.
+// MinAgeMinues is the minimum age in minutes of the data object to trim.
+// TargetResource is a string or *Resource type.
 type TrimOptions struct {
 	NumCopiesKeep  int
 	MinAgeMins     int
 	TargetResource interface{}
 }
 
+// TrimRepls trims data object replicas (removes from resource servers), using the rules defined in opts.
 func (obj *DataObj) TrimRepls(opts TrimOptions) error {
 	var (
 		err         *C.char
@@ -1117,6 +1129,8 @@ func (obj *DataObj) TrimRepls(opts TrimOptions) error {
 	return nil
 }
 
+// MoveToResource moves data object to the specified resource.
+// Accepts string or *Resource type.
 func (obj *DataObj) MoveToResource(targetResource interface{}) error {
 
 	var (
@@ -1151,6 +1165,8 @@ func (obj *DataObj) MoveToResource(targetResource interface{}) error {
 	return nil
 }
 
+// Replicate copies the data object to the specified resource.
+// Accepts string or *Resource type for targetResource parameter.
 func (obj *DataObj) Replicate(targetResource interface{}, opts DataObjOptions) error {
 
 	var (
@@ -1183,6 +1199,7 @@ func (obj *DataObj) Replicate(targetResource interface{}, opts DataObjOptions) e
 	return nil
 }
 
+// Backup is similar to Replicate. In backup mode, if a good copy already exists in this resource group or resource, don't make another one.
 func (obj *DataObj) Backup(targetResource interface{}, opts DataObjOptions) error {
 
 	var (

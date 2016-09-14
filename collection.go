@@ -708,7 +708,7 @@ func (col *Collection) CopyTo(iRodsCollection interface{}) error {
 	return nil
 }
 
-// TrimRepls recursively trims data object replicas (removes from resource servers), using the rules defined in opts
+// TrimRepls recursively trims data object replicas (removes from resource servers), using the rules defined in opts.
 func (col *Collection) TrimRepls(opts TrimOptions) error {
 	// loop through data objects
 	if objs, er := col.DataObjs(); er == nil {
