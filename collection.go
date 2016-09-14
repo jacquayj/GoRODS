@@ -113,50 +113,110 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 	return col, nil
 }
 
+// Stat returns a map (key/value pairs) of the system meta information. The following keys can be used with the map:
+//
+// "objSize"
+//
+// "dataMode"
+//
+// "dataId"
+//
+// "chksum"
+//
+// "ownerName"
+//
+// "ownerZone"
+//
+// "createTime"
+//
+// "modifyTime"
+func (col *Collection) Stat() (map[string]interface{}, error) {
+
+	var (
+		err        *C.char
+		statResult *C.rodsObjStat_t
+	)
+
+	path := C.CString(col.path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	ccon := col.con.GetCcon()
+	defer col.con.ReturnCcon(ccon)
+
+	if status := C.gorods_stat_dataobject(path, &statResult, ccon, &err); status != 0 {
+		return nil, newError(Fatal, fmt.Sprintf("iRods Stat Failed: %v, %v", col.path, C.GoString(err)))
+	}
+
+	result := make(map[string]interface{})
+
+	result["objSize"] = int(statResult.objSize)
+	result["dataMode"] = int(statResult.dataMode)
+
+	result["dataId"] = C.GoString(&statResult.dataId[0])
+	result["chksum"] = C.GoString(&statResult.chksum[0])
+	result["ownerName"] = C.GoString(&statResult.ownerName[0])
+	result["ownerZone"] = C.GoString(&statResult.ownerZone[0])
+	result["createTime"] = C.GoString(&statResult.createTime[0])
+	result["modifyTime"] = C.GoString(&statResult.modifyTime[0])
+	//result["rescHier"] = C.GoString(&statResult.rescHier[0])
+
+	C.freeRodsObjStat(statResult)
+
+	return result, nil
+}
+
 // getCollection initializes specified collection located at startPath using gorods.connection.
 // Could be considered alias of Connection.collection()
 func getCollection(opts CollectionOptions, con *Connection) (*Collection, error) {
 
-	opts.Path = strings.TrimRight(opts.Path, "/")
+	col := new(Collection)
 
-	// Get parent collection path
-	parentColPath := filepath.Dir(opts.Path)
-	colName := filepath.Base(opts.Path)
+	col.options = &opts
 
-	// Setup opts for parent
-	parentOpts := opts
-	parentOpts.Path = parentColPath
-	parentOpts.Recursive = false
+	col.chandle = C.int(-1)
+	col.typ = CollectionType
+	col.con = con
+	col.path = strings.TrimRight(opts.Path, "/")
+	col.name = filepath.Base(col.path)
+	col.recursive = opts.Recursive
+	col.trimRepls = !opts.GetRepls
 
-	parentCol := new(Collection)
-	parentCol.options = &parentOpts
-	parentCol.chandle = C.int(-1)
-	parentCol.typ = CollectionType
-	parentCol.con = con
-	parentCol.path = parentOpts.Path
-	parentCol.recursive = parentOpts.Recursive
-	parentCol.trimRepls = !parentOpts.GetRepls
-
-	// Extract name
-	parentCol.name = filepath.Base(parentCol.path)
-
-	// Open and read parent collection
-	if er := parentCol.init(); er != nil {
-		return nil, er
+	if col.recursive {
+		if er := col.init(); er != nil {
+			return nil, er
+		}
 	} else {
-		if col := parentCol.Cd(colName); col != nil {
-			if opts.Recursive {
-				col.recursive = true
-				if er := col.init(); er != nil {
-					return nil, er
-				}
-			}
-
-			return col, nil
-		} else {
-			return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: Does the collection exist?"))
+		if er := col.Open(); er != nil {
+			return nil, er
 		}
 	}
+
+	if info, err := col.Stat(); err == nil {
+		col.ownerName = info["ownerName"].(string)
+
+		cCreateTime := C.CString(info["createTime"].(string))
+		defer C.free(unsafe.Pointer(cCreateTime))
+		cModifyTime := C.CString(info["modifyTime"].(string))
+		defer C.free(unsafe.Pointer(cModifyTime))
+
+		col.createTime = cTimeToTime(cCreateTime)
+		col.modifyTime = cTimeToTime(cModifyTime)
+
+		if usrs, err := col.con.GetUsers(); err != nil {
+			return nil, err
+		} else {
+			if u := usrs.FindByName(col.ownerName, col.con); u != nil {
+				col.owner = u
+			} else {
+				return nil, newError(Fatal, fmt.Sprintf("iRods getCollection Failed: Unable to locate user in cache"))
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	return col, nil
 
 }
 

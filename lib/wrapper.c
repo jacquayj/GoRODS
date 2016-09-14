@@ -1580,7 +1580,7 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
 	
 	// pass memory address of rodsObjStatOut pointer
-	int status = rcObjStat(conn, &dataObjInp, &(*rodsObjStatOut)); 
+	int status = rcObjStat(conn, &dataObjInp, rodsObjStatOut); 
 	if ( status < 0 ) { 
 		*err = "rcObjStat failed";
 		return -1;
