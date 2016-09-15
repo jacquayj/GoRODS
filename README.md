@@ -1,6 +1,6 @@
-# GoRods
+# GoRODS
 
-Golang binding for iRods C API. Requires go version >= 1.5 for cgo support.
+Golang binding for iRODS C API. Requires go version >= 1.5 for cgo support.
 
 **Notice:** This package is incomplete and still under heavy development. API is subject to change without warning until a stable version is released.
 
@@ -17,15 +17,15 @@ $ curl ftp://ftp.renci.org/pub/irods/releases/4.1.8/ubuntu14/irods-dev-4.1.8-ubu
 $ sudo dpkg -i irods-dev-4.1.8-ubuntu14-x86_64.deb
 ```
 
-Install GoRods
+Install GoRODS
 
 ```
-$ go get github.com/jjacquay712/GoRods
+$ go get github.com/jjacquay712/GoRODS
 ```
 
 ### Docs
 
-https://godoc.org/github.com/jjacquay712/GoRods
+https://godoc.org/github.com/jjacquay712/GoRODS
 
 ## Example Usage
 
@@ -34,7 +34,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jjacquay712/GoRods"
+	"github.com/jjacquay712/GoRODS"
 )
 
 func main() {
@@ -174,7 +174,7 @@ Send me a pull request!
 
 ## Todo
 
-* See Github issues for todo list https://github.com/jjacquay712/GoRods/issues
+* See Github issues for todo list https://github.com/jjacquay712/GoRODS/issues
 
 
 ### Code Polish
@@ -184,10 +184,10 @@ Send me a pull request!
 ## Known Issues
 
 * The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Install irods-dev system package, and run the build.sh script to compile binaries for your system.
-* Bug list: https://godoc.org/github.com/jjacquay712/GoRods#pkg-note-bug
+* Bug list: https://godoc.org/github.com/jjacquay712/GoRODS#pkg-note-bug
 
 ## License & Copyright
 
 Copyright (c) 2016, University of Florida Research Foundation, Inc. All Rights Reserved.
 
-GoRods is released under a 3-clause BSD License. For more information please refer to the LICENSE.md file
+GoRODS is released under a 3-clause BSD License. For more information please refer to the LICENSE.md file
