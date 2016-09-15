@@ -52,7 +52,7 @@ type DataObj struct {
 	chandle C.int
 }
 
-// DataObjOptions is used for passing options to the CreateDataObj function
+// DataObjOptions is used for passing options to the CreateDataObj and DataObj.Copy function
 type DataObjOptions struct {
 	Name     string
 	Size     int64
@@ -113,7 +113,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 }
 
 // getDataObj initializes specified data object located at startPath using gorods.connection.
-// Could be considered alias of Connection.DataObject()
+// Called by Connection.DataObject()
 func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 
 	collectionDir := filepath.Dir(startPath)
@@ -253,7 +253,7 @@ func (obj *DataObj) GrantAccess(userOrGroup AccessObject, accessLevel int, recur
 	return chmod(obj, userOrGroup.Name(), accessLevel, recursive, true)
 }
 
-// Type gets the type
+// Type gets the type (DataObjType), used in interfaces
 func (obj *DataObj) Type() int {
 	return obj.typ
 }

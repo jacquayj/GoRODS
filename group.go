@@ -14,6 +14,7 @@ import (
 	"unsafe"
 )
 
+// Group holds info about iRODS groups
 type Group struct {
 	name        string
 	createTime  time.Time
@@ -31,15 +32,17 @@ type Group struct {
 	con   *Connection
 }
 
+// Groups is a slice of *Group structs.
 type Groups []*Group
 
-// initGroup
+// initGroup only accepts what's needed for lazing loading later on.
 func initGroup(name string, con *Connection) (*Group, error) {
 
 	grp := new(Group)
 
 	grp.name = name
 	grp.con = con
+	grp.typ = GroupType
 
 	if z, err := con.LocalZone(); err != nil {
 		return nil, err
@@ -50,14 +53,17 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	return grp, nil
 }
 
+// Name returns the name of the group.
 func (grp *Group) Name() string {
 	return grp.name
 }
 
+// Zone returns the *Zone struct that this group belongs to.
 func (grp *Group) Zone() *Zone {
 	return grp.zone
 }
 
+// Comment loads data from iRODS if needed, and returns the group's comment attribute.
 func (grp *Group) Comment() (string, error) {
 	if err := grp.init(); err != nil {
 		return grp.comment, err
@@ -65,6 +71,7 @@ func (grp *Group) Comment() (string, error) {
 	return grp.comment, nil
 }
 
+// CreateTime loads data from iRODS if needed, and returns the group's createTime attribute.
 func (grp *Group) CreateTime() (time.Time, error) {
 	if err := grp.init(); err != nil {
 		return grp.createTime, err
@@ -72,6 +79,7 @@ func (grp *Group) CreateTime() (time.Time, error) {
 	return grp.createTime, nil
 }
 
+// ModifyTime loads data from iRODS if needed, and returns the group's modifyTime attribute.
 func (grp *Group) ModifyTime() (time.Time, error) {
 	if err := grp.init(); err != nil {
 		return grp.modifyTime, err
@@ -79,6 +87,7 @@ func (grp *Group) ModifyTime() (time.Time, error) {
 	return grp.modifyTime, nil
 }
 
+// Id loads data from iRODS if needed, and returns the group's Id attribute.
 func (grp *Group) Id() (int, error) {
 	if err := grp.init(); err != nil {
 		return grp.id, err
@@ -86,6 +95,7 @@ func (grp *Group) Id() (int, error) {
 	return grp.id, nil
 }
 
+// Info loads data from iRODS if needed, and returns the group's Info attribute.
 func (grp *Group) Info() (string, error) {
 	if err := grp.init(); err != nil {
 		return grp.info, err
@@ -93,17 +103,17 @@ func (grp *Group) Info() (string, error) {
 	return grp.info, nil
 }
 
+// Type returns GroupType, used in iRodsObject interfaces
 func (grp *Group) Type() (int, error) {
-	if err := grp.init(); err != nil {
-		return grp.typ, err
-	}
 	return grp.typ, nil
 }
 
+// Con returns the *Connection used to fetch group info
 func (grp *Group) Con() *Connection {
 	return grp.con
 }
 
+// Users loads data from iRODS if needed, and returns the group's Users slice.
 func (grp *Group) Users() (Users, error) {
 	if err := grp.init(); err != nil {
 		return nil, err
@@ -112,6 +122,7 @@ func (grp *Group) Users() (Users, error) {
 	return grp.users, nil
 }
 
+// Delete deletes the group from iCAT server. Refreshes Connection group cache.
 func (grp *Group) Delete() error {
 	if err := deleteGroup(grp.Name(), grp.Zone(), grp.con); err != nil {
 		return err
@@ -138,6 +149,9 @@ func (grp *Group) init() error {
 	return nil
 }
 
+// FindByName searches the slice (itself) and attempts to return a match based on name.
+// If no match is found, a new group with that name is created and returned.
+// This was designed to resolve issues of casting resources for DataObjects and Collections, even though the cache was empty due to permission.
 func (grps Groups) FindByName(name string, con *Connection) *Group {
 	for _, grp := range grps {
 		if grp.name == name {
@@ -154,6 +168,7 @@ func (grps *Groups) Remove(index int) {
 	*grps = append((*grps)[:index], (*grps)[index+1:]...)
 }
 
+// Remove deletes the group from the parent slice
 func (grp *Group) Remove() bool {
 	for n, p := range *grp.parentSlice {
 		if p.name == grp.name {
@@ -165,10 +180,12 @@ func (grp *Group) Remove() bool {
 	return false
 }
 
+// String returns the group name
 func (grp *Group) String() string {
 	return fmt.Sprintf("%v", grp.name)
 }
 
+// RefreshInfo refreshes the attributes of the group, pulling fresh data from the iCAT server.
 func (grp *Group) RefreshInfo() error {
 	// r_comment:
 	// create_ts:01471444167
@@ -184,7 +201,6 @@ func (grp *Group) RefreshInfo() error {
 		grp.createTime = timeStringToTime(infoMap["create_ts"])
 		grp.modifyTime = timeStringToTime(infoMap["modify_ts"])
 		grp.id, _ = strconv.Atoi(infoMap["user_id"])
-		grp.typ = GroupType
 		grp.info = infoMap["user_info"]
 
 		if zones, err := grp.con.Zones(); err != nil {
@@ -203,6 +219,7 @@ func (grp *Group) RefreshInfo() error {
 	return nil
 }
 
+// RefreshUsers pulls fresh data from the iCAT server and sets the internal field returned by *Group.Users
 func (grp *Group) RefreshUsers() error {
 
 	if usrs, err := grp.FetchUsers(); err == nil {
@@ -214,6 +231,7 @@ func (grp *Group) RefreshUsers() error {
 	return nil
 }
 
+// FetchInfo returns a map of fresh group info from the iCAT server
 func (grp *Group) FetchInfo() (map[string]string, error) {
 	var (
 		result C.goRodsStringResult_t
@@ -263,6 +281,7 @@ func (grp *Group) FetchInfo() (map[string]string, error) {
 	return response, nil
 }
 
+// FetchUsers returns a slice of fresh *User from the iCAT server
 func (grp *Group) FetchUsers() (Users, error) {
 
 	var (
@@ -319,6 +338,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 
 }
 
+// AddUser adds an iRODS uset to the group. Accepts a string or *User struct.
 func (grp *Group) AddUser(usr interface{}) error {
 
 	switch usr.(type) {
@@ -347,6 +367,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods AddUser Failed: unknown type passed"))
 }
 
+// RemoveUser removes an iRODS user from the group. Accepts a string or *User struct.
 func (grp *Group) RemoveUser(usr interface{}) error {
 	switch usr.(type) {
 	case string:
