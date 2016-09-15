@@ -151,7 +151,7 @@ func (grp *Group) init() error {
 
 // FindByName searches the slice (itself) and attempts to return a match based on name.
 // If no match is found, a new group with that name is created and returned.
-// This was designed to resolve issues of casting resources for DataObjects and Collections, even though the cache was empty due to permission.
+// This was designed to resolve issues of casting resources for DataObjects and Collections, even though the cache was empty due to permissions.
 func (grps Groups) FindByName(name string, con *Connection) *Group {
 	for _, grp := range grps {
 		if grp.name == name {

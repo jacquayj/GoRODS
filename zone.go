@@ -14,6 +14,7 @@ import (
 	"unsafe"
 )
 
+// Zone contains information representing an iRODS zone.
 type Zone struct {
 	name string
 
@@ -30,8 +31,12 @@ type Zone struct {
 	con *Connection
 }
 
+// Zones is a slice of *Zone.
 type Zones []*Zone
 
+// FindByName searches the slice (itself) for a matching zone, based on name. If the zone isn't found, one is initialized.
+// If no match is found, a new zone with that name is created and returned.
+// This was designed to resolve issues of casting zone strings to structs, even though the cache was empty due to permissions.
 func (znes Zones) FindByName(name string, con *Connection) *Zone {
 	for _, zne := range znes {
 		if zne.name == name {
@@ -44,6 +49,7 @@ func (znes Zones) FindByName(name string, con *Connection) *Zone {
 	return zne
 }
 
+// Remove removes an item from itself based on index.
 func (znes *Zones) Remove(index int) {
 	*znes = append((*znes)[:index], (*znes)[index+1:]...)
 }
@@ -68,6 +74,7 @@ func (zne *Zone) init() error {
 	return nil
 }
 
+// Remove removes the zone from it's parent slice
 func (zne *Zone) Remove() bool {
 	for n, p := range *zne.parentSlice {
 		if p.name == zne.name {
@@ -79,15 +86,18 @@ func (zne *Zone) Remove() bool {
 	return false
 }
 
+// String returns the zone type and name.
 func (zne *Zone) String() string {
 	zne.init()
 	return fmt.Sprintf("%v:%v", getTypeString(zne.typ), zne.name)
 }
 
+// Name returns the zone's name.
 func (zne *Zone) Name() string {
 	return zne.name
 }
 
+// Comment loads data from iRODS if needed, and returns the zone's comment attribute.
 func (zne *Zone) Comment() (string, error) {
 	if err := zne.init(); err != nil {
 		return zne.comment, err
@@ -95,6 +105,7 @@ func (zne *Zone) Comment() (string, error) {
 	return zne.comment, nil
 }
 
+// CreateTime loads data from iRODS if needed, and returns the zone's createTime attribute.
 func (zne *Zone) CreateTime() (time.Time, error) {
 	if err := zne.init(); err != nil {
 		return zne.createTime, err
@@ -102,6 +113,7 @@ func (zne *Zone) CreateTime() (time.Time, error) {
 	return zne.createTime, nil
 }
 
+// ModifyTime loads data from iRODS if needed, and returns the zone's modifyTime attribute.
 func (zne *Zone) ModifyTime() (time.Time, error) {
 	if err := zne.init(); err != nil {
 		return zne.modifyTime, err
@@ -109,6 +121,7 @@ func (zne *Zone) ModifyTime() (time.Time, error) {
 	return zne.modifyTime, nil
 }
 
+// Id loads data from iRODS if needed, and returns the zone's id attribute.
 func (zne *Zone) Id() (int, error) {
 	if err := zne.init(); err != nil {
 		return zne.id, err
@@ -116,6 +129,7 @@ func (zne *Zone) Id() (int, error) {
 	return zne.id, nil
 }
 
+// Type loads data from iRODS if needed, and returns the zone's typ attribute.
 func (zne *Zone) Type() (int, error) {
 	if err := zne.init(); err != nil {
 		return zne.typ, err
@@ -123,6 +137,7 @@ func (zne *Zone) Type() (int, error) {
 	return zne.typ, nil
 }
 
+// ConString loads data from iRODS if needed, and returns the zone's conString attribute.
 func (zne *Zone) ConString() (string, error) {
 	if err := zne.init(); err != nil {
 		return zne.conString, err
@@ -130,6 +145,7 @@ func (zne *Zone) ConString() (string, error) {
 	return zne.conString, nil
 }
 
+// RefreshInfo pulls fresh info from the iCAT server, and sets it's zone fields based on the data.
 func (zne *Zone) RefreshInfo() error {
 
 	// zone_name:tempZone
@@ -159,6 +175,7 @@ func (zne *Zone) RefreshInfo() error {
 	return nil
 }
 
+// FetchInfo returns a map of fresh zone info from the iCAT server.
 func (zne *Zone) FetchInfo() (map[string]string, error) {
 	var (
 		result C.goRodsStringResult_t
