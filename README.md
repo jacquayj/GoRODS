@@ -27,7 +27,7 @@ $ go get github.com/jjacquay712/GoRODS
 
 https://godoc.org/github.com/jjacquay712/GoRODS
 
-## Example Usage
+## Basic Usage
 
 ```go
 package main
@@ -166,6 +166,18 @@ func main() {
 
 }
 
+```
+
+## Usage In A Web App
+
+```
+content here
+```
+
+## Usage as http.Handler interface
+
+```
+content here
 ```
 
 ## Contributing
