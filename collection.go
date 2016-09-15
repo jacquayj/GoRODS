@@ -96,7 +96,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 
 	col.name = filepath.Base(col.path)
 
-	if usrs, err := col.con.GetUsers(); err != nil {
+	if usrs, err := col.con.Users(); err != nil {
 		return nil, err
 	} else {
 		if u := usrs.FindByName(col.ownerName, col.con); u != nil {
@@ -206,7 +206,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 		col.createTime = cTimeToTime(cCreateTime)
 		col.modifyTime = cTimeToTime(cModifyTime)
 
-		if usrs, err := col.con.GetUsers(); err != nil {
+		if usrs, err := col.con.Users(); err != nil {
 			return nil, err
 		} else {
 			if u := usrs.FindByName(col.ownerName, col.con); u != nil {
@@ -269,7 +269,7 @@ func (col *Collection) init() error {
 	return nil
 }
 
-// GetCollections returns only the IRodsObjs that represent collections
+// Collections returns only the IRodsObjs that represent collections
 func (col *Collection) Collections() (response IRodsObjs, err error) {
 	if err = col.init(); err != nil {
 		return
@@ -284,7 +284,7 @@ func (col *Collection) Collections() (response IRodsObjs, err error) {
 	return
 }
 
-// GetDataObjs returns only the data objects contained within the collection
+// DataObjs returns only the data objects contained within the collection
 func (col *Collection) DataObjs() (response IRodsObjs, err error) {
 	if err = col.init(); err != nil {
 		return
@@ -299,7 +299,7 @@ func (col *Collection) DataObjs() (response IRodsObjs, err error) {
 	return
 }
 
-// Returns generic interface slice containing both data objects and collections combined
+// All returns generic interface slice containing both data objects and collections combined
 func (col *Collection) All() (IRodsObjs, error) {
 	if err := col.init(); err != nil {
 		return col.dataObjects, err
@@ -368,7 +368,7 @@ func (col *Collection) ACL() (ACLs, error) {
 		collName *C.char
 	)
 
-	zone, zErr := col.con.GetLocalZone()
+	zone, zErr := col.con.LocalZone()
 	if zErr != nil {
 		return nil, zErr
 	} else {
@@ -406,17 +406,17 @@ func (col *Collection) Con() *Connection {
 	return col.con
 }
 
-// GetName returns the Name of the collection
+// Name returns the Name of the collection
 func (col *Collection) Name() string {
 	return col.name
 }
 
-// GetPath returns the Path of the collection
+// Path returns the Path of the collection
 func (col *Collection) Path() string {
 	return col.path
 }
 
-// GetOwnerName returns the owner name of the collection
+// OwnerName returns the owner name of the collection
 func (col *Collection) OwnerName() string {
 	return col.ownerName
 }
@@ -426,17 +426,17 @@ func (col *Collection) Owner() *User {
 	return col.owner
 }
 
-// GetCreateTime returns the create time of the collection
+// CreateTime returns the create time of the collection
 func (col *Collection) CreateTime() time.Time {
 	return col.createTime
 }
 
-// GetModifyTime returns the modify time of the collection
+// ModifyTime returns the modify time of the collection
 func (col *Collection) ModifyTime() time.Time {
 	return col.modifyTime
 }
 
-// GetCol returns the *Collection of the collection
+// Col returns the *Collection of the collection
 func (col *Collection) Col() *Collection {
 	return col.col
 }
@@ -1134,6 +1134,7 @@ func (col *Collection) FindRecursive(path string) IRodsObj {
 	return nil
 }
 
+// FindCol returns a sub collection in the *Collection, matching based on the absolute path or name
 func (col *Collection) FindCol(path string) *Collection {
 	if c := col.Find(path); c != nil {
 		return c.(*Collection)
@@ -1142,6 +1143,7 @@ func (col *Collection) FindCol(path string) *Collection {
 	return nil
 }
 
+// FindObj returns a data object contained in the *Collection, matching based on the absolute path or name. Equivalent to *Collection.Get.
 func (col *Collection) FindObj(path string) *DataObj {
 	if c := col.Find(path); c != nil {
 		return c.(*DataObj)
@@ -1161,7 +1163,7 @@ func (col *Collection) Cd(path string) *Collection {
 	return nil
 }
 
-// Get is a shortcut for calling collection.GetDataObjs().Find(path). It effectively returns the DataObj you specify collection-relatively or absolutely.
+// Get is a shortcut for calling collection.DataObjs().Find(path). It effectively returns the DataObj you specify collection-relatively or absolutely.
 func (col *Collection) Get(path string) *DataObj {
 	if cols, err := col.DataObjs(); err == nil {
 		if d := cols.Find(path); d != nil {

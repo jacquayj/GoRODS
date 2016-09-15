@@ -93,7 +93,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.createTime = cTimeToTime(data.createTime)
 	dataObj.modifyTime = cTimeToTime(data.modifyTime)
 
-	if rsrcs, err := col.con.GetResources(); err != nil {
+	if rsrcs, err := col.con.Resources(); err != nil {
 		return nil
 	} else {
 		if r := rsrcs.FindByName(C.GoString(data.resource)); r != nil {
@@ -101,7 +101,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 		}
 	}
 
-	if usrs, err := col.con.GetUsers(); err != nil {
+	if usrs, err := col.con.Users(); err != nil {
 		return nil
 	} else {
 		if u := usrs.FindByName(dataObj.ownerName, dataObj.con); u != nil {
@@ -126,6 +126,9 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 
 	if col, err := con.Collection(opts); err == nil {
 		if obj := col.FindObj(dataObjName); obj != nil {
+
+			con.OpenedObjs = append(con.OpenedObjs, col)
+
 			return obj, nil
 		} else {
 			return nil, newError(Fatal, fmt.Sprintf("Can't find DataObj within collection %v", collectionDir))
@@ -215,7 +218,7 @@ func (obj *DataObj) ACL() (ACLs, error) {
 		zoneHint *C.char
 	)
 
-	zone, zErr := obj.con.GetLocalZone()
+	zone, zErr := obj.con.LocalZone()
 	if zErr != nil {
 		return nil, zErr
 	} else {

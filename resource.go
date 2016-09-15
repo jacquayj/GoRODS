@@ -60,7 +60,7 @@ func (rescs *Resources) Remove(index int) {
 func initResource(name string, con *Connection) (*Resource, error) {
 	resc := new(Resource)
 
-	zne, er := con.GetLocalZone()
+	zne, er := con.LocalZone()
 	if er != nil {
 		return nil, er
 	}
@@ -273,7 +273,7 @@ func (resc *Resource) RefreshInfo() error {
 		resc.storageType = infoMap["resc_type_name"]
 		resc.physPath = infoMap["resc_def_path"]
 
-		if zones, err := resc.con.GetZones(); err != nil {
+		if zones, err := resc.con.Zones(); err != nil {
 			return err
 		} else {
 			if zne := zones.FindByName(infoMap["zone_name"], resc.con); zne != nil {

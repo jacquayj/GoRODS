@@ -20,6 +20,7 @@ type Meta struct {
 	Parent    *MetaCollection
 }
 
+// Metas is a slice of *Meta
 type Metas []*Meta
 
 // MatchOne returns a single Meta struct from the slice, matching on Attribute, Value, and Units

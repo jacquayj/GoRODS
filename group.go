@@ -41,7 +41,7 @@ func initGroup(name string, con *Connection) (*Group, error) {
 	grp.name = name
 	grp.con = con
 
-	if z, err := con.GetLocalZone(); err != nil {
+	if z, err := con.LocalZone(); err != nil {
 		return nil, err
 	} else {
 		grp.zone = z
@@ -187,7 +187,7 @@ func (grp *Group) RefreshInfo() error {
 		grp.typ = GroupType
 		grp.info = infoMap["user_info"]
 
-		if zones, err := grp.con.GetZones(); err != nil {
+		if zones, err := grp.con.Zones(); err != nil {
 			return err
 		} else {
 			if zne := zones.FindByName(infoMap["zone_name"], grp.con); zne != nil {
@@ -297,7 +297,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
-	if usrs, err := grp.con.GetUsers(); err == nil {
+	if usrs, err := grp.con.Users(); err == nil {
 		response := make(Users, 0)
 
 		for _, userNames := range slice {
@@ -325,7 +325,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 	case string:
 		// Need to lookup user by string in cache for zone info
 
-		if usrs, err := grp.con.GetUsers(); err == nil {
+		if usrs, err := grp.con.Users(); err == nil {
 			usrName := usr.(string)
 
 			if existingUsr := usrs.FindByName(usrName, grp.con); existingUsr != nil {
@@ -352,7 +352,7 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	case string:
 		// Need to lookup user by string in cache for zone info
 
-		if usrs, err := grp.con.GetUsers(); err == nil {
+		if usrs, err := grp.con.Users(); err == nil {
 			usrName := usr.(string)
 
 			if existingUsr := usrs.FindByName(usrName, grp.con); existingUsr != nil {

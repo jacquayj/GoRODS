@@ -168,7 +168,7 @@ func (usr *User) RefreshInfo() error {
 		usr.typ = typeMap[infoMap["user_type_name"]]
 		usr.info = infoMap["user_info"]
 
-		if zones, err := usr.con.GetZones(); err != nil {
+		if zones, err := usr.con.Zones(); err != nil {
 			return err
 		} else {
 			if zne := zones.FindByName(infoMap["zone_name"], usr.con); zne != nil {
@@ -202,7 +202,7 @@ func (usrs Users) FindByName(name string, con *Connection) *User {
 		}
 	}
 
-	zne, err := con.GetLocalZone()
+	zne, err := con.LocalZone()
 	if err != nil {
 		return nil
 	}
@@ -249,7 +249,7 @@ func (usr *User) FetchGroups() (Groups, error) {
 	// Convert C array to slice, backed by arr *C.char
 	slice := (*[1 << 30]*C.char)(unsafeArr)[:arrLen:arrLen]
 
-	if grps, err := usr.con.GetGroups(); err == nil {
+	if grps, err := usr.con.Groups(); err == nil {
 		response := make(Groups, 0)
 
 		for _, groupName := range slice {

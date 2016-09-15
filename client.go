@@ -26,7 +26,7 @@ type Client struct {
 // and close *Collection and *Collection automatically when your handler finishes execution.
 // Operations on a single connection are queued when shared between goroutines (iRODS C API
 // doesn't support concurrent operations on a single connection), so be sure to open up new connections
-// for long-running and concurrent operations to prevent blocking.
+// for long-running operations to prevent blocking between goroutines.
 func (cli *Client) OpenConnection(opts CollectionOptions, handler func(*Collection, *Connection)) error {
 	if cli.ConnectErr == nil {
 		if con, err := NewConnection(cli.Options); err == nil {

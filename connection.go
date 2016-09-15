@@ -104,6 +104,7 @@ type IRodsObj interface {
 	Close() error
 }
 
+// IRodsObjs is a slice of IRodsObj (Either a *DataObj or *Collection).
 type IRodsObjs []IRodsObj
 
 // Exists checks to see if a collection exists in the slice
@@ -134,7 +135,7 @@ func (objs IRodsObjs) Find(path string) IRodsObj {
 	return nil
 }
 
-// Each
+// Each provides an iterator for IRodsObjs slice
 func (objs IRodsObjs) Each(iterator func(IRodsObj)) error {
 	for _, value := range objs {
 		iterator(value)
@@ -212,7 +213,7 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool, includeZo
 	}
 
 	if includeZone {
-		if z, err := obj.Con().GetLocalZone(); err == nil {
+		if z, err := obj.Con().LocalZone(); err == nil {
 			zone = z.Name()
 		} else {
 			return err
@@ -259,6 +260,7 @@ type ConnectionOptions struct {
 	FastInit      bool
 }
 
+// Connection structs hold information about the iRODS iCAT server, and the user who's connecting. It also contains a cache of opened Collections and DataObjs
 type Connection struct {
 	ccon       *C.rcComm_t
 	cconBuffer chan *C.rcComm_t
@@ -456,6 +458,8 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	return con, nil
 }
 
+// fetchAndWritePAMPass attempts to authenticate with the iCAT server using PAM.
+// If PAM authentication is successful, it writes the returned PAM authentication token to a file for subsequent use in connections.
 func (con *Connection) fetchAndWritePAMPass(pamPassFile *os.File, ipassword *C.char) (*C.char, error) {
 
 	var (
@@ -480,10 +484,14 @@ func (con *Connection) fetchAndWritePAMPass(pamPassFile *os.File, ipassword *C.c
 	return opassword, nil
 }
 
+// GetCcon checks out the connection handle for use in all iRODS operations. Basically a mutex for connections.
+// Other goroutines calling this function will block until the handle is returned with con.ReturnCcon, by the goroutine using it.
+// This prevents errors in the net code since concurrent API calls aren't supported over a single iRODS connection.
 func (con *Connection) GetCcon() *C.rcComm_t {
 	return <-con.cconBuffer
 }
 
+// ReturnCcon returns the connection handle for use in other threads. Unlocks the mutex.
 func (con *Connection) ReturnCcon(ccon *C.rcComm_t) {
 	con.cconBuffer <- ccon
 }
@@ -591,6 +599,8 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 
 }
 
+// IQuest accepts a SQL query fragment, returns results in slice of maps
+// If upperCase is true, all records will be matched using their uppercase representation.
 func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string, error) {
 	var (
 		result C.goRodsHashResult_t
@@ -600,7 +610,7 @@ func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string
 
 	result.size = C.int(0)
 
-	z, zErr := con.GetLocalZone()
+	z, zErr := con.LocalZone()
 	if zErr != nil {
 		return nil, zErr
 	}
@@ -669,7 +679,7 @@ func (con *Connection) DataObject(dataObjPath string) (dataobj *DataObj, err err
 	return
 }
 
-// QueryMeta
+// QueryMeta queries both data objects and collections for matching metadata. Returns IRodsObjs.
 func (con *Connection) QueryMeta(qString string) (response IRodsObjs, err error) {
 
 	var errMsg *C.char
@@ -765,37 +775,47 @@ func (con *Connection) init() error {
 	return nil
 }
 
-func (con *Connection) GetGroups() (Groups, error) {
+// Groups returns a slice of all *Group in the iCAT.
+// You must have the proper groupadmin or rodsadmin privileges to use this function.
+func (con *Connection) Groups() (Groups, error) {
 	if err := con.init(); err != nil {
 		return nil, err
 	}
 	return con.groups, nil
 }
 
-func (con *Connection) GetUsers() (Users, error) {
+// Users returns a slice of all *User in the iCAT.
+// You must have the proper rodsadmin privileges to use this function.
+func (con *Connection) Users() (Users, error) {
 	if err := con.init(); err != nil {
 		return nil, err
 	}
 	return con.users, nil
 }
 
-func (con *Connection) GetZones() (Zones, error) {
+// Zones returns a slice of all *Zone in the iCAT.
+// You must have the proper rodsadmin privileges to use this function.
+func (con *Connection) Zones() (Zones, error) {
 	if err := con.init(); err != nil {
 		return nil, err
 	}
 	return con.zones, nil
 }
 
-func (con *Connection) GetResources() (Resources, error) {
+// Resources returns a slice of all *Resource in the iCAT.
+// You must have the proper rodsadmin privileges to use this function.
+func (con *Connection) Resources() (Resources, error) {
 	if err := con.init(); err != nil {
 		return nil, err
 	}
 	return con.resources, nil
 }
 
+// CreateGroup creates a group within the local zone.
+// You must have the proper groupadmin or rodsadmin privileges to use this function.
 func (con *Connection) CreateGroup(name string) (*Group, error) {
 
-	if z, err := con.GetLocalZone(); err != nil {
+	if z, err := con.LocalZone(); err != nil {
 		return nil, err
 	} else {
 		if err := createGroup(name, z, con); err != nil {
@@ -806,7 +826,7 @@ func (con *Connection) CreateGroup(name string) (*Group, error) {
 			return nil, err
 		}
 
-		if grps, err := con.GetGroups(); err != nil {
+		if grps, err := con.Groups(); err != nil {
 			return nil, err
 		} else {
 			if grp := grps.FindByName(name, con); grp != nil {
@@ -820,9 +840,11 @@ func (con *Connection) CreateGroup(name string) (*Group, error) {
 
 }
 
+// CreateUser creates an iRODS user within the local zone.
+// You must have the proper rodsadmin privileges to use this function.
 func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 
-	if z, err := con.GetLocalZone(); err != nil {
+	if z, err := con.LocalZone(); err != nil {
 		return nil, err
 	} else {
 		if err := createUser(name, z.Name(), typ, con); err != nil {
@@ -833,7 +855,7 @@ func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 			return nil, err
 		}
 
-		if usrs, err := con.GetUsers(); err != nil {
+		if usrs, err := con.Users(); err != nil {
 			return nil, err
 		} else {
 			if usr := usrs.FindByName(name, con); usr != nil {
@@ -846,6 +868,7 @@ func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 
 }
 
+// RefreshResources updates the slice returned by con.Resources() with fresh data from the iCAT server.
 func (con *Connection) RefreshResources() error {
 	if resources, err := con.FetchResources(); err != nil {
 		return err
@@ -856,6 +879,7 @@ func (con *Connection) RefreshResources() error {
 	return nil
 }
 
+// RefreshUsers updates the slice returned by con.Users() with fresh data from the iCAT server.
 func (con *Connection) RefreshUsers() error {
 	if users, err := con.FetchUsers(); err != nil {
 		return err
@@ -866,6 +890,7 @@ func (con *Connection) RefreshUsers() error {
 	return nil
 }
 
+// RefreshZones updates the slice returned by con.Zones() with fresh data from the iCAT server.
 func (con *Connection) RefreshZones() error {
 	if zones, err := con.FetchZones(); err != nil {
 		return err
@@ -876,6 +901,7 @@ func (con *Connection) RefreshZones() error {
 	return nil
 }
 
+// RefreshGroups updates the slice returned by con.Groups() with fresh data from the iCAT server.
 func (con *Connection) RefreshGroups() error {
 	if groups, err := con.FetchGroups(); err != nil {
 		return err
@@ -886,6 +912,7 @@ func (con *Connection) RefreshGroups() error {
 	return nil
 }
 
+// FetchGroups returns a slice of *Group, fresh from the iCAT server.
 func (con *Connection) FetchGroups() (Groups, error) {
 
 	var (
@@ -927,6 +954,7 @@ func (con *Connection) FetchGroups() (Groups, error) {
 
 }
 
+// FetchUsers returns a slice of *User, fresh from the iCAT server.
 func (con *Connection) FetchUsers() (Users, error) {
 	var (
 		result C.goRodsStringResult_t
@@ -966,7 +994,7 @@ func (con *Connection) FetchUsers() (Users, error) {
 			zonename := split[1]
 			var zone *Zone
 
-			if zones, err := con.GetZones(); err != nil {
+			if zones, err := con.Zones(); err != nil {
 				return nil, err
 			} else {
 				if zne := zones.FindByName(zonename, con); zne != nil {
@@ -989,6 +1017,7 @@ func (con *Connection) FetchUsers() (Users, error) {
 	return response, nil
 }
 
+// FetchResources returns a slice of *Resource, fresh from the iCAT server.
 func (con *Connection) FetchResources() (Resources, error) {
 	var (
 		result C.goRodsStringResult_t
@@ -1031,6 +1060,7 @@ func (con *Connection) FetchResources() (Resources, error) {
 	return response, nil
 }
 
+// FetchZones returns a slice of *Zone, fresh from the iCAT server.
 func (con *Connection) FetchZones() (Zones, error) {
 	var (
 		result C.goRodsStringResult_t
@@ -1077,7 +1107,8 @@ func (con *Connection) FetchZones() (Zones, error) {
 	return response, nil
 }
 
-func (con *Connection) GetLocalZone() (*Zone, error) {
+// LocalZone returns the *Zone. First it checks the ConnectionOptions.Zone and uses that, otherwise it pulls it fresh from the iCAT server.
+func (con *Connection) LocalZone() (*Zone, error) {
 
 	var (
 		cZoneName *C.char
@@ -1099,7 +1130,7 @@ func (con *Connection) GetLocalZone() (*Zone, error) {
 
 	zoneName := strings.Trim(C.GoString(cZoneName), " \n")
 
-	if znes, err := con.GetZones(); err != nil {
+	if znes, err := con.Zones(); err != nil {
 		return nil, err
 	} else {
 		if zne := znes.FindByName(zoneName, con); zne == nil {

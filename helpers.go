@@ -109,7 +109,7 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 
 		var accessObject AccessObject
 		if aclType == UserType || aclType == AdminType || aclType == GroupAdminType {
-			if usrs, err := con.GetUsers(); err == nil {
+			if usrs, err := con.Users(); err == nil {
 				if existingUsr := usrs.FindByName(C.GoString(acl.name), con); existingUsr != nil {
 					accessObject = existingUsr
 				} else {
@@ -119,7 +119,7 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 				return nil, err
 			}
 		} else if aclType == GroupType {
-			if grps, err := con.GetGroups(); err == nil {
+			if grps, err := con.Groups(); err == nil {
 				if existingGrp := grps.FindByName(C.GoString(acl.name), con); existingGrp != nil {
 					accessObject = existingGrp
 				} else {
