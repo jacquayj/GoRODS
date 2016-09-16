@@ -14,6 +14,7 @@ import (
 	"unsafe"
 )
 
+// User contains information relating to an iRODS user
 type User struct {
 	name        string
 	zone        *Zone
@@ -31,9 +32,9 @@ type User struct {
 	con    *Connection
 }
 
+// Users is a slice of *User
 type Users []*User
 
-// initUser
 func initUser(name string, zone *Zone, con *Connection) (*User, error) {
 
 	usr := new(User)
@@ -45,6 +46,7 @@ func initUser(name string, zone *Zone, con *Connection) (*User, error) {
 	return usr, nil
 }
 
+// Remove removed the user from it's parent slice.
 func (usr *User) Remove() bool {
 	for n, p := range *usr.parentSlice {
 		if p.name == usr.name {
@@ -56,14 +58,17 @@ func (usr *User) Remove() bool {
 	return false
 }
 
+// Name returns the users name.
 func (usr *User) Name() string {
 	return usr.name
 }
 
+// Zone returns the *Zone to which the user belongs.
 func (usr *User) Zone() *Zone {
 	return usr.zone
 }
 
+// Comment loads data from iRODS if needed, and returns the user's comment attribute.
 func (usr *User) Comment() (string, error) {
 	if err := usr.init(); err != nil {
 		return usr.comment, err
@@ -71,6 +76,7 @@ func (usr *User) Comment() (string, error) {
 	return usr.comment, nil
 }
 
+// Info loads data from iRODS if needed, and returns the user's info attribute.
 func (usr *User) Info() (string, error) {
 	if err := usr.init(); err != nil {
 		return usr.info, err
@@ -78,6 +84,7 @@ func (usr *User) Info() (string, error) {
 	return usr.info, nil
 }
 
+// CreateTime loads data from iRODS if needed, and returns the user's createTime attribute.
 func (usr *User) CreateTime() (time.Time, error) {
 	if err := usr.init(); err != nil {
 		return usr.createTime, err
@@ -85,6 +92,7 @@ func (usr *User) CreateTime() (time.Time, error) {
 	return usr.createTime, nil
 }
 
+// ModifyTime loads data from iRODS if needed, and returns the user's modifyTime attribute.
 func (usr *User) ModifyTime() (time.Time, error) {
 	if err := usr.init(); err != nil {
 		return usr.modifyTime, err
@@ -92,6 +100,7 @@ func (usr *User) ModifyTime() (time.Time, error) {
 	return usr.modifyTime, nil
 }
 
+// Id loads data from iRODS if needed, and returns the user's id attribute.
 func (usr *User) Id() (int, error) {
 	if err := usr.init(); err != nil {
 		return usr.id, err
@@ -99,6 +108,7 @@ func (usr *User) Id() (int, error) {
 	return usr.id, nil
 }
 
+// Type loads data from iRODS if needed, and returns the user's typ attribute.
 func (usr *User) Type() (int, error) {
 	if err := usr.init(); err != nil {
 		return usr.typ, err
@@ -106,10 +116,12 @@ func (usr *User) Type() (int, error) {
 	return usr.typ, nil
 }
 
+// Con returns the connection used to initalize the user
 func (usr *User) Con() *Connection {
 	return usr.con
 }
 
+// Groups loads data from iRODS if needed, and returns the user's groups slice.
 func (usr *User) Groups() (Groups, error) {
 	if err := usr.init(); err != nil {
 		return nil, err
@@ -117,6 +129,7 @@ func (usr *User) Groups() (Groups, error) {
 	return usr.groups, nil
 }
 
+// Delete deletes the user from the iCAT server
 func (usr *User) Delete() error {
 	if err := deleteUser(usr.Name(), usr.Zone(), usr.con); err != nil {
 		return err
@@ -143,6 +156,7 @@ func (usr *User) init() error {
 	return nil
 }
 
+// RefreshInfo fetches user data from iCAT, and unloads it into the *User fields
 func (usr *User) RefreshInfo() error {
 
 	// create_ts:01471441907
@@ -184,6 +198,7 @@ func (usr *User) RefreshInfo() error {
 	return nil
 }
 
+// RefreshGroups fetches group data from iCAT, and unloads it into the *User fields
 func (usr *User) RefreshGroups() error {
 
 	if grps, err := usr.FetchGroups(); err == nil {
@@ -195,6 +210,9 @@ func (usr *User) RefreshGroups() error {
 	return nil
 }
 
+// FindByName searches the slice for a user by name.
+// If no match is found, a new group with that name is created and returned.
+// This was designed to resolve issues of casting resources for DataObjects and Collections, even though the cache was empty due to permissions.
 func (usrs Users) FindByName(name string, con *Connection) *User {
 	for _, usr := range usrs {
 		if usr.name == name {
@@ -212,15 +230,18 @@ func (usrs Users) FindByName(name string, con *Connection) *User {
 	return usr
 }
 
+// Remove deletes an item from the slice based on the index.
 func (usrs *Users) Remove(index int) {
 	*usrs = append((*usrs)[:index], (*usrs)[index+1:]...)
 }
 
+// String returns a user's type, name, and zone.
 func (usr *User) String() string {
 	usr.init()
 	return fmt.Sprintf("%v:%v#%v", getTypeString(usr.typ), usr.name, usr.zone)
 }
 
+// FetchGroups fetches and returns fresh data about the user's groups from the iCAT server.
 func (usr *User) FetchGroups() (Groups, error) {
 	var (
 		result C.goRodsStringResult_t
@@ -274,6 +295,7 @@ func (usr *User) FetchGroups() (Groups, error) {
 
 }
 
+// FetchInfo fetches fresh user info from the iCAT server, and returns it as a map.
 func (usr *User) FetchInfo() (map[string]string, error) {
 	var (
 		result C.goRodsStringResult_t
@@ -325,6 +347,8 @@ func (usr *User) FetchInfo() (map[string]string, error) {
 	return response, nil
 }
 
+// AddToGroup adds the user to an existing iRODS group.
+// Accepts string or *Group types.
 func (usr *User) AddToGroup(grp interface{}) error {
 
 	switch grp.(type) {
@@ -338,6 +362,8 @@ func (usr *User) AddToGroup(grp interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods AddToGroup Failed: unknown type passed"))
 }
 
+// RemoveFromGroup removes the user from an iRODS group.
+// Accepts string or *Group types.
 func (usr *User) RemoveFromGroup(grp interface{}) error {
 	switch grp.(type) {
 	case string:
@@ -350,6 +376,8 @@ func (usr *User) RemoveFromGroup(grp interface{}) error {
 	return newError(Fatal, fmt.Sprintf("iRods RemoveFromGroup Failed: unknown type passed"))
 }
 
+// ChangePassword changes the user's password.
+// You will need to be a rodsadmin for this to succeed (I think).
 func (usr *User) ChangePassword(newPass string) error {
 	var (
 		err *C.char
