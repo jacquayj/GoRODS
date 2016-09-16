@@ -429,16 +429,19 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
 
     if ( status == CAT_NO_ROWS_FOUND ) {
         *err = "No rows found";
+        free(simpleQueryOut->outBuf);
         return status;
     }
 
     if ( status == SYS_NO_API_PRIV ) {
         *err = "rcSimpleQuery permission denied";
+        free(simpleQueryOut->outBuf);
         return status;
     }
 
     if ( status < 0 ) {
         *err = "rcSimpleQuery failed with error";
+        free(simpleQueryOut->outBuf);
         return status;
     }
 
@@ -446,6 +449,7 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
     result->strArr = gorods_malloc(result->size * sizeof(char*));
 
     result->strArr[0] = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+    free(simpleQueryOut->outBuf);
 
 
     if ( simpleQueryOut->control > 0 ) {
@@ -457,6 +461,7 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
             
             if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
                 *err = "rcSimpleQuery failed with error";
+                free(simpleQueryOut->outBuf);
                 return status;
             }
 
@@ -468,9 +473,12 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
     			result->strArr = realloc(result->strArr, result->size * sizeof(char*));
 
     			result->strArr[sz] = strcpy(gorods_malloc(strlen(simpleQueryOut->outBuf) + 1), simpleQueryOut->outBuf);
+                free(simpleQueryOut->outBuf);
             }
         }
     }
+
+
     return status;
 }
 
@@ -522,11 +530,13 @@ int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* res
     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
     if ( status == CAT_NO_ROWS_FOUND ) {
         *err = "Not a member of any group";
+        freeGenQueryOut(&genQueryOut);
         return CAT_NO_ROWS_FOUND;
     }
 
     if ( status != 0 ) {
         *err = "rcGenQuery error";
+        freeGenQueryOut(&genQueryOut);
         return status;
     }
 
@@ -539,6 +549,8 @@ int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* res
        
         gorods_get_user_group_result(status, result, genQueryOut, columnNames);
     }
+
+    freeGenQueryOut(&genQueryOut);
 
     return 0;
 }
@@ -626,11 +638,13 @@ int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) 
 
     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
     if ( status == CAT_NO_ROWS_FOUND ) {
+        freeGenQueryOut(&genQueryOut);
         *err = "No rows found";
         return status;
     } 
 
     gorods_build_group_result(genQueryOut, result);
+    //freeGenQueryOut(&genQueryOut);
 
     while ( status == 0 && genQueryOut->continueInx > 0 ) {
         genQueryInp.continueInx = genQueryOut->continueInx;
@@ -639,6 +653,8 @@ int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) 
             gorods_build_group_result(genQueryOut, result);
         }
     }
+
+    freeGenQueryOut(&genQueryOut);
 
     return 0;
 }
@@ -685,6 +701,7 @@ int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupNa
 
     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
     if ( status == CAT_NO_ROWS_FOUND ) {
+        freeGenQueryOut(&genQueryOut);
         *err = "No rows found";
         return status;
     } 
@@ -698,6 +715,8 @@ int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupNa
             gorods_build_group_user_result(genQueryOut, result);
         }
     }
+
+    freeGenQueryOut(&genQueryOut);
 
     return 0;
 }
@@ -995,11 +1014,13 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
         if ( status == 0 ) {
+            freeGenQueryOut(&genQueryOut);
             *err = "None";
             return -1;
         }
 
         if ( status == CAT_NO_ROWS_FOUND ) {
+            freeGenQueryOut(&genQueryOut);
             *err = "Resource does not exist";
             return status;
         }
@@ -1015,6 +1036,8 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
 
         gorods_get_resource_result(conn, genQueryOut, result);
     }
+
+    freeGenQueryOut(&genQueryOut);
 
     return 0;
 }
@@ -1119,11 +1142,13 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
     genQueryInp.continueInx = 0;
     i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
     if ( i < 0 ) {
+        freeGenQueryOut(&genQueryOut);
         return i;
     }
 
     i = gorods_build_iquest_result(genQueryOut, result, err);
     if ( i < 0 ) {
+        freeGenQueryOut(&genQueryOut);
         return i;
     }
 
@@ -1132,14 +1157,18 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
         genQueryInp.continueInx = genQueryOut->continueInx;
         i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         if ( i < 0 ) {
+            freeGenQueryOut(&genQueryOut);
             return i;
         }
 
         i = gorods_build_iquest_result(genQueryOut, result, err);
         if ( i < 0 ) {
+            freeGenQueryOut(&genQueryOut);
             return i;
         }
     }
+
+    freeGenQueryOut(&genQueryOut);
 
     return 0;
 
@@ -1442,7 +1471,7 @@ gorods_queryDataObjAcl (rcComm_t *conn, char *dataId, char *zoneHint,
 
     genQueryInp.maxRows = MAX_SQL_ROWS;
 
-    status =  rcGenQuery (conn, &genQueryInp, genQueryOut);
+    status =  rcGenQuery(conn, &genQueryInp, genQueryOut);
 
     return (status);
 
@@ -1460,26 +1489,31 @@ int gorods_get_dataobject_acl(rcComm_t* conn, char* dataId, goRodsACLResult_t* r
 
     if ( status < 0 ) {
     	*err = "Error in queryDataObjAcl";
+        freeGenQueryOut(&genQueryOut);
         return status;
     }
 
     if ( ( userName = getSqlResultByInx( genQueryOut, COL_USER_NAME ) ) == NULL ) {
         *err = "printDataAcl: getSqlResultByInx for COL_USER_NAME failed";
+        freeGenQueryOut(&genQueryOut);
         return UNMATCHED_KEY_OR_INDEX;
     }
 
     if ( ( userZone = getSqlResultByInx( genQueryOut, COL_USER_ZONE ) ) == NULL ) {
         *err = "printDataAcl: getSqlResultByInx for COL_USER_ZONE failed";
+        freeGenQueryOut(&genQueryOut);
         return UNMATCHED_KEY_OR_INDEX;
     }
 
     if ( ( dataAccess = getSqlResultByInx( genQueryOut, COL_DATA_ACCESS_NAME ) ) == NULL ) {
         *err = "printDataAcl: getSqlResultByInx for COL_DATA_ACCESS_NAME failed";
+        freeGenQueryOut(&genQueryOut);
         return UNMATCHED_KEY_OR_INDEX;
     }
 
     if ( ( userType = getSqlResultByInx( genQueryOut, COL_USER_TYPE ) ) == NULL ) {
         *err = "printDataAcl: getSqlResultByInx for COL_USER_TYPE failed";
+        freeGenQueryOut(&genQueryOut);
         return UNMATCHED_KEY_OR_INDEX;
     }
 
@@ -1813,8 +1847,8 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
 	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
-		*err = (char *)gorods_malloc(sizeof(char) * BIG_STR);
-		sprintf(*err, "Error in rcGenQuery using '%s', check your syntax\n", query);
+        freeGenQueryOut(&genQueryOut);
+		*err = "Error in rcGenQuery";
 		return -1;
 	}
 
@@ -1826,6 +1860,8 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 		
 		getPathGenQueryResults(status, genQueryOut, columnNames, result);
 	}
+
+    freeGenQueryOut(&genQueryOut);
 
 	// Clean up cmdToken strings
 	tokenIndex--;
@@ -1921,8 +1957,8 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
 	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
-		*err = (char *)gorods_malloc(sizeof(char) * BIG_STR);
-		sprintf(*err, "Error in rcGenQuery using '%s', check your syntax\n", query);
+		*err = "Error in rcGenQuery";
+        freeGenQueryOut(&genQueryOut);
 		return -1;
 	}
 
@@ -1934,6 +1970,8 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 
 		getPathGenQueryResults(status, genQueryOut, columnNames, result);
 	}
+
+    freeGenQueryOut(&genQueryOut);
 
 	// Clean up cmdToken strings
 	tokenIndex--;
@@ -2295,11 +2333,13 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 		
 		if ( status == 0 ) {
 			*err = "No rows found";
+            freeGenQueryOut(&genQueryOut);
 			return CAT_NO_ROWS_FOUND;
 		}
 
 		if ( status == CAT_NO_ROWS_FOUND ) {
 			*err = "Collection does not exist.\n";
+            freeGenQueryOut(&genQueryOut);
 			return -1;
 		}
 	}
@@ -2313,6 +2353,8 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 
 		setGoRodsMeta(genQueryOut, columnNames, result); 
 	}
+
+    freeGenQueryOut(&genQueryOut);
 
 	return 0;
 }
@@ -2524,11 +2566,13 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 
 		if ( status == 0 ) {
 			*err = "No rows found";
+            freeGenQueryOut(&genQueryOut);
 			return CAT_NO_ROWS_FOUND;
 		}
 
 		if ( status == CAT_NO_ROWS_FOUND ) {
 			*err = "Object does not exist.\n";
+            freeGenQueryOut(&genQueryOut);
 			return -1;
 		}
 	}
@@ -2542,6 +2586,8 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 
 		setGoRodsMeta(genQueryOut, columnNames, result); 
 	}
+
+    freeGenQueryOut(&genQueryOut);
 
 	return 0;
 }
