@@ -14,6 +14,7 @@ import (
 	"unsafe"
 )
 
+// Resource holds information about a resource server registered with iCAT.
 type Resource struct {
 	name string
 
@@ -42,8 +43,10 @@ type Resource struct {
 	con *Connection
 }
 
+// Resources is a slice of *Resource.
 type Resources []*Resource
 
+// FindByName returns the matching *Resource based on the name.
 func (rescs Resources) FindByName(name string) *Resource {
 	for _, resc := range rescs {
 		if resc.name == name {
@@ -53,6 +56,7 @@ func (rescs Resources) FindByName(name string) *Resource {
 	return nil
 }
 
+// Remove removes the specific element from itself, based on index.
 func (rescs *Resources) Remove(index int) {
 	*rescs = append((*rescs)[:index], (*rescs)[index+1:]...)
 }
@@ -83,6 +87,7 @@ func (resc *Resource) init() error {
 	return nil
 }
 
+// Remove removes the resource from it's parent slice
 func (resc *Resource) Remove() bool {
 	for n, p := range *resc.parentSlice {
 		if p.name == resc.name {
@@ -94,14 +99,17 @@ func (resc *Resource) Remove() bool {
 	return false
 }
 
+// String returns the resource name and zone name
 func (resc *Resource) String() string {
 	return fmt.Sprintf("%v#%v", resc.Name(), resc.Zone().Name())
 }
 
+// Name returns the resource name
 func (resc *Resource) Name() string {
 	return resc.name
 }
 
+// Comment loads data from iCAT if needed, and returns the resources comment attribute.
 func (resc *Resource) Comment() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.comment, err
@@ -109,6 +117,7 @@ func (resc *Resource) Comment() (string, error) {
 	return resc.comment, nil
 }
 
+// CreateTime loads data from iCAT if needed, and returns the resources createTime attribute.
 func (resc *Resource) CreateTime() (time.Time, error) {
 	if err := resc.init(); err != nil {
 		return resc.createTime, err
@@ -116,6 +125,7 @@ func (resc *Resource) CreateTime() (time.Time, error) {
 	return resc.createTime, nil
 }
 
+// ModifyTime loads data from iCAT if needed, and returns the resources modifyTime attribute.
 func (resc *Resource) ModifyTime() (time.Time, error) {
 	if err := resc.init(); err != nil {
 		return resc.modifyTime, err
@@ -123,6 +133,7 @@ func (resc *Resource) ModifyTime() (time.Time, error) {
 	return resc.modifyTime, nil
 }
 
+// Id loads data from iCAT if needed, and returns the resources id attribute.
 func (resc *Resource) Id() (int, error) {
 	if err := resc.init(); err != nil {
 		return resc.id, err
@@ -130,6 +141,7 @@ func (resc *Resource) Id() (int, error) {
 	return resc.id, nil
 }
 
+// Id loads data from iCAT if needed, and returns the resources id attribute.
 func (resc *Resource) Type() (int, error) {
 	if err := resc.init(); err != nil {
 		return resc.typ, err
@@ -137,6 +149,7 @@ func (resc *Resource) Type() (int, error) {
 	return resc.typ, nil
 }
 
+// Context loads data from iCAT if needed, and returns the resources context attribute.
 func (resc *Resource) Context() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.context, err
@@ -144,6 +157,7 @@ func (resc *Resource) Context() (string, error) {
 	return resc.context, nil
 }
 
+// Class loads data from iCAT if needed, and returns the resources class attribute.
 func (resc *Resource) Class() (int, error) {
 	if err := resc.init(); err != nil {
 		return resc.class, err
@@ -151,6 +165,7 @@ func (resc *Resource) Class() (int, error) {
 	return resc.class, nil
 }
 
+// Children loads data from iCAT if needed, and returns the resources children attribute.
 func (resc *Resource) Children() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.children, err
@@ -158,6 +173,7 @@ func (resc *Resource) Children() (string, error) {
 	return resc.children, nil
 }
 
+// FreeSpace loads data from iCAT if needed, and returns the resources freeSpace attribute.
 func (resc *Resource) FreeSpace() (int, error) {
 	if err := resc.init(); err != nil {
 		return resc.freeSpace, err
@@ -165,6 +181,7 @@ func (resc *Resource) FreeSpace() (int, error) {
 	return resc.freeSpace, nil
 }
 
+// Info loads data from iCAT if needed, and returns the resources info attribute.
 func (resc *Resource) Info() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.info, err
@@ -172,6 +189,7 @@ func (resc *Resource) Info() (string, error) {
 	return resc.info, nil
 }
 
+// Status loads data from iCAT if needed, and returns the resources status attribute.
 func (resc *Resource) Status() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.status, err
@@ -179,6 +197,7 @@ func (resc *Resource) Status() (string, error) {
 	return resc.status, nil
 }
 
+// ParentStr loads data from iCAT if needed, and returns the resources parentStr attribute.
 func (resc *Resource) ParentStr() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.parentStr, err
@@ -186,6 +205,7 @@ func (resc *Resource) ParentStr() (string, error) {
 	return resc.parentStr, nil
 }
 
+// Net loads data from iCAT if needed, and returns the resources net attribute.
 func (resc *Resource) Net() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.net, err
@@ -193,6 +213,7 @@ func (resc *Resource) Net() (string, error) {
 	return resc.net, nil
 }
 
+// FreeSpaceTime loads data from iCAT if needed, and returns the resources freeSpaceTime attribute.
 func (resc *Resource) FreeSpaceTime() (time.Time, error) {
 	if err := resc.init(); err != nil {
 		return resc.freeSpaceTime, err
@@ -200,6 +221,7 @@ func (resc *Resource) FreeSpaceTime() (time.Time, error) {
 	return resc.freeSpaceTime, nil
 }
 
+// ObjCount loads data from iCAT if needed, and returns the resources status attribute.
 func (resc *Resource) ObjCount() (int, error) {
 	if err := resc.init(); err != nil {
 		return resc.objCount, err
@@ -207,6 +229,7 @@ func (resc *Resource) ObjCount() (int, error) {
 	return resc.objCount, nil
 }
 
+// Status loads data from iCAT if needed, and returns the resources info attribute.
 func (resc *Resource) StorageType() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.storageType, err
@@ -214,6 +237,7 @@ func (resc *Resource) StorageType() (string, error) {
 	return resc.storageType, nil
 }
 
+// PhysPath loads data from iCAT if needed, and returns the resources physPath attribute.
 func (resc *Resource) PhysPath() (string, error) {
 	if err := resc.init(); err != nil {
 		return resc.physPath, err
@@ -221,10 +245,12 @@ func (resc *Resource) PhysPath() (string, error) {
 	return resc.physPath, nil
 }
 
+// Zone returns the *Zone to which the resource belongs to.
 func (resc *Resource) Zone() *Zone {
 	return resc.zone
 }
 
+// RefreshInfo fetches fresh resource data from the iCAT server, and unloads it to the resource struct's fields.
 func (resc *Resource) RefreshInfo() error {
 
 	//map[
@@ -290,6 +316,7 @@ func (resc *Resource) RefreshInfo() error {
 	return nil
 }
 
+// FetchInfo fetches fresh resource info from the iCAT server and returns it as a map
 func (resc *Resource) FetchInfo() (map[string]string, error) {
 	var (
 		result C.goRodsStringResult_t
