@@ -103,6 +103,9 @@ int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPas
 
     *pamPass = strcpy(gorods_malloc(strlen(pamAuthReqOut->irodsPamPassword) + 1), pamAuthReqOut->irodsPamPassword);
 
+    free(pamAuthReqOut->irodsPamPassword);
+    free(pamAuthReqOut);
+    
     return status;
 }
 
