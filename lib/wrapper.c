@@ -644,6 +644,8 @@ int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) 
     genQueryInp.continueInx = 0;
     genQueryInp.condInput.len = 0;
 
+    int cont;
+
     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
     if ( status == CAT_NO_ROWS_FOUND ) {
         freeGenQueryOut(&genQueryOut);
@@ -651,18 +653,23 @@ int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err) 
         return status;
     } 
 
-    gorods_build_group_result(genQueryOut, result);
-    //freeGenQueryOut(&genQueryOut);
+    cont = genQueryOut->continueInx;
 
-    while ( status == 0 && genQueryOut->continueInx > 0 ) {
-        genQueryInp.continueInx = genQueryOut->continueInx;
+    gorods_build_group_result(genQueryOut, result);
+    
+    freeGenQueryOut(&genQueryOut);
+
+    while ( status == 0 && cont > 0 ) {
+        genQueryInp.continueInx = cont;
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
         if ( status == 0 ) {
             gorods_build_group_result(genQueryOut, result);
         }
+        freeGenQueryOut(&genQueryOut);
     }
 
-    freeGenQueryOut(&genQueryOut);
+    
 
     return 0;
 }
@@ -991,6 +998,8 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
     char v1[BIG_STR];
     int i, status;
 
+    int cont;
+
     memset(&genQueryInp, 0, sizeof(genQueryInp_t));
 
     i = 0;
@@ -1017,6 +1026,8 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
 
     if ( status == CAT_NO_ROWS_FOUND ) {
        
+        freeGenQueryOut(&genQueryOut);
+
         i1a[0] = COL_R_RESC_INFO;
         genQueryInp.selectInp.len = 1;
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
@@ -1035,17 +1046,25 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
     }
 
     gorods_get_resource_result(conn, genQueryOut, result);
+    
+    cont = genQueryOut->continueInx;
+    
+    freeGenQueryOut(&genQueryOut);
 
-    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+    while ( status == 0 && cont > 0 ) {
         
-        genQueryInp.continueInx = genQueryOut->continueInx;
+        genQueryInp.continueInx = cont;
+
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         
+        cont = genQueryOut->continueInx;
 
         gorods_get_resource_result(conn, genQueryOut, result);
+
+        freeGenQueryOut(&genQueryOut);
     }
 
-    freeGenQueryOut(&genQueryOut);
+    
 
     return 0;
 }
