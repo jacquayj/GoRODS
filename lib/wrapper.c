@@ -433,18 +433,21 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
     if ( status == CAT_NO_ROWS_FOUND ) {
         *err = "No rows found";
         free(simpleQueryOut->outBuf);
+        free(simpleQueryOut);
         return status;
     }
 
     if ( status == SYS_NO_API_PRIV ) {
         *err = "rcSimpleQuery permission denied";
         free(simpleQueryOut->outBuf);
+        free(simpleQueryOut);
         return status;
     }
 
     if ( status < 0 ) {
         *err = "rcSimpleQuery failed with error";
         free(simpleQueryOut->outBuf);
+        free(simpleQueryOut);
         return status;
     }
 
@@ -465,6 +468,7 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
             if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
                 *err = "rcSimpleQuery failed with error";
                 free(simpleQueryOut->outBuf);
+                free(simpleQueryOut);
                 return status;
             }
 
@@ -481,6 +485,7 @@ int gorods_simple_query(simpleQueryInp_t simpleQueryInp, goRodsStringResult_t* r
         }
     }
 
+    free(simpleQueryOut);
 
     return status;
 }
