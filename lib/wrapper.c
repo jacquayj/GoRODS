@@ -1160,6 +1160,7 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
       NoDistinctFlag is 1 if the user is requesting 'distinct' to be skipped.
      */
     int i;
+    int cont;
     genQueryInp_t genQueryInp;
     genQueryOut_t *genQueryOut = NULL;
 
@@ -1185,6 +1186,8 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
     genQueryInp.maxRows = MAX_SQL_ROWS;
     genQueryInp.continueInx = 0;
     i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
+
     if ( i < 0 ) {
         freeGenQueryOut(&genQueryOut);
         return i;
@@ -1196,10 +1199,14 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
         return i;
     }
 
-    while ( i == 0 && genQueryOut->continueInx > 0 ) {
+    freeGenQueryOut(&genQueryOut);
+
+    while ( i == 0 && cont > 0 ) {
 
         genQueryInp.continueInx = genQueryOut->continueInx;
         i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
+        
         if ( i < 0 ) {
             freeGenQueryOut(&genQueryOut);
             return i;
@@ -1210,9 +1217,9 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
             freeGenQueryOut(&genQueryOut);
             return i;
         }
-    }
 
-    freeGenQueryOut(&genQueryOut);
+        freeGenQueryOut(&genQueryOut);
+    }
 
     return 0;
 

@@ -71,3 +71,7 @@ func New(opts ConnectionOptions) (*Client, error) {
 
 	return cli, nil
 }
+
+func (cli *Client) DisplayMemInfo() {
+	C.display_mallinfo()
+}
