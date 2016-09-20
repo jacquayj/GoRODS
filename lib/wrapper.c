@@ -1086,7 +1086,7 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
     return 0;
 }
 
-
+// Might be a bug here, needs to realloc if called more than once
 int gorods_get_resource_result(rcComm_t *Conn, genQueryOut_t *genQueryOut, goRodsStringResult_t* result) {
 
     int i, j;
@@ -1927,6 +1927,7 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 
 	char* cmdToken[40];
 
+    int cont;
 	int i;
 	for ( i = 0; i < 40; i++ ) {
 		cmdToken[i] = "";
@@ -2006,6 +2007,7 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	genQueryInp.condInput.len = 0;
 
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
 
 	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
 		*err = "Error in rcGenQuery";
@@ -2014,15 +2016,17 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	}
 
 	getPathGenQueryResults(status, genQueryOut, columnNames, result);
+    freeGenQueryOut(&genQueryOut);
 
-	while ( status == 0 && genQueryOut->continueInx > 0 ) {
-		genQueryInp.continueInx = genQueryOut->continueInx;
+	while ( status == 0 && cont > 0 ) {
+		genQueryInp.continueInx = cont;
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
 
 		getPathGenQueryResults(status, genQueryOut, columnNames, result);
+        freeGenQueryOut(&genQueryOut);
 	}
 
-    freeGenQueryOut(&genQueryOut);
 
 	// Clean up cmdToken strings
 	tokenIndex--;
