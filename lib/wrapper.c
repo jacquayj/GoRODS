@@ -49,6 +49,23 @@ int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, ch
     return 0;
 }
 
+void display_mallinfo(void) {
+    struct mallinfo mi;
+
+    mi = mallinfo();
+
+    printf("Total (non-mmapped) allocated bytes (arena):       %d\n", mi.arena);
+    // printf("# of free chunks (ordblks):            %d\n", mi.ordblks);
+    // printf("# of free fastbin blocks (smblks):     %d\n", mi.smblks);
+    // printf("# of mapped regions (hblks):           %d\n", mi.hblks);
+    // printf("Bytes in mapped regions (hblkhd):      %d\n", mi.hblkhd);
+    // printf("Max. total allocated space (usmblks):  %d\n", mi.usmblks);
+    // printf("Free bytes held in fastbins (fsmblks): %d\n", mi.fsmblks);
+    // printf("Total allocated space (uordblks):      %d\n", mi.uordblks);
+    // printf("Total free space (fordblks):           %d\n", mi.fordblks);
+    // printf("Topmost releasable block (keepcost):   %d\n", mi.keepcost);
+}
+
 int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPass, char** err) {
 
     pamAuthRequestInp_t pamAuthReqInp;

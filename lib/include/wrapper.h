@@ -13,7 +13,7 @@
 #include "dataObjChksum.h"
 #include "dataObjClose.h"
 #include "lsUtil.h"
-
+#include <malloc.h>
 
 typedef struct {
 	int size;
@@ -55,6 +55,7 @@ typedef struct {
 	char** pathArr;
 } goRodsPathResult_t;
 
+void display_mallinfo(void);
 void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char** err);
