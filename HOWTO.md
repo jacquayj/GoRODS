@@ -333,13 +333,23 @@ if result, queryErr := con.QueryMeta("wordCount = 2"); queryErr == nil {
 
 ### 8. How do I set access controls?
 
+Access controls can be set on data objects and collections using a few different functions (Chmod, GrantAccess). Regardless of the function you choose, there are three things you must know: the user or group you are granting the access to, the access level (Null, Read, Write, or Own), and whether or not the operation is recursive. You must pass the recursive flag to chmod on data objects, but the value isn't used for anything.
+
+GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it is otherwise identical to Chmod. These user and group structs can be retrieved using [Connection.Groups()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Connection.Groups) / [Connection.Users()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Connection.Users) (returns slice of all groups/users in iCAT) or the data object or collection [Owner() property](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.Owner).
+
 **Example:**
 
 ```go
+myFile := col.FindObj("hello.txt")
 
+if chmodErr := myFile.Chmod("developers", gorods.Write, false); chmodErr == nil {
+	fmt.Printf("Chmod success!\n")
+} else {
+	log.Fatal(chmodErr)
+}
 ```
 
 **Output:**
 ```
-
+Chmod success!
 ```
