@@ -4,7 +4,7 @@ This document goes over a few common iRODS tasks that could be implemented with 
 
 ### 1. How do I read data from a file stored in iRODS?
 
-First we need to create our bare bones .go file, import the GoRODS package, setup the client struct, and open a connection. Info on ConnectionOptions [can be found in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#New).
+First we need to create our bare bones .go file, import the GoRODS package, setup the client struct, and open a connection. Info on ConnectionOptions [can be found in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#New).
 
 ```go
 package main
@@ -12,7 +12,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"github.com/jjacquay712/GoRods"
+	"github.com/jjacquay712/GoRODS"
 )
 
 func main() {
@@ -80,7 +80,7 @@ hello.txt file contents: 'Hello, World!'
 
 ### 2. Can I selectively read sections of a file stored in iRODS (seek certain byte range)? If so, how?
 
-This example is very similar to the one above, except it starts reading at an offset of 7 bytes, e.g. lseek(7) and reads the next 6 bytes. You'll also notice the "defer myFile.Close()" line, which is required since ReadBytes doesn't explicitly close the data object. This is to reduce the overhead of calling ReadBytes sequentially. See [ReadChunk](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.ReadChunk) if you want to read the entire file in chucks, without the need to call Close().
+This example is very similar to the one above, except it starts reading at an offset of 7 bytes, e.g. lseek(7) and reads the next 6 bytes. You'll also notice the "defer myFile.Close()" line, which is required since ReadBytes doesn't explicitly close the data object. This is to reduce the overhead of calling ReadBytes sequentially. See [ReadChunk](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObj.ReadChunk) if you want to read the entire file in chucks, without the need to call Close().
 
 **Example:**
 
@@ -115,7 +115,7 @@ hello.txt file contents: 'World!'
 
 ### 3. How do I write a file into iRODS?
 
-There are a few ways to accomplish this, depending on whether the file (data object) already exists. This first example assumes you want to upload (iput) a new file into iRODS. To learn about the options available in DataObjOptions, [see the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObjOptions).
+There are a few ways to accomplish this, depending on whether the file (data object) already exists. This first example assumes you want to upload (iput) a new file into iRODS. To learn about the options available in DataObjOptions, [see the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObjOptions).
 
 **Example:**
 
@@ -335,7 +335,7 @@ if result, queryErr := con.QueryMeta("wordCount = 2"); queryErr == nil {
 
 Access controls can be set on data objects and collections using a few different functions (Chmod, GrantAccess). Regardless of the function you choose, there are three things you must know: the user or group you are granting the access to, the access level (Null, Read, Write, or Own), and whether or not the operation is recursive. You must pass the recursive flag to chmod on data objects, but the value isn't used for anything.
 
-GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it is otherwise identical to Chmod. These user and group structs can be retrieved using [Connection.Groups()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Connection.Groups) / [Connection.Users()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Connection.Users) (returns slice of all groups/users in iCAT) or the data object or collection [Owner() property](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.Owner).
+GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it is otherwise identical to Chmod. These user and group structs can be retrieved using [Connection.Groups()](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#Connection.Groups) / [Connection.Users()](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#Connection.Users) (returns slice of all groups/users in iCAT) or the data object or collection [Owner() property](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObj.Owner).
 
 **Example:**
 
