@@ -1813,7 +1813,7 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result, char** err) {
 	
 	char* cmdToken[40];
-
+    int cont;
 	int i;
 	for ( i = 0; i < 40; i++ ) {
 		cmdToken[i] = "";
@@ -1896,6 +1896,7 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 	genQueryInp.condInput.len = 0;
 
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
 
 	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
         freeGenQueryOut(&genQueryOut);
@@ -1904,15 +1905,16 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 	}
 
 	getPathGenQueryResults(status, genQueryOut, columnNames, result);
-
-	while ( status == 0 && genQueryOut->continueInx > 0 ) {
-		genQueryInp.continueInx = genQueryOut->continueInx;
-		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
-		
-		getPathGenQueryResults(status, genQueryOut, columnNames, result);
-	}
-
     freeGenQueryOut(&genQueryOut);
+    
+	while ( status == 0 && cont > 0 ) {
+		genQueryInp.continueInx = cont;
+		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+		cont = genQueryOut->continueInx;
+
+		getPathGenQueryResults(status, genQueryOut, columnNames, result);
+        freeGenQueryOut(&genQueryOut);
+	}
 
 	// Clean up cmdToken strings
 	tokenIndex--;
