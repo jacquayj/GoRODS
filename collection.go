@@ -1054,14 +1054,22 @@ func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, err
 		force = 0
 	}
 
-	switch opts.Resource.(type) {
-	case string:
-		resource = C.CString(opts.Resource.(string))
-	case *Resource:
-		r := opts.Resource.(*Resource)
-		resource = C.CString(r.Name())
-	default:
-		return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	if opts.Resource != nil {
+		switch opts.Resource.(type) {
+		case string:
+			resource = C.CString(opts.Resource.(string))
+		case *Resource:
+			r := opts.Resource.(*Resource)
+			resource = C.CString(r.Name())
+		default:
+			return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+		}
+	} else {
+		resource = C.CString("")
+	}
+
+	if opts.Name == "" {
+		opts.Name = filepath.Base(localPath)
 	}
 
 	path := C.CString(col.path + "/" + opts.Name)
