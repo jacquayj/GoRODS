@@ -168,18 +168,6 @@ func main() {
 
 ```
 
-## Usage In A Web App
-
-```
-content here
-```
-
-## Usage as http.Handler interface
-
-```
-content here
-```
-
 ## Contributing
 
 Send me a pull request!

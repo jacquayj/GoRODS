@@ -9,9 +9,9 @@ YOUR_APP_PACKAGE=tester
 # Get directory where build.sh is located (this file)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Get GoRods lib directory path
-if [ -f $DIR/src/github.com/jjacquay712/GoRods/lib/wrapper.c ]; then
-	GORODS_LIB_PATH=$DIR/src/github.com/jjacquay712/GoRods/lib
+# Get GoRODS lib directory path
+if [ -f $DIR/src/github.com/jjacquay712/GoRODS/lib/wrapper.c ]; then
+	GORODS_LIB_PATH=$DIR/src/github.com/jjacquay712/GoRODS/lib
 else
 	GORODS_LIB_PATH=./lib
 fi
@@ -22,13 +22,13 @@ if [ ! -f $GORODS_LIB_PATH/wrapper.c ]; then
 	exit
 fi
 
-# Compile gorods.o, build libgorods.a with iRods C API
+# Compile gorods.o, build libgorods.a with iRODS C API
 (cd $GORODS_LIB_PATH; rm -f build/libgorods.a; rm -f build/gorods.o; gcc -ggdb -o build/gorods.o -c wrapper.c -I/usr/include/irods -Iinclude; ar rcs build/libgorods.a build/gorods.o)
 
 C_BUILD_SUCCESS=$?
 
-# Compile and install GoRods, and your app
-go install github.com/jjacquay712/GoRods && go install $YOUR_APP_PACKAGE
+# Compile and install GoRODS, and your app
+go install github.com/jjacquay712/GoRODS && go install $YOUR_APP_PACKAGE
 
 GO_BUILD_SUCCESS=$?
 
