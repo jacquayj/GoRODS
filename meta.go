@@ -9,6 +9,7 @@ import "C"
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -43,10 +44,12 @@ func (ms Metas) MatchOne(m *Meta) *Meta {
 //
 // 	Attr1: Val (unit: foo)
 func (ms Metas) String() string {
-	result := ""
+	result := "["
 	for _, m := range ms {
-		result += m.String() + "\n"
+		result += m.String() + ",\n"
 	}
+	result = strings.TrimRight(result, ",\n")
+	result += "]"
 	return result
 }
 
