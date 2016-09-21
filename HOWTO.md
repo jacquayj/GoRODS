@@ -161,7 +161,7 @@ if conErr == nil {
 Successfully added hello.txt to the collection
 ```
 
-You can also write to an existing data object:
+You can also write to an existing data object in iRODS:
 
 **Example:**
 
@@ -205,6 +205,100 @@ Successfully wrote to file
 ```
 
 #### 4. How can I get a list of files in a directory in iRODS?
-#### 5. How can I apply metadata to a file in iRODS?#### 6. How can I retrieve metadata from a file in iRODS?
+
+GoRODS makes this very simple! The first example shows how to print the collection contents using it's String() interface, and the next example illustrates an iterator.
+
+**Example:**
+
+```go
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a new connection, with the starting collection of /tempZone/home/rods
+	client.OpenConnection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+
+		// Pass the collection struct to Printf
+		fmt.Printf("%v \n", col)
+
+	})
+} else {
+	log.Fatal(conErr)
+}
+```
+
+**Output:**
+
+```
+Collection: /tempZone/home/rods
+	C: pemtest
+	C: source-code
+	C: test
+	d: hello.txt
+	d: mydir1.tar
+```
+
+Collections are denoted with "C:" and data objects with "d:". Here's another example using iterators:
+
+**Example:**
+
+```go
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a new connection, with the starting collection of /tempZone/home/rods
+	client.OpenConnection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+
+		// Loop over the data objects in the collection, print the file name
+		col.EachDataObj(func(obj *gorods.DataObj) {
+			fmt.Printf("%v \n", obj.Name())
+		})
+
+		// Loop over the subcollections in the collection, print the name
+		col.EachCollection(func(subcol *gorods.Collection) {
+			fmt.Printf("%v \n", subcol.Name())
+		})
+
+	})
+} else {
+	log.Fatal(conErr)
+}
+```
+
+**Output:**
+```
+hello.txt 
+mydir1.tar 
+pemtest 
+source-code2 
+test 
+```
+
+You can also access the slices directly, and write the loops yourself:
+
+```go
+objs, _ := col.DataObjs()
+for _, obj := range objs {
+	// Use obj here
+} 
+
+cols, _ := col.Collections()
+for _, col := range cols {
+	// Use col here
+}  
+
+// All() returns a slice of both data objects and collections combined
+both, _ := col.All()
+for _, gObj := range both {
+	// Use gObj (generic object) here
+}  
+
+```
+
+#### 5. How can I apply metadata to a file in iRODS?
+#### 6. How can I retrieve metadata from a file in iRODS?
 #### 7. How can I search for a file by metadata and other attributes?
 #### 8. How do I set access controls?

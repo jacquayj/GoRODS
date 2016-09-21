@@ -299,6 +299,32 @@ func (col *Collection) DataObjs() (response IRodsObjs, err error) {
 	return
 }
 
+// EachDataObj is an iterator for data objects
+func (col *Collection) EachDataObj(ittr func(obj *DataObj)) error {
+	if objs, err := col.DataObjs(); err == nil {
+		for _, obj := range objs {
+			ittr(obj.(*DataObj))
+		}
+
+		return nil
+	} else {
+		return err
+	}
+}
+
+// EachCollection is an iterator for collections
+func (col *Collection) EachCollection(ittr func(obj *Collection)) error {
+	if cols, err := col.Collections(); err == nil {
+		for _, col := range cols {
+			ittr(col.(*Collection))
+		}
+
+		return nil
+	} else {
+		return err
+	}
+}
+
 // All returns generic interface slice containing both data objects and collections combined
 func (col *Collection) All() (IRodsObjs, error) {
 	if err := col.init(); err != nil {
