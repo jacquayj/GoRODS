@@ -72,7 +72,7 @@ hello.txt file contents: 'Hello, World!'
 
 ### 2. Can I selectively read sections of a file stored in iRODS (seek certain byte range)? If so, how?
 
-This example is very similar to the one above, except it starts reading at an offset of 7 bytes, e.g. lseek(7) and reads the next 6 bytes. You'll also notice the "defer myFile.Close()" line, which is required since ReadBytes doesn't explicitly close the data object. This is to reduce the overhead of calling ReadBytes sequentially. See [ReadChunk](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObj.ReadChunk) if you want to read the entire file in chucks, without the need to call Close().
+This example is very similar to the one above, except it starts reading at an offset of 7 bytes, e.g. lseek(7) and reads the next 6 bytes. See [ReadChunk](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObj.ReadChunk) if you want to read the entire file in chucks.
 
 **Example:**
 
@@ -84,15 +84,14 @@ if conErr == nil {
 	// Open a data object referece for /tempZone/home/rods/hello.txt
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-		// The ReadBytes function doesn't explicitly close the data object, so we need to make sure it's closed when we're finished reading
-		defer myFile.Close()
-
-		// Yes, read 6 bytes starting with an offset of 7 bytes
+		// Read 6 bytes starting with an offset of 7 bytes
+		// myFile is closed automatically when this function goes out of scope
 		if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
 			fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
 		} else {
 			log.Fatal(readErr)
 		}
+
 	}); openErr != nil {
 		log.Fatal(openErr)
 	}
