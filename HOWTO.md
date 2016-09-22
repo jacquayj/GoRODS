@@ -453,3 +453,156 @@ if conErr == nil {
 ```
 Chmod success!
 ```
+
+# Advanced Topics
+
+This section covers topics that are helpful to know when getting into the advanced usage of GoRODS.
+
+### The different ways you can connect to iRODS using GoRODS, and open data objects / collections
+
+Configuring and implementing the GoRODS Client struct is the easiest and most straight forward way to use GoRODS, as illustrated in the examples above. Here is the client initialization again, for reference:
+
+```go
+
+client, conErr := gorods.New(gorods.ConnectionOptions{
+	Type: gorods.UserDefined,
+
+	Host: "localhost",
+	Port: 1247,
+	Zone: "tempZone",
+
+	Username: "rods",
+	Password: "password",
+})
+
+```
+
+These are the three functions available as a starting point, once you've initialized the client:
+
+1. [client.OpenDataObject](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenDataObject)
+2. [client.OpenCollection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenCollection)
+3. [client.OpenConnection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenConnection)
+
+If you'd rather manage the closing of connections, collections, and data objects yourself, you can initialize the connection directly:
+
+```go
+
+con, err := gorods.NewConnection(&gorods.ConnectionOptions{
+	Type: gorods.UserDefined,
+
+	Host: "localhost",
+	Port: 1247,
+	Zone: "tempZone",
+
+	Username: "rods",
+	Password: "password",
+})
+
+obj, _ := con.DataObject("/tempZone/home/rods/hello.txt")
+
+col, _ := con.Collection(gorods.CollectionOptions{Path: "/tempZone/home/rods",})
+
+// Or
+
+col := obj.Col()
+
+```
+
+From there you are free to use the connection [as described in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Connection), just remember to call Disconnect when you're finished.
+
+### Data Object Replicas
+
+By default, when you access a slice of data objects or use a collection iterator, you will only retrieve a single reference to a particular data object. Even if the data object is replicated to multiple resource servers. You can find out which resource the data object belongs to using the [DataObj.Resource()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.Resource) function.
+
+To access a data object reference for every replica (resource it's stored in), simply set the GetRepls field to true in your CollectionOptions. Here's an example:
+
+**Example:**
+
+```go
+
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a connection to iCAT, get a specific collection
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path:     "/tempZone/home/rods",
+		GetRepls: true,
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+
+		fmt.Printf("%v \n", col)
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
+} else {
+	log.Fatal(conErr)
+}
+
+```
+
+**Output:**
+
+```
+Collection: /tempZone/home/rods
+	C: pemtest
+	C: source-code2
+	C: test
+	d: hello.txt
+	d: hello.txt
+	d: mydir1.tar
+
+```
+
+Notice the duplicate data object "hello.txt" appears, because it is replicated to multiple resource servers. You can find out which resource the data object belongs to using the [DataObj.Resource()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.Resource) function. In later versions of GoRODS, duplicates might be combined into a single data object reference.
+
+
+### PAM Authentication
+
+GoRODS currently supports standard iRODS password authentication as well as PAM. You must configure a few things server-side and setup SSL certs before you use PAM with GoRODS. [See the "PAM > Server Configuration" section in the iRODS documentation](https://docs.irods.org/4.1.8/manual/authentication/#pam). You can toggle between the two authentication mechanisms by setting the AuthType field in ConnectionOptions:
+
+**Standard Password Auth Example:**
+
+```go
+
+client, conErr := gorods.New(gorods.ConnectionOptions{
+	Type: gorods.UserDefined,
+
+	Host: "localhost",
+	Port: 1247,
+	Zone: "tempZone",
+
+	Username: "rods",
+	Password: "password",
+})
+
+```
+
+**PAM Auth Example:**
+
+```go
+
+client, conErr := gorods.New(gorods.ConnectionOptions{
+	Type:          gorods.UserDefined,
+	AuthType:      gorods.PAMAuth,
+	PAMPassFile:   ".secure-pam-session",
+    PAMPassExpire: 4, // hours
+
+	Host: "localhost",
+	Port: 1247,
+	Zone: "tempZone",
+
+	Username: "rods",
+	Password: "pampassword",
+})
+
+```
+
+The PAMPassFile and PAMPassExpire fields are not required when using PAM. By default, the session is set to expire in one hour and the PAM session password is stored exclusively in memory. If you choose to specify a PAMPassFile, the session password will be cached to the file system. This increases efficiency somewhat, by removing the need to re authenticate and fetch the session password for each connection.
+
+### iRODS Tickets
+
+### Serving iRODS data objects (files) over HTTP
+
+
+### Threading / goroutine connection concerns, and pooling
