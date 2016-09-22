@@ -598,9 +598,75 @@ client, conErr := gorods.New(gorods.ConnectionOptions{
 
 ```
 
-The PAMPassFile and PAMPassExpire fields are not required when using PAM. By default, the session is set to expire in one hour and the PAM session password is stored exclusively in memory. If you choose to specify a PAMPassFile, the session password will be cached to the file system. This increases efficiency somewhat, by removing the need to re authenticate and fetch the session password for each connection.
+The PAMPassFile and PAMPassExpire fields are not required when using PAM. By default, the session is set to expire in one hour and the PAM session password is stored exclusively in memory. If you choose to specify a PAMPassFile, the session password will be cached to the file system. This increases efficiency somewhat, by removing the need to re authenticate and fetch the session password for each new connection.
+
+### Collection Lazy Loading vs Eager Loading
+
+When accessing a collection using GoRODS, you will sometimes need to access a sub-collection and it's contents. You can choose to either recursively load all sub-collections in the tree (eager loading, the collection you're working with being the root node), or you can lazy load sub-collections. By default, collections are lazy loaded. Here's an example of eager loading using the Recursive field of CollectionOptions.
+
+**Example:**
+
+```go
+
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a collection referece for /tempZone/home/rods
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path:      "/tempZone/home/rods",
+		Recursive: true, // eager load the collection and it's children recursively
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+		
+		// Pass the collection struct to Printf
+		fmt.Printf("%v \n", col)
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
+} else {
+	log.Fatal(conErr)
+}
+
+
+```
+
+The benefit of eager loading is the quick traversal and and access of collection contents, after initialization. However, this requires more initialization time to complete. Lazy loading is quick to initialize, but is slower as you traverse through the sub-collections.
 
 ### iRODS Tickets
+
+You can use tickets with GoRODS by specifying the ticket string in ConnectionOptions.
+
+**Example:**
+
+First you must create an anonymous user for ticket-based access:
+
+```
+$ iadmin mkuser anonymous#tempZone rodsuser
+```
+
+Then generate the ticket (creates ticket with write access to the test collection):
+
+```
+$ iticket create write test
+```
+
+Now you can use the generated ticket in GoRODS, no password required. One thing to consider is eager loading collections (using the Recursive flag) while authenticating with a ticket. This will fail, because tickets set on collections don't apply to their sub-collections (the [iRODS documentation says otherwise](https://groups.google.com/d/msg/irod-chat/XPsz8qpoJBk/vTlble0PFgAJ) so this might be a bug in iRODS).
+
+```go
+client, conErr := gorods.New(gorods.ConnectionOptions{
+	Type: gorods.UserDefined,
+
+	Host: "localhost",
+	Port: 1247,
+	Zone: "tempZone",
+
+	Username: "anonymous",
+
+	Ticket: "J93XyzJ6UGIXrJN",
+})
+```
+
 
 ### Serving iRODS data objects (files) over HTTP
 

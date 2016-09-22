@@ -337,7 +337,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 		if con.Options.PAMPassFile == "" {
 
 			// It's not, fetch password and just keep in memory
-			if status = C.gorods_clientLoginPam(con.ccon, ipassword, 1, &opassword, &errMsg); status != 0 {
+			if status = C.gorods_clientLoginPam(con.ccon, ipassword, C.int(con.Options.PAMPassExpire), &opassword, &errMsg); status != 0 {
 				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginPam error, invalid password?"))
 			}
 
