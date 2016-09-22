@@ -64,9 +64,8 @@ func (cli *Client) OpenDataObject(path string, handler func(*DataObj, *Connectio
 		if con, err := NewConnection(cli.Options); err == nil {
 
 			obj, objEr := con.DataObject(path)
-
 			if objEr != nil {
-				return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", objEr))
+				return objEr
 			}
 
 			handler(obj, con)

@@ -4,7 +4,7 @@ This document goes over a few common iRODS tasks that could be implemented with 
 
 ### 1. How do I read data from a file stored in iRODS?
 
-First we need to create our bare bones .go file, import the GoRODS package, setup the client struct, and open a connection. Info on ConnectionOptions [can be found in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#New).
+First we need to create our bare bones .go file, import the GoRODS package, and setup the client struct. Info on ConnectionOptions [can be found in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#New).
 
 ```go
 package main
@@ -28,46 +28,38 @@ func main() {
 		Password: "password",
 	})
 
-	// Ensure the client initialized successfully and connected to the iCAT server
-	if conErr == nil {
-
-		// Open a new connection, with the starting collection of /tempZone/home/rods
-		client.OpenConnection(gorods.CollectionOptions{
-			Path: "/tempZone/home/rods",
-		}, func(col *gorods.Collection, con *gorods.Connection) {
-			
-			// All example code in this document is written as if it was placed in this context / func scope, with the client already setup.
-		
-		})
-	} else {
-		log.Fatal(conErr)
-	}
+	// All example code in this document is written as if it was placed in this context / func scope, with the client already setup.
 
 }
 
 ```
 
-**Remember that the following examples leave out the import statement, main() function declaration, client struct setup, and client.OpenConnection call for the sake of brevity.**
+**Remember that the following examples leave out the import statement, main() function declaration, and client struct setup for the sake of brevity.**
 
-This next example opens a connection to the iRODS server, using "/tempZone/home/rods" as the starting collection. It then searches the collection for a data object (file) named "hello.txt", and prints the contents. Read() returns a byte slice ([]byte) so it must be converted to a string.
+This next example opens a connection to the iRODS server and fetches refrence to a data object, using "/tempZone/home/rods/hello.txt" as the data object's path. It then prints the contents. Read() returns a byte slice ([]byte) so it must be converted to a string.
 
 **Example:**
 ```go
 
-// Search for the hello.txt data object within the collection
-myFile := col.FindObj("hello.txt")
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// Did we find it?
-if myFile != nil {
+	// Open a data object referece for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Yes, read the contents
-	if contents, readErr := myFile.Read(); readErr == nil {
-		fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
-	} else {
-		log.Fatal(readErr)
+		// read the contents
+		if contents, readErr := myFile.Read(); readErr == nil {
+			fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
+		} else {
+			log.Fatal(readErr)
+		}
+
+	}); openErr != nil {
+		log.Fatal(openErr)
 	}
+
 } else {
-	log.Fatal(fmt.Errorf("Unable to locate file in collection %v", col.Path()))
+	log.Fatal(conErr)
 }
 
 ```
@@ -86,23 +78,27 @@ This example is very similar to the one above, except it starts reading at an of
 
 ```go
 
-// Search for the hello.txt data object within the collection
-myFile := col.FindObj("hello.txt")
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// Did we find it?
-if myFile != nil {
+	// Open a data object referece for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// The ReadBytes function doesn't explicitly close the data object, so we need to make sure it's closed when we're finished reading
-	defer myFile.Close()
+		// The ReadBytes function doesn't explicitly close the data object, so we need to make sure it's closed when we're finished reading
+		defer myFile.Close()
 
-	// Yes, read 6 bytes starting with an offset of 7 bytes
-	if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
-		fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
-	} else {
-		log.Fatal(readErr)
+		// Yes, read 6 bytes starting with an offset of 7 bytes
+		if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
+			fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
+		} else {
+			log.Fatal(readErr)
+		}
+	}); openErr != nil {
+		log.Fatal(openErr)
 	}
+
 } else {
-	log.Fatal(fmt.Errorf("Unable to locate file in collection %v", col.Path()))
+	log.Fatal(conErr)
 }
 
 ```
@@ -121,12 +117,28 @@ There are a few ways to accomplish this, depending on whether the file (data obj
 
 ```go
 
-// Put local file hello.txt to the collection, using default options
-myFile, putErr := col.Put("hello.txt", gorods.DataObjOptions{})
-if putErr == nil {
-	fmt.Printf("Successfully added %v to the collection\n", myFile.Name())
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a collection referece for /tempZone/home/rods
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+
+		// Put local file hello.txt to the collection, using default options
+		myFile, putErr := col.Put("hello.txt", gorods.DataObjOptions{})
+		if putErr == nil {
+			fmt.Printf("Successfully added %v to the collection\n", myFile.Name())
+		} else {
+			log.Fatal(putErr)
+		}
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
 } else {
-	log.Fatal(putErr)
+	log.Fatal(conErr)
 }
 
 ```
@@ -142,22 +154,26 @@ You can also write to an existing data object in iRODS. Notice that Write() acce
 
 ```go
 
-// Search for the hello.txt data object within the collection
-myFile := col.FindObj("hello.txt")
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// Did we find it?
-if myFile != nil {
+	// Open a data object referece for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Write sentence to data object
-	if writeErr := myFile.Write([]byte("Has anyone really been far as decided to use even go want to do look more like?")); writeErr == nil {
-		fmt.Printf("Successfully wrote to file\n")
-	} else {
-		log.Fatal(writeErr)
+		// Write sentence to data object
+		if writeErr := myFile.Write([]byte("Has anyone really been far as decided to use even go want to do look more like?")); writeErr == nil {
+			fmt.Printf("Successfully wrote to file\n")
+		} else {
+			log.Fatal(writeErr)
+		}
+	}); openErr != nil {
+		log.Fatal(openErr)
 	}
 
 } else {
-	log.Fatal(fmt.Errorf("Unable to locate file in collection %v", col.Path()))
+	log.Fatal(conErr)
 }
+
 
 ```
 
@@ -175,8 +191,24 @@ GoRODS makes this very simple! The first example shows how to print the collecti
 
 ```go
 
-// Pass the collection struct to Printf
-fmt.Printf("%v \n", col)
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a collection referece for /tempZone/home/rods
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+		
+		// Pass the collection struct to Printf
+		fmt.Printf("%v \n", col)
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
+} else {
+	log.Fatal(conErr)
+}
 
 ```
 
@@ -197,15 +229,31 @@ Collections are denoted with "C:" and data objects with "d:". Here's another exa
 
 ```go
 
-// Loop over the data objects in the collection, print the file name
-col.EachDataObj(func(obj *gorods.DataObj) {
-	fmt.Printf("%v \n", obj.Name())
-})
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// Loop over the subcollections in the collection, print the name
-col.EachCollection(func(subcol *gorods.Collection) {
-	fmt.Printf("%v \n", subcol.Name())
-})
+	// Open a collection referece for /tempZone/home/rods
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+
+		// Loop over the data objects in the collection, print the file name
+		col.EachDataObj(func(obj *gorods.DataObj) {
+			fmt.Printf("%v \n", obj.Name())
+		})
+
+		// Loop over the subcollections in the collection, print the name
+		col.EachCollection(func(subcol *gorods.Collection) {
+			fmt.Printf("%v \n", subcol.Name())
+		})
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
+} else {
+	log.Fatal(conErr)
+}
 
 ```
 
@@ -221,21 +269,38 @@ test
 You can also access the slices directly, and write the loops yourself:
 
 ```go
-objs, _ := col.DataObjs()
-for _, obj := range objs {
-	// Use obj here
-} 
 
-cols, _ := col.Collections()
-for _, col := range cols {
-	// Use col here
-}  
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// All() returns a slice of both data objects and collections combined
-both, _ := col.All()
-for _, gObj := range both {
-	// Use gObj (generic object) here
-}  
+	// Open a collection referece for /tempZone/home/rods
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+
+		objs, _ := col.DataObjs()
+		for _, obj := range objs {
+			// Use obj here
+		} 
+
+		cols, _ := col.Collections()
+		for _, col := range cols {
+			// Use col here
+		}  
+
+		// All() returns a slice of both data objects and collections combined
+		both, _ := col.All()
+		for _, gObj := range both {
+			// Use gObj (generic object) here
+		}  
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
+} else {
+	log.Fatal(conErr)
+}
 
 ```
 
@@ -247,25 +312,29 @@ Metadata can be associated with a data object in iRODS by calling the AddMeta fu
 
 ```go
 
-// Search for the hello.txt data object within the collection
-myFile := col.FindObj("hello.txt")
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// Did we find it?
-if myFile != nil {
+	// Open a data object referece for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Add meta AVU to data object
-	if myAVU, metaErr := myFile.AddMeta(gorods.Meta{
-		Attribute: "wordCount",
-		Value:     "2",
-		Units:     "int",
-	}); metaErr == nil {
-		fmt.Printf("Added meta AVU to data object: %v\n", myAVU)
-	} else {
-		log.Fatal(metaErr)
+		// Add meta AVU to data object
+		if myAVU, metaErr := myFile.AddMeta(gorods.Meta{
+			Attribute: "wordCount",
+			Value:     "2",
+			Units:     "int",
+		}); metaErr == nil {
+			fmt.Printf("Added meta AVU to data object: %v\n", myAVU)
+		} else {
+			log.Fatal(metaErr)
+		}
+
+	}); openErr != nil {
+		log.Fatal(openErr)
 	}
 
 } else {
-	log.Fatal(fmt.Errorf("Unable to locate file in collection %v", col.Path()))
+	log.Fatal(conErr)
 }
 
 ```
@@ -284,23 +353,27 @@ Because metadata AVUs can share attribute names, when fetching, Attribute() retu
 
 ```go
 
-// Search for the hello.txt data object within the collection
-myFile := col.FindObj("hello.txt")
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
 
-// Did we find it?
-if myFile != nil {
+	// Open a data object referece for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Fetch all AVUs where Attribute = "wordCount"
-	if metaSlice, attrErr := myFile.Attribute("wordCount"); attrErr == nil {
+		// Fetch all AVUs where Attribute = "wordCount"
+		if metaSlice, attrErr := myFile.Attribute("wordCount"); attrErr == nil {
 
-		fmt.Printf("%v \n", metaSlice)
+			fmt.Printf("%v \n", metaSlice)
 
-	} else {
-		log.Fatal(attrErr)
+		} else {
+			log.Fatal(attrErr)
+		}
+
+	}); openErr != nil {
+		log.Fatal(openErr)
 	}
 
 } else {
-	log.Fatal(fmt.Errorf("Unable to locate file in collection %v", col.Path()))
+	log.Fatal(conErr)
 }
 
 ```
@@ -318,10 +391,24 @@ You can search for data objects and collections that have a particular AVU using
 
 ```go
 
-if result, queryErr := con.QueryMeta("wordCount = 2"); queryErr == nil {
-	fmt.Printf("%v \n", result)
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a connection to iCAT
+	if openErr := client.OpenConnection(func(con *gorods.Connection) {
+
+		if result, queryErr := con.QueryMeta("wordCount = 2"); queryErr == nil {
+			fmt.Printf("%v \n", result)
+		} else {
+			log.Fatal(queryErr)
+		}
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
 } else {
-	log.Fatal(queryErr)
+	log.Fatal(conErr)
 }
 
 ```
@@ -340,13 +427,27 @@ GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it 
 **Example:**
 
 ```go
-myFile := col.FindObj("hello.txt")
 
-if chmodErr := myFile.Chmod("developers", gorods.Write, false); chmodErr == nil {
-	fmt.Printf("Chmod success!\n")
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a data object referece for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
+
+		if chmodErr := myFile.Chmod("developers", gorods.Write, false); chmodErr == nil {
+			fmt.Printf("Chmod success!\n")
+		} else {
+			log.Fatal(chmodErr)
+		}
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
 } else {
-	log.Fatal(chmodErr)
+	log.Fatal(conErr)
 }
+
 ```
 
 **Output:**
