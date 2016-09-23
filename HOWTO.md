@@ -44,7 +44,7 @@ This next example opens a connection to the iRODS server and fetches refrence to
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a data object referece for /tempZone/home/rods/hello.txt
+	// Open a data object reference for /tempZone/home/rods/hello.txt
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
 		// read the contents
@@ -81,7 +81,7 @@ This example is very similar to the one above, except it starts reading at an of
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a data object referece for /tempZone/home/rods/hello.txt
+	// Open a data object reference for /tempZone/home/rods/hello.txt
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
 		// Read 6 bytes starting with an offset of 7 bytes
@@ -119,7 +119,7 @@ There are a few ways to accomplish this, depending on whether the file (data obj
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a collection referece for /tempZone/home/rods
+	// Open a collection reference for /tempZone/home/rods
 	if openErr := client.OpenCollection(gorods.CollectionOptions{
 		Path: "/tempZone/home/rods",
 	}, func(col *gorods.Collection, con *gorods.Connection) {
@@ -156,7 +156,7 @@ You can also write to an existing data object in iRODS. Notice that Write() acce
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a data object referece for /tempZone/home/rods/hello.txt
+	// Open a data object reference for /tempZone/home/rods/hello.txt
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
 		// Write sentence to data object
@@ -193,7 +193,7 @@ GoRODS makes this very simple! The first example shows how to print the collecti
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a collection referece for /tempZone/home/rods
+	// Open a collection reference for /tempZone/home/rods
 	if openErr := client.OpenCollection(gorods.CollectionOptions{
 		Path: "/tempZone/home/rods",
 	}, func(col *gorods.Collection, con *gorods.Connection) {
@@ -231,7 +231,7 @@ Collections are denoted with "C:" and data objects with "d:". Here's another exa
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a collection referece for /tempZone/home/rods
+	// Open a collection reference for /tempZone/home/rods
 	if openErr := client.OpenCollection(gorods.CollectionOptions{
 		Path: "/tempZone/home/rods",
 	}, func(col *gorods.Collection, con *gorods.Connection) {
@@ -272,7 +272,7 @@ You can also access the slices directly, and write the loops yourself:
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a collection referece for /tempZone/home/rods
+	// Open a collection reference for /tempZone/home/rods
 	if openErr := client.OpenCollection(gorods.CollectionOptions{
 		Path: "/tempZone/home/rods",
 	}, func(col *gorods.Collection, con *gorods.Connection) {
@@ -314,7 +314,7 @@ Metadata can be associated with a data object in iRODS by calling the AddMeta fu
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a data object referece for /tempZone/home/rods/hello.txt
+	// Open a data object reference for /tempZone/home/rods/hello.txt
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
 		// Add meta AVU to data object
@@ -355,7 +355,7 @@ Because metadata AVUs can share attribute names, when fetching, Attribute() retu
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a data object referece for /tempZone/home/rods/hello.txt
+	// Open a data object reference for /tempZone/home/rods/hello.txt
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
 		// Fetch all AVUs where Attribute = "wordCount"
@@ -611,7 +611,7 @@ When accessing a collection using GoRODS, you will sometimes need to access a su
 // Ensure the client initialized successfully and connected to the iCAT server
 if conErr == nil {
 
-	// Open a collection referece for /tempZone/home/rods
+	// Open a collection reference for /tempZone/home/rods
 	if openErr := client.OpenCollection(gorods.CollectionOptions{
 		Path:      "/tempZone/home/rods",
 		Recursive: true, // eager load the collection and it's children recursively
@@ -651,7 +651,7 @@ Then generate the ticket (creates ticket with write access to the test collectio
 $ iticket create write test
 ```
 
-Now you can use the generated ticket in GoRODS, no password required. One thing to consider is eager loading collections (using the Recursive flag) while authenticating with a ticket. This will fail, because tickets set on collections don't apply to their sub-collections (the [iRODS documentation says otherwise](https://groups.google.com/d/msg/irod-chat/XPsz8qpoJBk/vTlble0PFgAJ) so this might be a bug in iRODS).
+Now you can use the generated ticket in GoRODS, no password required. One thing to consider is eager loading collections (using the Recursive flag) while authenticating with a ticket. This will fail, because tickets set on collections don't apply to their sub-collections ([this is a bug in iRODS](https://github.com/irods/irods/issues/3299)).
 
 ```go
 client, conErr := gorods.New(gorods.ConnectionOptions{
@@ -665,6 +665,27 @@ client, conErr := gorods.New(gorods.ConnectionOptions{
 
 	Ticket: "J93XyzJ6UGIXrJN",
 })
+
+// Ensure the client initialized successfully and connected to the iCAT server
+if conErr == nil {
+
+	// Open a collection reference for /tempZone/home/rods/test
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path:      "/tempZone/home/rods/test",
+		Recursive: false, // Lazy load sub-collections
+	}, func(col *gorods.Collection, con *gorods.Connection) {
+		
+		// Pass the collection struct to Printf
+		fmt.Printf("%v \n", col)
+
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
+
+} else {
+	log.Fatal(conErr)
+}
+
 ```
 
 
