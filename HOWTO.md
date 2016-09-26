@@ -607,7 +607,56 @@ if openErr := client.OpenCollection(gorods.CollectionOptions{
 
 ### Serving iRODS data objects (files) over HTTP
 
-Here's an example of serving an iRODS file for download over HTTP. This example uses gorilla/mux as the HTTP router.
+
+Here's an example using the built-in HTTP handler interface, this is the easiest way to implement GoRODS over HTTP.
+
+**Example:**
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/jjacquay712/GoRODS"
+	"log"
+	"net/http"
+)
+
+func main() {
+
+	client, conErr := gorods.New(gorods.ConnectionOptions{
+		Type: gorods.UserDefined,
+
+		Host: "localhost",
+		Port: 1247,
+		Zone: "tempZone",
+
+		Username: "rods",
+		Password: "password",
+	})
+
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		log.Fatal(conErr)
+	}
+
+	// Setup the GoRODS FileServer
+	fs := gorods.FileServer("/tempZone/home/rods", client)
+
+	// Create the URL router
+	mux := http.NewServeMux()
+
+	// Serve the iRODS collection at /irods/
+	mux.Handle("/irods/", http.StripPrefix("/irods/", fs))
+
+	// Start HTTP server on port 6060
+	log.Fatal(http.ListenAndServe(":6060", mux))
+
+}
+
+```
+
+This example uses gorilla/mux as the HTTP router and manually serves the data objects (more control).
 
 **Example:**
 ```go
@@ -664,7 +713,7 @@ func main() {
 
 	})
 
-	// Bind to a port and pass our router in
+	// Start HTTP server on port 6060
 	log.Fatal(http.ListenAndServe(":6060", r))
 
 }
@@ -734,7 +783,7 @@ func main() {
 		})
 	})
 
-	// Bind to a port and pass our router in
+	// Start HTTP server on port 6060
 	log.Fatal(http.ListenAndServe(":6060", r))
 
 	// Disconnect after the HTTP server shuts down
