@@ -361,7 +361,7 @@ GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it 
 
 ```go
 
-// Open a data object referece for /tempZone/home/rods/hello.txt
+// Open a data object reference for /tempZone/home/rods/hello.txt
 if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
 	if chmodErr := myFile.Chmod("developers", gorods.Write, false); chmodErr == nil {
@@ -379,6 +379,43 @@ if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile
 **Output:**
 ```
 Chmod success!
+```
+
+### 8. How do I move / copy data objects and collections on the iRODS server?
+
+The example below only illustrates move and copy operations on data objects, but you can use the same functions on collections too. The CopyTo and MoveTo functions accept both *Collection references and path relative strings.
+
+**Example:**
+
+```go
+
+// Open a data object reference for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
+
+	// Copy hello.txt to /tempZone/home/rods/newfolder
+	if cpErr := myFile.CopyTo("newfolder"); cpErr == nil {
+		fmt.Printf("Copy success!\n")
+	} else {
+		log.Fatal(cpErr)
+	}
+
+	// Move hello.txt to /tempZone/home/rods/newfolder2
+	if mvErr := myFile.MoveTo("newfolder2"); mvErr == nil {
+		fmt.Printf("Move success!\n")
+	} else {
+		log.Fatal(mvErr)
+	}
+
+}); openErr != nil {
+	log.Fatal(openErr)
+}
+
+```
+
+**Output:**
+```
+Copy success!
+Move success!
 ```
 
 # Advanced Topics
