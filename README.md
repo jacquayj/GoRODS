@@ -66,6 +66,9 @@ func main() {
 		Path: "/tempZone/home/rods",
 	}, func(col *gorods.Collection, con *gorods.Connection) {
 
+		// Output collection's string representation
+		fmt.Printf("String(): %v \n", col)
+
 		// Loop over the data objects in the collection, print the file name
 		col.EachDataObj(func(obj *gorods.DataObj) {
 			fmt.Printf("%v \n", obj.Name())
@@ -83,6 +86,11 @@ func main() {
 }
 
 ```
+
+**Output:**
+
+![CLI GoRODS Output](https://raw.githubusercontent.com/jjacquay712/GoRODS/master/screenshots/cli.png)
+
 
 ## iRODS HTTP Mount
 
@@ -130,6 +138,10 @@ func main() {
 }
 
 ```
+
+**Output:**
+
+![HTTP GoRODS Output](https://raw.githubusercontent.com/jjacquay712/GoRODS/master/screenshots/http.png)
 
 ## Contributing
 
