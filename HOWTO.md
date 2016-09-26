@@ -691,5 +691,136 @@ if conErr == nil {
 
 ### Serving iRODS data objects (files) over HTTP
 
+Here's an example of serving an iRODS file for download over HTTP. This example uses gorilla/mux as the HTTP router.
 
-### Threading / goroutine connection concerns, and pooling
+**Example:**
+```go
+
+package main
+
+import (
+	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/jjacquay712/GoRODS"
+	"log"
+	"net/http"
+	"strconv"
+)
+
+func main() {
+
+	client, conErr := gorods.New(gorods.ConnectionOptions{
+		Type: gorods.UserDefined,
+
+		Host: "localhost",
+		Port: 1247,
+		Zone: "tempZone",
+
+		Username: "rods",
+		Password: "password",
+	})
+
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		log.Fatal(conErr)
+	}
+
+	r := mux.NewRouter()
+
+	r.HandleFunc("/rods/hello.txt", func(w http.ResponseWriter, r *http.Request) {
+
+		// Open /tempZone/home/rods/hello.txt for download
+		if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(obj *gorods.DataObj, con *gorods.Connection) {
+
+			// Setup download headers
+			w.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
+			w.Header().Set("Content-type", "application/octet-stream")
+			w.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
+
+			// Read file from iRODS, and write to response
+			obj.ReadChunk(1024000, func(chunk []byte) {
+				w.Write(chunk)
+			})
+
+		}); openErr != nil {
+			log.Fatal(openErr)
+		}
+
+	})
+
+	// Bind to a port and pass our router in
+	log.Fatal(http.ListenAndServe(":6060", r))
+
+}
+
+```
+
+## Threading / goroutine Connection Concerns
+
+In the example above, you'll notice that we call client.OpenDataObject within the route handler. This is important if you plan on serving many files concurrently. Every call to OpenDataObject, OpenCollection, or OpenCollection from the client struct will open up a new network connection to iRODS. Because these connections aren't shared between goroutines in the example (goroutines being spun up for every HTTP route handler), there's no operation blocking, enabling fast simultaneous downloads. You'll probably want to use this pattern in your application.
+
+It is possible to share connections between goroutines, however the operations will be blocked if the connection is already in use in another goroutine. This limits concurrent download performance to the transfer speed of a single iRODS network connection. Here's an example of this "blocking" code:
+
+**Example:**
+
+```go
+
+package main
+
+import (
+	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/jjacquay712/GoRODS"
+	"log"
+	"net/http"
+	"strconv"
+)
+
+func main() {
+
+	connection, conErr := gorods.NewConnection(&gorods.ConnectionOptions{
+		Type: gorods.UserDefined,
+
+		Host: "localhost",
+		Port: 1247,
+		Zone: "tempZone",
+
+		Username: "rods",
+		Password: "password",
+	})
+
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		log.Fatal(conErr)
+	}
+
+	// Open /tempZone/home/rods/hello.txt for download
+	myFileDownload, fileErr := connection.DataObject("/tempZone/home/rods/hello.txt")
+
+	// Ensure we were able to get a data object reference
+	if fileErr != nil {
+		log.Fatal(fileErr)
+	}
+
+	r := mux.NewRouter()
+
+	r.HandleFunc("/rods/hello.txt", func(w http.ResponseWriter, r *http.Request) {
+
+		// Setup download headers
+		w.Header().Set("Content-Disposition", "attachment; filename="+myFileDownload.Name())
+		w.Header().Set("Content-type", "application/octet-stream")
+		w.Header().Set("Content-Length", strconv.FormatInt(myFileDownload.Size(), 10))
+
+		// Read file from iRODS, and write to response
+		// This will block other goroutines (HTTP handlers) using the same connection until it's finished reading 1024000 bytes
+		myFileDownload.ReadChunk(1024000, func(chunk []byte) {
+			w.Write(chunk)
+		})
+	})
+
+	// Bind to a port and pass our router in
+	log.Fatal(http.ListenAndServe(":6060", r))
+
+}
+
+```
