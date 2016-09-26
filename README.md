@@ -6,15 +6,15 @@ Golang binding for iRODS C API. Requires go version >= 1.5 for cgo support.
 
 ### Installation
 
-Install dependencies (http://irods.org/download/): irods-dev-4.1.8
+Install dependencies (http://irods.org/download/): irods-dev-4.1.9
 
 ```
 CentOS/RHEL (64 bit)
-$ sudo yum install ftp://ftp.renci.org/pub/irods/releases/4.1.8/centos7/irods-dev-4.1.8-centos7-x86_64.rpm
+$ sudo yum install ftp://ftp.renci.org/pub/irods/releases/4.1.9/centos7/irods-dev-4.1.9-centos7-x86_64.rpm
 
 Ubuntu (64 bit)
-$ curl ftp://ftp.renci.org/pub/irods/releases/4.1.8/ubuntu14/irods-dev-4.1.8-ubuntu14-x86_64.deb > irods-dev-4.1.8-ubuntu14-x86_64.deb
-$ sudo dpkg -i irods-dev-4.1.8-ubuntu14-x86_64.deb
+$ curl ftp://ftp.renci.org/pub/irods/releases/4.1.9/ubuntu14/irods-dev-4.1.9-ubuntu14-x86_64.deb > irods-dev-4.1.9-ubuntu14-x86_64.deb
+$ sudo dpkg -i irods-dev-4.1.9-ubuntu14-x86_64.deb
 ```
 
 Install GoRODS
