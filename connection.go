@@ -599,6 +599,34 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 
 }
 
+// PathType returns DataObjType, CollectionType, or -1 (error) for the iRODS path specified
+func (con *Connection) PathType(p string) (int, error) {
+	var (
+		err        *C.char
+		statResult *C.rodsObjStat_t
+	)
+
+	path := C.CString(p)
+	defer C.free(unsafe.Pointer(path))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+	defer C.freeRodsObjStat(statResult)
+
+	if status := C.gorods_stat_dataobject(path, &statResult, ccon, &err); status != 0 {
+		return -1, newError(Fatal, fmt.Sprintf("iRods Stat Failed: %v, %v", p, C.GoString(err)))
+	}
+
+	if statResult.objType == C.DATA_OBJ_T {
+		return DataObjType, nil
+	} else if statResult.objType == C.COLL_OBJ_T {
+		return CollectionType, nil
+	}
+
+	return -1, newError(Fatal, "Unknown type")
+
+}
+
 // IQuest accepts a SQL query fragment, returns results in slice of maps
 // If upperCase is true, all records will be matched using their uppercase representation.
 func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string, error) {

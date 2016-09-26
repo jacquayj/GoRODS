@@ -1,4 +1,4 @@
-# GoRODS Common Use Cases
+# GoRODS Usage / Examples
 
 This document goes over a few common iRODS tasks that could be implemented with GoRODS.
 
