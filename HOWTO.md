@@ -383,7 +383,7 @@ Chmod success!
 
 ### 8. How do I move / copy data objects and collections on the iRODS server?
 
-The example below only illustrates move and copy operations on data objects, but you can use the same functions on collections too. The CopyTo and MoveTo functions accept both *Collection references and path relative strings.
+The example below only illustrates move and copy operations on data objects, but you can use the same functions on collections too. The CopyTo and MoveTo functions accept both *Collection references and path relative strings. If the target collection does not exist when copying, it will be created recursively. This does not apply to move operations. Neither functions support using ".." to represent the parent directory, this feature might be implemented later.
 
 **Example:**
 
