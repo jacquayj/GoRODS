@@ -31,8 +31,8 @@ type HttpHandler struct {
 
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
-	urlPath := strings.TrimRight(request.URL.Path, "/")
-	openPath := handler.path + urlPath
+	urlPath := strings.Trim(request.URL.Path, "/")
+	openPath := strings.TrimRight(handler.path+"/"+urlPath, "/")
 
 	objType := -1
 
@@ -76,17 +76,22 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 			response.Write([]byte("<br /><strong>Data Objects:</strong><br />"))
 			col.EachDataObj(func(obj *DataObj) {
-				response.Write([]byte("<a href=\"" + urlPath + "/" + obj.Name() + "\">" + obj.Name() + "</a><br />"))
+				response.Write([]byte("<a href=\"" + obj.Name() + "\">" + obj.Name() + "</a><br />"))
 			})
 
 			response.Write([]byte("<br /><strong>Sub Collections:</strong><br />"))
 			col.EachCollection(func(subcol *Collection) {
-				response.Write([]byte("<a href=\"" + urlPath + "/" + subcol.Name() + "\">" + subcol.Name() + "</a><br />"))
+				response.Write([]byte("<a href=\"" + subcol.Name() + "/\">" + subcol.Name() + "</a><br />"))
 			})
 
 		}); er != nil {
 			log.Print(er)
 		}
+	} else {
+		response.Header().Set("Content-Type", "text/html")
+		response.WriteHeader(http.StatusNotFound)
+
+		response.Write([]byte("<h3>404 Not Found: " + openPath + "</h3>"))
 	}
 
 }
