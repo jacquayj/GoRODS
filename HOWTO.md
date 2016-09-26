@@ -28,6 +28,11 @@ func main() {
 		Password: "password",
 	})
 
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		log.Fatal(conErr)
+	}
+
 	// All example code in this document is written as if it was placed in this context / func scope, with the client already setup.
 
 }
@@ -41,25 +46,18 @@ This next example opens a connection to the iRODS server and fetches refrence to
 **Example:**
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a data object reference for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
-
-		// read the contents
-		if contents, readErr := myFile.Read(); readErr == nil {
-			fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
-		} else {
-			log.Fatal(readErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	// read the contents
+	if contents, readErr := myFile.Read(); readErr == nil {
+		fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
+	} else {
+		log.Fatal(readErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -78,26 +76,19 @@ This example is very similar to the one above, except it starts reading at an of
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a data object reference for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
-
-		// Read 6 bytes starting with an offset of 7 bytes
-		// myFile is closed automatically when this function goes out of scope
-		if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
-			fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
-		} else {
-			log.Fatal(readErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	// Read 6 bytes starting with an offset of 7 bytes
+	// myFile is closed automatically when this function goes out of scope
+	if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
+		fmt.Printf("hello.txt file contents: '%v' \n", string(contents))
+	} else {
+		log.Fatal(readErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -116,28 +107,21 @@ There are a few ways to accomplish this, depending on whether the file (data obj
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a collection reference for /tempZone/home/rods
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path: "/tempZone/home/rods",
+}, func(col *gorods.Collection, con *gorods.Connection) {
 
-	// Open a collection reference for /tempZone/home/rods
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path: "/tempZone/home/rods",
-	}, func(col *gorods.Collection, con *gorods.Connection) {
-
-		// Put local file hello.txt to the collection, using default options
-		myFile, putErr := col.Put("hello.txt", gorods.DataObjOptions{})
-		if putErr == nil {
-			fmt.Printf("Successfully added %v to the collection\n", myFile.Name())
-		} else {
-			log.Fatal(putErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	// Put local file hello.txt to the collection, using default options
+	myFile, putErr := col.Put("hello.txt", gorods.DataObjOptions{})
+	if putErr == nil {
+		fmt.Printf("Successfully added %v to the collection\n", myFile.Name())
+	} else {
+		log.Fatal(putErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -153,26 +137,18 @@ You can also write to an existing data object in iRODS. Notice that Write() acce
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a data object reference for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
-
-		// Write sentence to data object
-		if writeErr := myFile.Write([]byte("Has anyone really been far as decided to use even go want to do look more like?")); writeErr == nil {
-			fmt.Printf("Successfully wrote to file\n")
-		} else {
-			log.Fatal(writeErr)
-		}
-	}); openErr != nil {
-		log.Fatal(openErr)
+	// Write sentence to data object
+	if writeErr := myFile.Write([]byte("Has anyone really been far as decided to use even go want to do look more like?")); writeErr == nil {
+		fmt.Printf("Successfully wrote to file\n")
+	} else {
+		log.Fatal(writeErr)
 	}
-
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
-
 
 ```
 
@@ -190,23 +166,16 @@ GoRODS makes this very simple! The first example shows how to print the collecti
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a collection reference for /tempZone/home/rods
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path: "/tempZone/home/rods",
+}, func(col *gorods.Collection, con *gorods.Connection) {
+	
+	// Pass the collection struct to Printf
+	fmt.Printf("%v \n", col)
 
-	// Open a collection reference for /tempZone/home/rods
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path: "/tempZone/home/rods",
-	}, func(col *gorods.Collection, con *gorods.Connection) {
-		
-		// Pass the collection struct to Printf
-		fmt.Printf("%v \n", col)
-
-	}); openErr != nil {
-		log.Fatal(openErr)
-	}
-
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -228,30 +197,23 @@ Collections are denoted with "C:" and data objects with "d:". Here's another exa
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a collection reference for /tempZone/home/rods
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path: "/tempZone/home/rods",
+}, func(col *gorods.Collection, con *gorods.Connection) {
 
-	// Open a collection reference for /tempZone/home/rods
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path: "/tempZone/home/rods",
-	}, func(col *gorods.Collection, con *gorods.Connection) {
+	// Loop over the data objects in the collection, print the file name
+	col.EachDataObj(func(obj *gorods.DataObj) {
+		fmt.Printf("%v \n", obj.Name())
+	})
 
-		// Loop over the data objects in the collection, print the file name
-		col.EachDataObj(func(obj *gorods.DataObj) {
-			fmt.Printf("%v \n", obj.Name())
-		})
+	// Loop over the subcollections in the collection, print the name
+	col.EachCollection(func(subcol *gorods.Collection) {
+		fmt.Printf("%v \n", subcol.Name())
+	})
 
-		// Loop over the subcollections in the collection, print the name
-		col.EachCollection(func(subcol *gorods.Collection) {
-			fmt.Printf("%v \n", subcol.Name())
-		})
-
-	}); openErr != nil {
-		log.Fatal(openErr)
-	}
-
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -269,36 +231,29 @@ You can also access the slices directly, and write the loops yourself:
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a collection reference for /tempZone/home/rods
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path: "/tempZone/home/rods",
+}, func(col *gorods.Collection, con *gorods.Connection) {
 
-	// Open a collection reference for /tempZone/home/rods
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path: "/tempZone/home/rods",
-	}, func(col *gorods.Collection, con *gorods.Connection) {
+	objs, _ := col.DataObjs()
+	for _, obj := range objs {
+		// Use obj here
+	} 
 
-		objs, _ := col.DataObjs()
-		for _, obj := range objs {
-			// Use obj here
-		} 
+	cols, _ := col.Collections()
+	for _, col := range cols {
+		// Use col here
+	}  
 
-		cols, _ := col.Collections()
-		for _, col := range cols {
-			// Use col here
-		}  
+	// All() returns a slice of both data objects and collections combined
+	both, _ := col.All()
+	for _, gObj := range both {
+		// Use gObj (generic object) here
+	}  
 
-		// All() returns a slice of both data objects and collections combined
-		both, _ := col.All()
-		for _, gObj := range both {
-			// Use gObj (generic object) here
-		}  
-
-	}); openErr != nil {
-		log.Fatal(openErr)
-	}
-
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -311,29 +266,22 @@ Metadata can be associated with a data object in iRODS by calling the AddMeta fu
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a data object reference for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
-
-		// Add meta AVU to data object
-		if myAVU, metaErr := myFile.AddMeta(gorods.Meta{
-			Attribute: "wordCount",
-			Value:     "2",
-			Units:     "int",
-		}); metaErr == nil {
-			fmt.Printf("Added meta AVU to data object: %v\n", myAVU)
-		} else {
-			log.Fatal(metaErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	// Add meta AVU to data object
+	if myAVU, metaErr := myFile.AddMeta(gorods.Meta{
+		Attribute: "wordCount",
+		Value:     "2",
+		Units:     "int",
+	}); metaErr == nil {
+		fmt.Printf("Added meta AVU to data object: %v\n", myAVU)
+	} else {
+		log.Fatal(metaErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -352,27 +300,20 @@ Because metadata AVUs can share attribute names, when fetching, Attribute() retu
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a data object reference for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
+	// Fetch all AVUs where Attribute = "wordCount"
+	if metaSlice, attrErr := myFile.Attribute("wordCount"); attrErr == nil {
 
-		// Fetch all AVUs where Attribute = "wordCount"
-		if metaSlice, attrErr := myFile.Attribute("wordCount"); attrErr == nil {
+		fmt.Printf("%v \n", metaSlice)
 
-			fmt.Printf("%v \n", metaSlice)
-
-		} else {
-			log.Fatal(attrErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	} else {
+		log.Fatal(attrErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -390,24 +331,17 @@ You can search for data objects and collections that have a particular AVU using
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a connection to iCAT
+if openErr := client.OpenConnection(func(con *gorods.Connection) {
 
-	// Open a connection to iCAT
-	if openErr := client.OpenConnection(func(con *gorods.Connection) {
-
-		if result, queryErr := con.QueryMeta("wordCount = 2"); queryErr == nil {
-			fmt.Printf("%v \n", result)
-		} else {
-			log.Fatal(queryErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	if result, queryErr := con.QueryMeta("wordCount = 2"); queryErr == nil {
+		fmt.Printf("%v \n", result)
+	} else {
+		log.Fatal(queryErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -427,24 +361,17 @@ GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it 
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a data object referece for /tempZone/home/rods/hello.txt
+if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
 
-	// Open a data object referece for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *gorods.DataObj, con *gorods.Connection) {
-
-		if chmodErr := myFile.Chmod("developers", gorods.Write, false); chmodErr == nil {
-			fmt.Printf("Chmod success!\n")
-		} else {
-			log.Fatal(chmodErr)
-		}
-
-	}); openErr != nil {
-		log.Fatal(openErr)
+	if chmodErr := myFile.Chmod("developers", gorods.Write, false); chmodErr == nil {
+		fmt.Printf("Chmod success!\n")
+	} else {
+		log.Fatal(chmodErr)
 	}
 
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -498,6 +425,11 @@ con, err := gorods.NewConnection(&gorods.ConnectionOptions{
 	Password: "password",
 })
 
+// Ensure we connected to the iCAT server
+if err != nil {
+	log.Fatal(err)
+}
+
 obj, _ := con.DataObject("/tempZone/home/rods/hello.txt")
 
 col, _ := con.Collection(gorods.CollectionOptions{Path: "/tempZone/home/rods",})
@@ -520,23 +452,16 @@ To access a data object reference for every replica (resource it's stored in), s
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a connection to iCAT, get a specific collection
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path:     "/tempZone/home/rods",
+	GetRepls: true,
+}, func(col *gorods.Collection, con *gorods.Connection) {
 
-	// Open a connection to iCAT, get a specific collection
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path:     "/tempZone/home/rods",
-		GetRepls: true,
-	}, func(col *gorods.Collection, con *gorods.Connection) {
+	fmt.Printf("%v \n", col)
 
-		fmt.Printf("%v \n", col)
-
-	}); openErr != nil {
-		log.Fatal(openErr)
-	}
-
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
@@ -608,26 +533,18 @@ When accessing a collection using GoRODS, you will sometimes need to access a su
 
 ```go
 
-// Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
+// Open a collection reference for /tempZone/home/rods
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path:      "/tempZone/home/rods",
+	Recursive: true, // eager load the collection and it's children recursively
+}, func(col *gorods.Collection, con *gorods.Connection) {
+	
+	// Pass the collection struct to Printf
+	fmt.Printf("%v \n", col)
 
-	// Open a collection reference for /tempZone/home/rods
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path:      "/tempZone/home/rods",
-		Recursive: true, // eager load the collection and it's children recursively
-	}, func(col *gorods.Collection, con *gorods.Connection) {
-		
-		// Pass the collection struct to Printf
-		fmt.Printf("%v \n", col)
-
-	}); openErr != nil {
-		log.Fatal(openErr)
-	}
-
-} else {
-	log.Fatal(conErr)
+}); openErr != nil {
+	log.Fatal(openErr)
 }
-
 
 ```
 
@@ -654,6 +571,7 @@ $ iticket create write test
 Now you can use the generated ticket in GoRODS, no password required. One thing to consider is eager loading collections (using the Recursive flag) while authenticating with a ticket. This will fail, because tickets set on collections don't apply to their sub-collections ([this is a bug in iRODS](https://github.com/irods/irods/issues/3299)).
 
 ```go
+
 client, conErr := gorods.New(gorods.ConnectionOptions{
 	Type: gorods.UserDefined,
 
@@ -667,23 +585,21 @@ client, conErr := gorods.New(gorods.ConnectionOptions{
 })
 
 // Ensure the client initialized successfully and connected to the iCAT server
-if conErr == nil {
-
-	// Open a collection reference for /tempZone/home/rods/test
-	if openErr := client.OpenCollection(gorods.CollectionOptions{
-		Path:      "/tempZone/home/rods/test",
-		Recursive: false, // Lazy load sub-collections
-	}, func(col *gorods.Collection, con *gorods.Connection) {
-		
-		// Pass the collection struct to Printf
-		fmt.Printf("%v \n", col)
-
-	}); openErr != nil {
-		log.Fatal(openErr)
-	}
-
-} else {
+if conErr != nil {
 	log.Fatal(conErr)
+}
+
+// Open a collection reference for /tempZone/home/rods/test
+if openErr := client.OpenCollection(gorods.CollectionOptions{
+	Path:      "/tempZone/home/rods/test",
+	Recursive: false, // Lazy load sub-collections
+}, func(col *gorods.Collection, con *gorods.Connection) {
+	
+	// Pass the collection struct to Printf
+	fmt.Printf("%v \n", col)
+
+}); openErr != nil {
+	log.Fatal(openErr)
 }
 
 ```
