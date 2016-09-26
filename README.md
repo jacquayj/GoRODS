@@ -84,7 +84,7 @@ func main() {
 
 ```
 
-## Basic iRODS HTTP Mount
+## iRODS HTTP Mount
 
 ```go
 
