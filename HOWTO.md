@@ -410,7 +410,7 @@ These are the three functions available as a starting point, once you've initial
 2. [client.OpenCollection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenCollection)
 3. [client.OpenConnection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenConnection)
 
-If you'd rather manage the closing of connections, collections, and data objects yourself, you can initialize the connection directly:
+These three functions create a new connection to iRODS each time they're called. This has importance for application concurrency, see [this section](#threading--goroutine-connection-concerns) for more details. If you'd rather manage the opening and closing of connections, collections, and data objects yourself, you can initialize the connection directly:
 
 ```go
 
