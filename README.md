@@ -27,6 +27,10 @@ $ go get github.com/jjacquay712/GoRODS
 
 https://godoc.org/github.com/jjacquay712/GoRODS
 
+### Usage Guide and Examples
+
+https://github.com/jjacquay712/GoRODS/blob/master/HOWTO.md
+
 ## Basic Usage
 
 ```go
@@ -34,135 +38,94 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"github.com/jjacquay712/GoRODS"
 )
 
 func main() {
-
-	// Connect to server, error provided by second parameter
-	irods, _ := gorods.New(gorods.ConnectionOptions {
-
-		// Or gorods.EnvironmentDefined to use the systems preconfigured environment
-		Type: gorods.UserDefined, 
+	
+	client, conErr := gorods.New(gorods.ConnectionOptions{
+		Type: gorods.UserDefined,
 
 		Host: "localhost",
 		Port: 1247,
 		Zone: "tempZone",
 
-		Username: "admin",
+		Username: "rods",
 		Password: "password",
 	})
 
-	// Open collection, preload sub collections into memory
-	homeDir, _ := irods.Collection("/tempZone/home/admin", true)
-
-	buildFile := homeDir.Cd("gorods").Get("build.sh")
-
-	// Search collections & objects by metadata
-	metaResult, _ := irods.QueryMeta("myattr = myval")
-	metaResult.Each(func (irodsObj gorods.IRodsObj) {
-		fmt.Printf("Found: %v\n", irodsObj)
-	})
-
-	// Returns MetaCollection containing all metadata for buildFile DataObject
-	metas, _ := buildFile.Meta()
-
-	// Returns pointer to Meta struct
-	metas.Get("MyAttribute")
-
-	// Add a meta AVU triple
-	metas.Add(gorods.Meta {
-		Attribute: "add-test",
-		Value: "test",
-		Units: "string",
-	})
-
-	// Or use a shortcut
-	myAttr, _ := buildFile.Attribute("MyAttribute")
-
-	myAttr.SetValue("New Value")
-
-	myAttr.SetUnits("myUnit")
-
-	myAttr.Set("New Value", "myUnit")
-
-	myAttr.Rename("AnotherAttribute")
-
-	// Delete the metadata AVU triple
-	myAttr.Delete()
-	
-	// Returns true/false if checksum matches
-	buildFile.Verify("GdU5GXvmky9/rw7rduk4JaEtEdlhhhhGufiez+2aI4o=")
-	
-	// Download remote file
-	buildFile.DownloadTo("build.sh")
-
-	// Read file from /tempZone/home/admin/gorods/build.sh
-	contents, _ := buildFile.Read()
-
-	// Read file in 5 byte chunks
-	var wholeFile []byte
-
-	buildFile.ReadChunk(5, func(chunk []byte) {
-		wholeFile = append(wholeFile, chunk...)
-	})
-
-	fmt.Printf(string(wholeFile))
-
-	// Print []Byte as string
-	fmt.Printf(string(contents))
-
-	// Add local file to collection
-	remoteFile, _ := homeDir.Put("local_file.txt")
-
-	// Copy file to gorods directory
-	remoteFile.CopyTo("gorods")
-	// or
-	//
-	// gorodsDir := homeDir.Cd("gorods")
-	// remoteFile.CopyTo(gorodsDir)
-
-	// Move file
-	remoteFile.MoveTo("gorods/local_file2.txt")
-
-	// Rename file
-	remoteFile.Rename("local_file3.txt")
-
-	// Create file in home directory, overwrite if it exists
-	test, _ := gorods.CreateDataObj(gorods.DataObjOptions {
-		Name: "test.txt",
-		Mode: 0750,
-		Force: true,
-	}, homeDir)
-
-	// Write string to test file
-	test.Write([]byte("This is a test!"))
-
-	// Write 5 copies of "test" to file
-	// Will start writing at last offset (seek) position (typically 0)
-	for n := 0; n < 5; n++ {
-		test.WriteBytes([]byte("test\n"))
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		log.Fatal(conErr)
 	}
 
-	// We must close the file explicitly after calling WriteBytes()
-	test.Close()
 
-	// Stat the test.txt file
-	fmt.Printf("%v \n", test.Stat())
+	// Open a collection reference for /tempZone/home/rods
+	if openErr := client.OpenCollection(gorods.CollectionOptions{
+		Path: "/tempZone/home/rods",
+	}, func(col *gorods.Collection, con *gorods.Connection) {
 
-	// Read the contents back, print to screen
-	fmt.Printf("%v \n", string(test.Read()))
+		// Loop over the data objects in the collection, print the file name
+		col.EachDataObj(func(obj *gorods.DataObj) {
+			fmt.Printf("%v \n", obj.Name())
+		})
 
-	// Delete the file
-	test.Delete()
+		// Loop over the subcollections in the collection, print the name
+		col.EachCollection(func(subcol *gorods.Collection) {
+			fmt.Printf("%v \n", subcol.Name())
+		})
 
-	// Close data object/collection handles if open
-	homeDir.Close()
-	buildFile.Close()
-	remoteFile.Close()
+	}); openErr != nil {
+		log.Fatal(openErr)
+	}
 
-	// Disconnect from the iCAT server, important!
-	irods.Disconnect()
+}
+
+```
+
+## Basic iRODS HTTP Mount
+
+```go
+
+package main
+
+import (
+	"fmt"
+	"github.com/jjacquay712/GoRODS"
+	"log"
+	"net/http"
+)
+
+func main() {
+
+	client, conErr := gorods.New(gorods.ConnectionOptions{
+		Type: gorods.UserDefined,
+
+		Host: "localhost",
+		Port: 1247,
+		Zone: "tempZone",
+
+		Username: "rods",
+		Password: "password",
+	})
+
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		log.Fatal(conErr)
+	}
+
+	// Setup the GoRODS FileServer
+	fs := gorods.FileServer("/tempZone/home/rods", client)
+
+	// Create the URL router
+	mux := http.NewServeMux()
+
+	// Serve the iRODS collection at /irods/
+	mux.Handle("/irods/", http.StripPrefix("/irods/", fs))
+
+	// Start HTTP server on port 8080
+	log.Fatal(http.ListenAndServe(":8080", mux))
 
 }
 
