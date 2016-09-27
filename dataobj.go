@@ -155,14 +155,18 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 		force = 0
 	}
 
-	switch opts.Resource.(type) {
-	case string:
-		resource = C.CString(opts.Resource.(string))
-	case *Resource:
-		r := opts.Resource.(*Resource)
-		resource = C.CString(r.Name())
-	default:
-		return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+	if opts.Resource != nil {
+		switch opts.Resource.(type) {
+		case string:
+			resource = C.CString(opts.Resource.(string))
+		case *Resource:
+			r := opts.Resource.(*Resource)
+			resource = C.CString(r.Name())
+		default:
+			return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+		}
+	} else {
+		resource = C.CString("")
 	}
 
 	path := C.CString(coll.path + "/" + opts.Name)
