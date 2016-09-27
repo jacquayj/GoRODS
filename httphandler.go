@@ -31,67 +31,74 @@ type HttpHandler struct {
 
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
-	urlPath := strings.Trim(request.URL.Path, "/")
+	urlPath := strings.TrimRight(request.URL.Path, "/")
 	openPath := strings.TrimRight(handler.path+"/"+urlPath, "/")
 
-	objType := -1
-
 	if er := handler.client.OpenConnection(func(con *Connection) {
-		if typ, err := con.PathType(openPath); err == nil {
-			objType = typ
+		if objType, err := con.PathType(openPath); err == nil {
+
+			if objType == DataObjType {
+				if obj, er := con.DataObject(openPath); er == nil {
+
+					response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
+					response.Header().Set("Content-type", "application/octet-stream")
+					response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
+
+					if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
+						response.Write(chunk)
+					}); readEr != nil {
+						log.Print(readEr)
+					}
+
+				} else {
+					log.Print(er)
+				}
+			} else if objType == CollectionType {
+
+				uP := request.URL.Path
+
+				if uP != "/" && uP != "" && uP[len(uP)-1:] != "/" {
+					http.Redirect(response, request, (uP + "/"), http.StatusFound)
+					return
+				}
+
+				if col, er := con.Collection(CollectionOptions{
+					Path:      openPath,
+					Recursive: false,
+					GetRepls:  false,
+				}); er == nil {
+
+					response.Header().Set("Content-Type", "text/html")
+
+					response.Write([]byte("<h3>Collection: " + col.Path() + "</h3>"))
+
+					response.Write([]byte("<br /><strong>Data Objects:</strong><br />"))
+					col.EachDataObj(func(obj *DataObj) {
+						response.Write([]byte("<a href=\"" + obj.Name() + "\">" + obj.Name() + "</a><br />"))
+					})
+
+					response.Write([]byte("<br /><strong>Sub Collections:</strong><br />"))
+					col.EachCollection(func(subcol *Collection) {
+						response.Write([]byte("<a href=\"" + subcol.Name() + "/\">" + subcol.Name() + "</a><br />"))
+					})
+
+				} else {
+					log.Print(er)
+				}
+			}
+
 		} else {
+
+			response.Header().Set("Content-Type", "text/html")
+			response.WriteHeader(http.StatusNotFound)
+
+			response.Write([]byte("<h3>404 Not Found: " + openPath + "</h3>"))
+
 			log.Print(err)
 		}
 	}); er != nil {
 		log.Print(er)
 		return
-	}
-
-	if objType == DataObjType {
-		if er := handler.client.OpenDataObject(openPath, func(obj *DataObj, con *Connection) {
-
-			response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
-			response.Header().Set("Content-type", "application/octet-stream")
-			response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
-
-			if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
-				response.Write(chunk)
-			}); readEr != nil {
-				log.Print(readEr)
-			}
-
-		}); er != nil {
-			log.Print(er)
-		}
-	} else if objType == CollectionType {
-		if er := handler.client.OpenCollection(CollectionOptions{
-			Path:      openPath,
-			Recursive: false,
-			GetRepls:  false,
-		}, func(col *Collection, con *Connection) {
-
-			response.Header().Set("Content-Type", "text/html")
-
-			response.Write([]byte("<h3>Collection: " + col.Path() + "</h3>"))
-
-			response.Write([]byte("<br /><strong>Data Objects:</strong><br />"))
-			col.EachDataObj(func(obj *DataObj) {
-				response.Write([]byte("<a href=\"" + obj.Name() + "\">" + obj.Name() + "</a><br />"))
-			})
-
-			response.Write([]byte("<br /><strong>Sub Collections:</strong><br />"))
-			col.EachCollection(func(subcol *Collection) {
-				response.Write([]byte("<a href=\"" + subcol.Name() + "/\">" + subcol.Name() + "</a><br />"))
-			})
-
-		}); er != nil {
-			log.Print(er)
-		}
-	} else {
-		response.Header().Set("Content-Type", "text/html")
-		response.WriteHeader(http.StatusNotFound)
-
-		response.Write([]byte("<h3>404 Not Found: " + openPath + "</h3>"))
 	}
 
 }
