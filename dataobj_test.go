@@ -85,3 +85,36 @@ func TestDataObjRead(t *testing.T) {
 	}
 
 }
+
+func TestDataObjMeta(t *testing.T) {
+	client, conErr := New(ConnectionOptions{
+		Type: UserDefined,
+
+		Host: "localhost",
+		Port: 1247,
+		Zone: "tempZone",
+
+		Username: "rods",
+		Password: "password",
+	})
+
+	// Ensure the client initialized successfully and connected to the iCAT server
+	if conErr != nil {
+		t.Fatal(conErr)
+	}
+
+	// Open a data object reference for /tempZone/home/rods/hello.txt
+	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *DataObj, con *Connection) {
+
+		// read the contents
+		if _, metaErr := myFile.Meta(); metaErr == nil {
+
+		} else {
+			t.Fatal(metaErr)
+		}
+
+	}); openErr != nil {
+		t.Fatal(openErr)
+	}
+
+}

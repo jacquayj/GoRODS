@@ -8,25 +8,35 @@ import "C"
 
 import (
 	"log"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func FileServer(path string, client *Client) http.Handler {
+func FileServer(opts FSOptions) http.Handler {
 
 	handler := new(HttpHandler)
 
-	handler.client = client
-	handler.path = strings.TrimRight(path, "/")
+	handler.client = opts.Client
+	handler.path = strings.TrimRight(opts.Path, "/")
+	handler.opts = opts
 
 	return handler
 
 }
 
+type FSOptions struct {
+	Client   *Client
+	Path     string
+	Download bool
+}
+
 type HttpHandler struct {
 	client *Client
 	path   string
+	opts   FSOptions
 }
 
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
@@ -40,8 +50,27 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 			if objType == DataObjType {
 				if obj, er := con.DataObject(openPath); er == nil {
 
-					response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
-					response.Header().Set("Content-type", "application/octet-stream")
+					if handler.opts.Download {
+						response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
+						response.Header().Set("Content-type", "application/octet-stream")
+					} else {
+						var mimeType string
+						ext := filepath.Ext(openPath)
+
+						if ext != "" {
+							mimeType = mime.TypeByExtension(ext)
+
+							if mimeType == "" {
+								log.Printf("Can't find mime type for %s extension", ext)
+								mimeType = "application/octet-stream"
+							}
+						} else {
+							mimeType = "application/octet-stream"
+						}
+
+						response.Header().Set("Content-type", mimeType)
+					}
+
 					response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
 
 					if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
@@ -71,13 +100,14 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					response.Header().Set("Content-Type", "text/html")
 
 					response.Write([]byte("<h3>Collection: " + col.Path() + "</h3>"))
-
 					response.Write([]byte("<br /><strong>Data Objects:</strong><br />"))
+
 					col.EachDataObj(func(obj *DataObj) {
 						response.Write([]byte("<a href=\"" + obj.Name() + "\">" + obj.Name() + "</a><br />"))
 					})
 
 					response.Write([]byte("<br /><strong>Sub Collections:</strong><br />"))
+
 					col.EachCollection(func(subcol *Collection) {
 						response.Write([]byte("<a href=\"" + subcol.Name() + "/\">" + subcol.Name() + "</a><br />"))
 					})
