@@ -124,7 +124,11 @@ func main() {
 	}
 
 	// Setup the GoRODS FileServer
-	fs := gorods.FileServer("/tempZone/home/rods", client)
+	fs := gorods.FileServer(gorods.FSOptions{
+		Path:   "/tempZone/home/rods",
+		Client: client,
+		Download: true,
+	})
 
 	// Create the URL router
 	mux := http.NewServeMux()
