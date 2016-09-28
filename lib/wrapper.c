@@ -2381,12 +2381,20 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 		addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneArgument);
 	}
 
+    int cont;
+
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
+
 	if ( status == CAT_NO_ROWS_FOUND ) {
-		i1a[0] = COL_COLL_COMMENTS;
+		freeGenQueryOut(&genQueryOut);
+
+        i1a[0] = COL_COLL_COMMENTS;
 		genQueryInp.selectInp.len = 1;
 		genQueryInp.sqlCondInp.len = 1;
-		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+		
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
 		
 		if ( status == 0 ) {
 			*err = "No rows found";
@@ -2402,16 +2410,19 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 	}
 
 	setGoRodsMeta(genQueryOut, columnNames, result); 
+    freeGenQueryOut(&genQueryOut);
 
-	while ( status == 0 && genQueryOut->continueInx > 0 ) {
+	while ( status == 0 && cont > 0 ) {
 
 		genQueryInp.continueInx = genQueryOut->continueInx;
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
 
-		setGoRodsMeta(genQueryOut, columnNames, result); 
+		setGoRodsMeta(genQueryOut, columnNames, result);
+        freeGenQueryOut(&genQueryOut);
 	}
 
-    freeGenQueryOut(&genQueryOut);
+    
 
 	return 0;
 }
@@ -2615,11 +2626,20 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 		addKeyVal(&genQueryInp.condInput, ZONE_KW, zoneArgument);
 	}
 
+    int cont;
+
 	status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
+
 	if ( status == CAT_NO_ROWS_FOUND ) {
+
+        freeGenQueryOut(&genQueryOut);
+
 		i1a[0] = COL_D_DATA_PATH;
 		genQueryInp.selectInp.len = 1;
+
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
 
 		if ( status == 0 ) {
 			*err = "No rows found";
@@ -2635,16 +2655,20 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 	}
 
 	setGoRodsMeta(genQueryOut, columnNames, result); 
+    freeGenQueryOut(&genQueryOut);
 
-	while ( status == 0 && genQueryOut->continueInx > 0 ) {
+	while ( status == 0 && cont > 0 ) {
 
 		genQueryInp.continueInx = genQueryOut->continueInx;
-		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
 
-		setGoRodsMeta(genQueryOut, columnNames, result); 
+		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
+
+		setGoRodsMeta(genQueryOut, columnNames, result);
+        freeGenQueryOut(&genQueryOut);
 	}
 
-    freeGenQueryOut(&genQueryOut);
+    
 
 	return 0;
 }
