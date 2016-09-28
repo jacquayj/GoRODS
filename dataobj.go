@@ -1066,7 +1066,6 @@ func (obj *DataObj) Chksum() (string, error) {
 	path := C.CString(obj.path)
 
 	defer C.free(unsafe.Pointer(path))
-	defer C.free(unsafe.Pointer(chksumOut))
 
 	ccon := obj.con.GetCcon()
 	defer obj.con.ReturnCcon(ccon)
@@ -1076,6 +1075,8 @@ func (obj *DataObj) Chksum() (string, error) {
 	}
 
 	obj.checksum = C.GoString(chksumOut)
+
+	C.free(unsafe.Pointer(chksumOut))
 
 	return obj.checksum, nil
 }
