@@ -552,7 +552,11 @@ int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* res
     genQueryInp.maxRows = 50;
     genQueryInp.continueInx = 0;
     
+    int cont;
+
     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
+
     if ( status == CAT_NO_ROWS_FOUND ) {
         *err = "Not a member of any group";
         freeGenQueryOut(&genQueryOut);
@@ -566,16 +570,17 @@ int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* res
     }
 
     gorods_get_user_group_result(status, result, genQueryOut, columnNames);
+    freeGenQueryOut(&genQueryOut);
 
-    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+    while ( status == 0 && cont > 0 ) {
         genQueryInp.continueInx = genQueryOut->continueInx;
         
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
        
         gorods_get_user_group_result(status, result, genQueryOut, columnNames);
+        freeGenQueryOut(&genQueryOut);
     }
-
-    freeGenQueryOut(&genQueryOut);
 
     return 0;
 }
