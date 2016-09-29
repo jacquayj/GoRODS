@@ -35,7 +35,7 @@ type ACLs []*ACL
 
 // User is a shortcut to cast the AccessObject as it's underlying data structure type (*User)
 func (acl *ACL) User() *User {
-	if acl.Type == UserType {
+	if acl.Type == UserType || acl.Type == AdminType || acl.Type == GroupAdminType {
 		return acl.AccessObject.(*User)
 	}
 

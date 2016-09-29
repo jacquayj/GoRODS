@@ -163,25 +163,13 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 
 		m.Parent.Con.ReturnCcon(ccon)
 
-		m.Parent.Refresh()
+		m.Attribute = attributeName
+		m.Value = value
+		m.Units = units
+
 	}
 
-	var metaResult Metas
-
-	metaResult, e = m.Parent.Get(attributeName)
-
-	if len(metaResult) == 0 {
-		return
-	}
-
-	if match := metaResult.MatchOne(&Meta{
-		Attribute: attributeName,
-		Value:     value,
-		Units:     units,
-	}); match != nil {
-		newMeta = match
-		return
-	}
+	newMeta = m
 
 	return
 }
