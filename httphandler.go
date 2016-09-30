@@ -7,6 +7,7 @@ package gorods
 import "C"
 
 import (
+	"html/template"
 	"log"
 	"mime"
 	"net/http"
@@ -38,6 +39,96 @@ type HttpHandler struct {
 	path   string
 	opts   FSOptions
 }
+
+var check func(error) = func(err error) {
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+const tpl = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Collection: {{.Path}}</title>
+	
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+	<!-- Optional theme -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+	<style type="text/css">
+	.table td.fit, 
+	.table th.fit {
+	    white-space: nowrap;
+	    width: 1%;
+	}
+	</style>
+
+</head>
+<body>
+	<nav class="navbar navbar-default navbar-fixed-top">
+		<div class="container">
+			<div class="navbar-header">
+				<a class="navbar-brand" href="#">GoRODS HTTP FileServer</a>
+			</div>
+			<div id="navbar" class="navbar-collapse collapse">
+				<ul class="nav navbar-nav navbar-right">
+					{{range .PathFragments}}
+						<li><a href="#">{{ . }}</a></li>
+					{{end}}
+					<li class="active"><a href=".">{{.Name}}</a></li>
+				</ul>
+			</div><!--/.nav-collapse -->
+		</div>
+	</nav>
+
+	<div class="container">
+		<br /><br /><br />
+		<h3>{{.Path}}</h3>
+
+		<table class="table table-hover">
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Size</th>
+					<th>Type</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<th><a href="..">..</a></th>
+					<td></td>
+					<td>Collection</td>
+				</tr>
+				{{range .Collections}}
+					<tr>
+						<th><a href="{{.Name}}/">{{.Name}}</a></th>
+						<td></td>
+						<td>Collection</td>
+					</tr>
+				{{end}}
+				{{range .DataObjs}}
+					<tr>
+						<th><a href="{{.Name}}">{{.Name}}</a></th>
+						<td>{{.Size}} bytes</td>
+						<td>Data Object</td>
+					</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</div>
+
+</body>
+</html>
+`
 
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
@@ -99,18 +190,11 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 					response.Header().Set("Content-Type", "text/html")
 
-					response.Write([]byte("<h3>Collection: " + col.Path() + "</h3>"))
-					response.Write([]byte("<br /><strong>Data Objects:</strong><br />"))
+					t, err := template.New("collectionList").Parse(tpl)
+					check(err)
 
-					col.EachDataObj(func(obj *DataObj) {
-						response.Write([]byte("<a href=\"" + obj.Name() + "\">" + obj.Name() + "</a><br />"))
-					})
-
-					response.Write([]byte("<br /><strong>Sub Collections:</strong><br />"))
-
-					col.EachCollection(func(subcol *Collection) {
-						response.Write([]byte("<a href=\"" + subcol.Name() + "/\">" + subcol.Name() + "</a><br />"))
-					})
+					err = t.Execute(response, col)
+					check(err)
 
 				} else {
 					log.Print(er)

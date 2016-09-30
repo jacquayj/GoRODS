@@ -269,6 +269,12 @@ func (col *Collection) init() error {
 	return nil
 }
 
+func (col *Collection) PathFragments() []string {
+	frags := strings.Split(col.Path(), "/")
+
+	return frags[:len(frags)-1]
+}
+
 // Collections returns only the IRodsObjs that represent collections
 func (col *Collection) Collections() (response IRodsObjs, err error) {
 	if err = col.init(); err != nil {
