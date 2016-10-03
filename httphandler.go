@@ -7,6 +7,7 @@ package gorods
 import "C"
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"mime"
@@ -44,6 +45,22 @@ var check func(error) = func(err error) {
 	if err != nil {
 		log.Print(err)
 	}
+}
+
+var funcMap template.FuncMap = template.FuncMap{
+	"prettySize": func(size int64) string {
+		if size < 1024 {
+			return fmt.Sprintf("%v bytes", size)
+		} else if size < 1048576 { // 1 MiB
+			return fmt.Sprintf("%.1f KiB", float64(size)/1024.0)
+		} else if size < 1073741824 { // 1 GiB
+			return fmt.Sprintf("%.1f MiB", float64(size)/1048576.0)
+		} else if size < 1099511627776 { // 1 TiB
+			return fmt.Sprintf("%.1f GiB", float64(size)/1073741824.0)
+		} else {
+			return fmt.Sprintf("%.1f TiB", float64(size)/1099511627776.0)
+		}
+	},
 }
 
 const tpl = `
@@ -111,14 +128,14 @@ const tpl = `
 				{{range .Collections}}
 					<tr>
 						<th><a href="{{.Name}}/">{{.Name}}</a></th>
-						<td></td>
+						<td>{{prettySize .Size}}</td>
 						<td>Collection</td>
 					</tr>
 				{{end}}
 				{{range .DataObjs}}
 					<tr>
 						<th><a href="{{.Name}}">{{.Name}}</a></th>
-						<td>{{.Size}} bytes</td>
+						<td>{{prettySize .Size}}</td>
 						<td>Data Object</td>
 					</tr>
 				{{end}}
@@ -190,7 +207,7 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 					response.Header().Set("Content-Type", "text/html")
 
-					t, err := template.New("collectionList").Parse(tpl)
+					t, err := template.New("collectionList").Funcs(funcMap).Parse(tpl)
 					check(err)
 
 					err = t.Execute(response, col)

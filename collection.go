@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -421,6 +422,21 @@ func (col *Collection) ACL() (ACLs, error) {
 	col.con.ReturnCcon(ccon)
 
 	return aclSliceToResponse(&result, col.con)
+}
+
+func (col *Collection) Size() (int64, error) {
+	result, err := col.con.IQuest("select sum(DATA_SIZE) where COLL_NAME like '"+col.path+"%'", false)
+	if err != nil {
+		return 0, err
+	}
+
+	i, err := strconv.ParseInt(result[0]["DATA_SIZE"], 10, 64)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return i, nil
 }
 
 // Type gets the type
