@@ -6,7 +6,9 @@ package gorods
 import "testing"
 import "strings"
 
-func TestDataObjCreateDelete(t *testing.T) {
+//import "fmt"
+
+func TestDataObjCreateDeleteWrite(t *testing.T) {
 	client, conErr := New(ConnectionOptions{
 		Type: UserDefined,
 
@@ -36,8 +38,45 @@ func TestDataObjCreateDelete(t *testing.T) {
 			t.Fatal(createErr)
 		}
 
-		delErr := do.Delete(false)
+		wrErr := do.Write([]byte("test123content"))
+		if wrErr != nil {
+			t.Fatal(wrErr)
+		}
 
+		_, statErr := do.Stat()
+		if statErr != nil {
+			t.Fatal(statErr)
+		}
+
+		if chErr := do.Chmod("developers", Write, false); chErr != nil {
+			t.Fatal(chErr)
+		}
+
+		acl, aclErr := do.ACL()
+		if aclErr != nil {
+			t.Fatal(aclErr)
+		}
+
+		acl[0].String()
+
+		if acl[1].User().Name() != "rods" {
+			t.Errorf("Expected string 'rods', got '%s'", acl[1].User().Name())
+		}
+
+		if acl[0].Group().Name() != "developers" {
+			t.Errorf("Expected string 'developers', got '%s'", acl[0].Group().Name())
+		}
+
+		cont, readErr := do.Read()
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+
+		if string(cont) != "test123content" {
+			t.Errorf("Expected string 'test123content', got '%s'", string(cont))
+		}
+
+		delErr := do.Delete(false)
 		if delErr != nil {
 			t.Fatal(delErr)
 		}
@@ -86,7 +125,7 @@ func TestDataObjRead(t *testing.T) {
 
 }
 
-func TestDataObjMeta(t *testing.T) {
+func TestDataObjReadBytes(t *testing.T) {
 	client, conErr := New(ConnectionOptions{
 		Type: UserDefined,
 
@@ -107,10 +146,15 @@ func TestDataObjMeta(t *testing.T) {
 	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *DataObj, con *Connection) {
 
 		// read the contents
-		if _, metaErr := myFile.Meta(); metaErr == nil {
+		if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
 
+			c := string(contents)
+
+			if c != "World!" {
+				t.Errorf("Expected string 'World!', got '%s'", c)
+			}
 		} else {
-			t.Fatal(metaErr)
+			t.Fatal(readErr)
 		}
 
 	}); openErr != nil {

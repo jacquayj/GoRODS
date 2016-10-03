@@ -6,7 +6,7 @@ package gorods
 import "testing"
 
 func TestClientConnection(t *testing.T) {
-	_, conErr := New(ConnectionOptions{
+	cli, conErr := New(ConnectionOptions{
 		Type: UserDefined,
 
 		Host: "localhost",
@@ -20,5 +20,12 @@ func TestClientConnection(t *testing.T) {
 	// Ensure the client initialized successfully and connected to the iCAT server
 	if conErr != nil {
 		t.Fatal(conErr)
+	}
+
+	oconErr := cli.OpenConnection(func(con *Connection) {
+
+	})
+	if oconErr != nil {
+		t.Fatal(oconErr)
 	}
 }
