@@ -30,9 +30,10 @@ func FileServer(opts FSOptions) http.Handler {
 }
 
 type FSOptions struct {
-	Client   *Client
-	Path     string
-	Download bool
+	Client      *Client
+	Path        string
+	Download    bool
+	StripPrefix string
 }
 
 type HttpHandler struct {
@@ -45,22 +46,6 @@ var check func(error) = func(err error) {
 	if err != nil {
 		log.Print(err)
 	}
-}
-
-var funcMap template.FuncMap = template.FuncMap{
-	"prettySize": func(size int64) string {
-		if size < 1024 {
-			return fmt.Sprintf("%v bytes", size)
-		} else if size < 1048576 { // 1 MiB
-			return fmt.Sprintf("%.1f KiB", float64(size)/1024.0)
-		} else if size < 1073741824 { // 1 GiB
-			return fmt.Sprintf("%.1f MiB", float64(size)/1048576.0)
-		} else if size < 1099511627776 { // 1 TiB
-			return fmt.Sprintf("%.1f GiB", float64(size)/1073741824.0)
-		} else {
-			return fmt.Sprintf("%.1f TiB", float64(size)/1099511627776.0)
-		}
-	},
 }
 
 const tpl = `
@@ -98,10 +83,9 @@ const tpl = `
 			</div>
 			<div id="navbar" class="navbar-collapse collapse">
 				<ul class="nav navbar-nav navbar-right">
-					{{range .PathFragments}}
-						<li><a href="#">{{ . }}</a></li>
+					{{range headerLinks}}
+						<li><a href="{{ index . "url" }}">{{ index . "name" }}</a></li>
 					{{end}}
-					<li class="active"><a href=".">{{.Name}}</a></li>
 				</ul>
 			</div><!--/.nav-collapse -->
 		</div>
@@ -117,19 +101,23 @@ const tpl = `
 					<th>Name</th>
 					<th>Size</th>
 					<th>Type</th>
+					<th></th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr>
-					<th><a href="..">..</a></th>
-					<td></td>
-					<td>Collection</td>
-				</tr>
+				{{ $length := len headerLinks }}{{ if ne $length 0 }}
+					<tr>
+						<th><a href="..">..</a></th>
+						<td></td>
+						<td>Collection</td>
+					</tr>
+				{{ end }}
 				{{range .Collections}}
 					<tr>
 						<th><a href="{{.Name}}/">{{.Name}}</a></th>
 						<td>{{prettySize .Size}}</td>
 						<td>Collection</td>
+						<td></td>
 					</tr>
 				{{end}}
 				{{range .DataObjs}}
@@ -137,6 +125,7 @@ const tpl = `
 						<th><a href="{{.Name}}">{{.Name}}</a></th>
 						<td>{{prettySize .Size}}</td>
 						<td>Data Object</td>
+						<td><a href="{{.Name}}?download=1"><span class="glyphicon glyphicon-download-alt"></span></a></td>
 					</tr>
 				{{end}}
 			</tbody>
@@ -149,8 +138,9 @@ const tpl = `
 
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
+	handlerPath := strings.TrimRight(handler.path, "/")
 	urlPath := strings.TrimRight(request.URL.Path, "/")
-	openPath := strings.TrimRight(handler.path+"/"+urlPath, "/")
+	openPath := strings.TrimRight(handlerPath+"/"+urlPath, "/")
 
 	if er := handler.client.OpenConnection(func(con *Connection) {
 		if objType, err := con.PathType(openPath); err == nil {
@@ -158,7 +148,9 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 			if objType == DataObjType {
 				if obj, er := con.DataObject(openPath); er == nil {
 
-					if handler.opts.Download {
+					query := request.URL.Query()
+
+					if handler.opts.Download || query.Get("download") != "" {
 						response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
 						response.Header().Set("Content-type", "application/octet-stream")
 					} else {
@@ -207,7 +199,50 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 					response.Header().Set("Content-Type", "text/html")
 
-					t, err := template.New("collectionList").Funcs(funcMap).Parse(tpl)
+					t, err := template.New("collectionList").Funcs(template.FuncMap{
+						"prettySize": func(size int64) string {
+							if size < 1024 {
+								return fmt.Sprintf("%v bytes", size)
+							} else if size < 1048576 { // 1 MiB
+								return fmt.Sprintf("%.1f KiB", float64(size)/1024.0)
+							} else if size < 1073741824 { // 1 GiB
+								return fmt.Sprintf("%.1f MiB", float64(size)/1048576.0)
+							} else if size < 1099511627776 { // 1 TiB
+								return fmt.Sprintf("%.1f GiB", float64(size)/1073741824.0)
+							} else {
+								return fmt.Sprintf("%.1f TiB", float64(size)/1099511627776.0)
+							}
+						},
+						"headerLinks": func() []map[string]string {
+							headerLinks := make([]map[string]string, 0)
+
+							if openPath == handlerPath {
+								return headerLinks
+							}
+
+							p := strings.TrimPrefix(openPath, handlerPath+"/")
+
+							frags := strings.Split(p, "/")
+
+							for i := range frags {
+								var path string
+
+								if i > 0 {
+									path = strings.Join(frags[0:i], "/") + "/"
+								} else {
+									path = ""
+								}
+
+								headerLinks = append(headerLinks, map[string]string{
+									"name": frags[i],
+									"url":  (handler.opts.StripPrefix + path + frags[i] + "/"),
+								})
+
+							}
+
+							return headerLinks
+						},
+					}).Parse(tpl)
 					check(err)
 
 					err = t.Execute(response, col)
