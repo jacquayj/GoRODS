@@ -139,9 +139,10 @@ const tpl = `
 									<div class="modal-content">
 										<div class="modal-header">
 											<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-											<h4 class="modal-title" id="myModalLabel">Collection "{{.Name}}" Metadata</h4>
+											<h4 class="modal-title" id="myModalLabel">Collection "{{.Name}}"</h4>
 										</div>
 										<div class="modal-body">
+											<h4>Metadata</h4>
 											<table class="table table-hover">
 											<thead>
 												<tr>
@@ -159,6 +160,28 @@ const tpl = `
 													</tr>
 												{{else}}
 													<tr><td colspan="3" style="text-align:center;">No Metadata Found</td></tr>
+												{{ end }}
+											</tbody>
+											</table>
+
+											<h4>ACL</h4>
+											<table class="table table-hover">
+											<thead>
+												<tr>
+													<th>Name</th>
+													<th>Access Level</th>
+													<th>Type</th>
+												</tr>
+											</thead>
+											<tbody>
+												{{ range .ACL }}
+													<tr>
+														<td>{{ .AccessObject.Name }}</td>
+														<td>{{ getTypeString .AccessLevel }}</td>
+														<td>{{ getTypeString .Type }}</td>
+													</tr>
+												{{else}}
+													<tr><td colspan="3" style="text-align:center;">No ACLs Found</td></tr>
 												{{ end }}
 											</tbody>
 											</table>
@@ -186,9 +209,10 @@ const tpl = `
 									<div class="modal-content">
 										<div class="modal-header">
 											<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-											<h4 class="modal-title" id="myModalLabel">Data Object "{{.Name}}" Metadata</h4>
+											<h4 class="modal-title" id="myModalLabel">Data Object "{{.Name}}"</h4>
 										</div>
 										<div class="modal-body">
+											<h4>Metadata</h4>
 											<table class="table table-hover">
 											<thead>
 												<tr>
@@ -209,6 +233,29 @@ const tpl = `
 												{{ end }}
 											</tbody>
 											</table>
+
+											<h4>ACL</h4>
+											<table class="table table-hover">
+											<thead>
+												<tr>
+													<th>Name</th>
+													<th>Access Level</th>
+													<th>Type</th>
+												</tr>
+											</thead>
+											<tbody>
+												{{ range .ACL }}
+													<tr>
+														<td>{{ .AccessObject.Name }}</td>
+														<td>{{ getTypeString .AccessLevel }}</td>
+														<td>{{ getTypeString .Type }}</td>
+													</tr>
+												{{else}}
+													<tr><td colspan="3" style="text-align:center;">No ACLs Found</td></tr>
+												{{ end }}
+											</tbody>
+											</table>
+											
 										</div>
 										<div class="modal-footer">
 											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -352,6 +399,7 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 							return metaMap
 						},
+						"getTypeString": getTypeString,
 					}).Parse(tpl)
 					check(err)
 

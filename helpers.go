@@ -34,13 +34,13 @@ func getTypeString(typ int) string {
 	case ResourceType:
 		return "R"
 	case UserType:
-		return "u"
+		return "rodsuser"
 	case AdminType:
-		return "a"
+		return "rodsadmin"
 	case GroupAdminType:
-		return "ga"
+		return "rodsgroupadmin"
 	case GroupType:
-		return "g"
+		return "rodsgroup"
 	case UnknownType:
 		return "?"
 	case Null:
