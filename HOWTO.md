@@ -677,18 +677,21 @@ func main() {
 		log.Fatal(conErr)
 	}
 
+	mountPath := "/irods/"
+
 	// Setup the GoRODS FileServer
 	fs := gorods.FileServer(gorods.FSOptions{
 		Path:   "/tempZone/home/rods",
 		Client: client,
 		Download: true,
+		StripPrefix: mountPath,
 	})
 
 	// Create the URL router
 	mux := http.NewServeMux()
 
 	// Serve the iRODS collection at /irods/
-	mux.Handle("/irods/", http.StripPrefix("/irods/", fs))
+	mux.Handle(mountPath, http.StripPrefix(mountPath, fs))
 
 	// Start HTTP server on port 6060
 	log.Fatal(http.ListenAndServe(":6060", mux))
