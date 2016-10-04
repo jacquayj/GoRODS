@@ -74,6 +74,17 @@ const tpl = `
 	}
 	</style>
 
+	<script type="text/javascript">
+
+	$(function() {
+		$('.show-meta-modal').click(function() {
+			$('.modal', $(this).parent()).modal('show');
+		});
+		
+	});
+
+	</script>
+
 </head>
 <body>
 	<nav class="navbar navbar-default navbar-fixed-top">
@@ -110,6 +121,7 @@ const tpl = `
 						<th><a href="..">..</a></th>
 						<td></td>
 						<td>Collection</td>
+						<td></td>
 					</tr>
 				{{ end }}
 				{{range .Collections}}
@@ -117,7 +129,47 @@ const tpl = `
 						<th><a href="{{.Name}}/">{{.Name}}</a></th>
 						<td>{{prettySize .Size}}</td>
 						<td>Collection</td>
-						<td></td>
+						<td>
+							
+							<span style="cursor:pointer;color:#337ab7;" class="glyphicon glyphicon-th-list show-meta-modal"></span>
+
+							<!-- Modal -->
+							<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+								<div class="modal-dialog" role="document">
+									<div class="modal-content">
+										<div class="modal-header">
+											<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+											<h4 class="modal-title" id="myModalLabel">Collection "{{.Name}}" Metadata</h4>
+										</div>
+										<div class="modal-body">
+											<table class="table table-hover">
+											<thead>
+												<tr>
+													<th>Attribute</th>
+													<th>Value</th>
+													<th>Units</th>
+												</tr>
+											</thead>
+											<tbody>
+												{{ $metas := colMeta . }}{{ range $metas }}
+													<tr>
+														<td>{{ index . "attribute" }}</td>
+														<td>{{ index . "value" }}</td>
+														<td>{{ index . "units" }}</td>
+													</tr>
+												{{else}}
+													<tr><td colspan="3" style="text-align:center;">No Metadata Found</td></tr>
+												{{ end }}
+											</tbody>
+											</table>
+										</div>
+										<div class="modal-footer">
+											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</td>
 					</tr>
 				{{end}}
 				{{range .DataObjs}}
@@ -125,7 +177,46 @@ const tpl = `
 						<th><a href="{{.Name}}">{{.Name}}</a></th>
 						<td>{{prettySize .Size}}</td>
 						<td>Data Object</td>
-						<td><a href="{{.Name}}?download=1"><span class="glyphicon glyphicon-download-alt"></span></a></td>
+						<td><a href="{{.Name}}?download=1"><span style="margin-right:10px;" class="glyphicon glyphicon-download-alt"></span></a>
+							<span style="cursor:pointer;color:#337ab7;" class="glyphicon glyphicon-th-list show-meta-modal"></span>
+
+							<!-- Modal -->
+							<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+								<div class="modal-dialog" role="document">
+									<div class="modal-content">
+										<div class="modal-header">
+											<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+											<h4 class="modal-title" id="myModalLabel">Data Object "{{.Name}}" Metadata</h4>
+										</div>
+										<div class="modal-body">
+											<table class="table table-hover">
+											<thead>
+												<tr>
+													<th>Attribute</th>
+													<th>Value</th>
+													<th>Units</th>
+												</tr>
+											</thead>
+											<tbody>
+												{{ $metas := colMeta . }}{{ range $metas }}
+													<tr>
+														<td>{{ index . "attribute" }}</td>
+														<td>{{ index . "value" }}</td>
+														<td>{{ index . "units" }}</td>
+													</tr>
+												{{else}}
+													<tr><td colspan="3" style="text-align:center;">No Metadata Found</td></tr>
+												{{ end }}
+											</tbody>
+											</table>
+										</div>
+										<div class="modal-footer">
+											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</td></td>
 					</tr>
 				{{end}}
 			</tbody>
@@ -241,6 +332,25 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 							}
 
 							return headerLinks
+						},
+						"colMeta": func(col IRodsObj) []map[string]string {
+							mc, err := col.Meta()
+
+							if err != nil {
+								fmt.Printf("%v\n", err)
+							}
+
+							metaMap := make([]map[string]string, 0)
+
+							mc.Each(func(m *Meta) {
+								metaMap = append(metaMap, map[string]string{
+									"attribute": m.Attribute,
+									"value":     m.Value,
+									"units":     m.Units,
+								})
+							})
+
+							return metaMap
 						},
 					}).Parse(tpl)
 					check(err)
