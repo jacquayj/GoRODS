@@ -149,6 +149,7 @@ func main() {
 **Output:**
 
 ![HTTP GoRODS Output](https://raw.githubusercontent.com/jjacquay712/GoRODS/master/screenshots/http.png)
+![HTTP GoRODS Output](https://raw.githubusercontent.com/jjacquay712/GoRODS/master/screenshots/http2.png)
 
 ## Contributing
 
