@@ -768,7 +768,13 @@ func main() {
 
 In the example above, you'll notice that we call client.OpenDataObject within the route handler. This is important if you plan on serving many files concurrently. Every call to OpenDataObject, OpenCollection, or OpenCollection from the client struct will open up a new network connection to iRODS. Because these connections aren't shared between goroutines in the example (goroutines being spun up for every HTTP route handler), there's no operation blocking, enabling fast simultaneous downloads. You'll probably want to use this pattern in your application.
 
-It is possible to share connections between goroutines, however the operations will be blocked if the connection is already in use in another goroutine. This limits concurrent download performance to the transfer speed of a single iRODS network connection. It also enables the use of long-running iRODS connections, which has been discouraged by the developers. It's recommended that you follow the "icommand pattern" where you connect to iRODS, get the data you need, and disconnect immediately afterwards. Here's an example of this "blocking" code:
+It is possible to share connections between goroutines, however the operations will be blocked if the connection is already in use in another goroutine. This limits concurrent download performance to the transfer speed of a single iRODS network connection. It also enables the use of long-running iRODS connections, which has been discouraged by the developers. It's recommended that you follow the "icommand pattern" where you connect to iRODS, get the data you need, and disconnect immediately afterwards.
+
+Here's an example of "blocking" code, which you should avoid using:
+
+```diff
+- Don't use the code below, for reference only.
+```
 
 **Example:**
 
