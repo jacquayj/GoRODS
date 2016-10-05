@@ -152,11 +152,11 @@ const tpl = `
 												</tr>
 											</thead>
 											<tbody>
-												{{ $metas := colMeta . }}{{ range $metas }}
+												{{ range .Meta.Metas }}
 													<tr>
-														<td>{{ index . "attribute" }}</td>
-														<td>{{ index . "value" }}</td>
-														<td>{{ index . "units" }}</td>
+														<td>{{ .Attribute }}</td>
+														<td>{{ .Value }}</td>
+														<td>{{ .Units }}</td>
 													</tr>
 												{{else}}
 													<tr><td colspan="3" style="text-align:center;">No Metadata Found</td></tr>
@@ -222,11 +222,11 @@ const tpl = `
 												</tr>
 											</thead>
 											<tbody>
-												{{ $metas := colMeta . }}{{ range $metas }}
+												{{ range .Meta.Metas }}
 													<tr>
-														<td>{{ index . "attribute" }}</td>
-														<td>{{ index . "value" }}</td>
-														<td>{{ index . "units" }}</td>
+														<td>{{ .Attribute }}</td>
+														<td>{{ .Value }}</td>
+														<td>{{ .Units }}</td>
 													</tr>
 												{{else}}
 													<tr><td colspan="3" style="text-align:center;">No Metadata Found</td></tr>
@@ -255,7 +255,7 @@ const tpl = `
 												{{ end }}
 											</tbody>
 											</table>
-											
+
 										</div>
 										<div class="modal-footer">
 											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -379,25 +379,6 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 							}
 
 							return headerLinks
-						},
-						"colMeta": func(col IRodsObj) []map[string]string {
-							mc, err := col.Meta()
-
-							if err != nil {
-								fmt.Printf("%v\n", err)
-							}
-
-							metaMap := make([]map[string]string, 0)
-
-							mc.Each(func(m *Meta) {
-								metaMap = append(metaMap, map[string]string{
-									"attribute": m.Attribute,
-									"value":     m.Value,
-									"units":     m.Units,
-								})
-							})
-
-							return metaMap
 						},
 						"getTypeString": getTypeString,
 					}).Parse(tpl)
