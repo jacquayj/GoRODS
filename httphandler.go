@@ -13,6 +13,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -45,6 +46,7 @@ type HttpHandler struct {
 	request     *http.Request
 	handlerPath string
 	openPath    string
+	query       url.Values
 }
 
 var check func(error) = func(err error) {
@@ -329,6 +331,37 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 	handler.response.Write(jsonBytes)
 }
 
+func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
+	if handler.opts.Download || handler.query.Get("download") != "" {
+		handler.response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
+		handler.response.Header().Set("Content-type", "application/octet-stream")
+	} else {
+		var mimeType string
+		ext := filepath.Ext(handler.openPath)
+
+		if ext != "" {
+			mimeType = mime.TypeByExtension(ext)
+
+			if mimeType == "" {
+				log.Printf("Can't find mime type for %s extension", ext)
+				mimeType = "application/octet-stream"
+			}
+		} else {
+			mimeType = "application/octet-stream"
+		}
+
+		handler.response.Header().Set("Content-type", mimeType)
+	}
+
+	handler.response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
+
+	if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
+		handler.response.Write(chunk)
+	}); readEr != nil {
+		log.Print(readEr)
+	}
+}
+
 func (handler *HttpHandler) Serve404() {
 	handler.response.Header().Set("Content-Type", "text/html")
 	handler.response.WriteHeader(http.StatusNotFound)
@@ -399,7 +432,7 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 	urlPath := strings.TrimRight(handler.request.URL.Path, "/")
 	handler.openPath = strings.TrimRight(handler.handlerPath+"/"+urlPath, "/")
 
-	query := request.URL.Query()
+	handler.query = request.URL.Query()
 
 	if er := handler.client.OpenConnection(func(con *Connection) {
 		if objType, err := con.PathType(handler.openPath); err == nil {
@@ -407,39 +440,12 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 			if objType == DataObjType {
 				if obj, er := con.DataObject(handler.openPath); er == nil {
 
-					if query.Get("meta") != "" {
+					if handler.query.Get("meta") != "" {
 						handler.ServeJSONMeta(obj)
 						return
 					}
 
-					if handler.opts.Download || query.Get("download") != "" {
-						response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
-						response.Header().Set("Content-type", "application/octet-stream")
-					} else {
-						var mimeType string
-						ext := filepath.Ext(handler.openPath)
-
-						if ext != "" {
-							mimeType = mime.TypeByExtension(ext)
-
-							if mimeType == "" {
-								log.Printf("Can't find mime type for %s extension", ext)
-								mimeType = "application/octet-stream"
-							}
-						} else {
-							mimeType = "application/octet-stream"
-						}
-
-						response.Header().Set("Content-type", mimeType)
-					}
-
-					response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
-
-					if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
-						response.Write(chunk)
-					}); readEr != nil {
-						log.Print(readEr)
-					}
+					handler.ServeDataObj(obj)
 
 				} else {
 					log.Print(er)
@@ -459,7 +465,7 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					GetRepls:  false,
 				}); er == nil {
 
-					if query.Get("meta") != "" {
+					if handler.query.Get("meta") != "" {
 						handler.ServeJSONMeta(col)
 						return
 					}
