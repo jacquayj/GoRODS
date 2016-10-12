@@ -250,6 +250,7 @@ type ConnectionOptions struct {
 	Type          int
 	AuthType      int
 	PAMPassFile   string
+	PAMToken      string
 	PAMPassExpire int
 	Host          string
 	Port          int
@@ -333,8 +334,14 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 	if con.Options.AuthType == PAMAuth {
 
-		// Check to see if PAMPassFile is set
-		if con.Options.PAMPassFile == "" {
+		// Was a PAM token passed?
+		if con.Options.PAMToken != "" {
+
+			// Use it, pass directly to clientLoginWithPassword
+			opassword = C.CString(con.Options.PAMToken)
+			defer C.free(unsafe.Pointer(opassword))
+
+		} else if con.Options.PAMPassFile == "" { // Continue with auth using .Password (ipassword) option, Check to see if PAMPassFile option is not set
 
 			// It's not, fetch password and just keep in memory
 			if status = C.gorods_clientLoginPam(con.ccon, ipassword, C.int(con.Options.PAMPassExpire), &opassword, &errMsg); status != 0 {
@@ -342,9 +349,8 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 			}
 
 			defer C.free(unsafe.Pointer(opassword))
-		} else {
 
-			// There is a file path set, save password to FS for subsequent use
+		} else { // There is a PAM file path set, save password to FS for subsequent use
 
 			// Does the file/dir exist?
 			if finfo, err := os.Stat(con.Options.PAMPassFile); err == nil {
@@ -408,7 +414,6 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 				defer C.free(unsafe.Pointer(opassword))
 			}
 		}
-
 	} else if con.Options.AuthType == PasswordAuth {
 		opassword = ipassword
 	}
@@ -421,13 +426,14 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 		if con.Options.AuthType == PAMAuth {
 
-			// Failure, clear out file for another try. We really should never get to this edge case since expired passwords are handled above
-			if er := pamPassFile.Truncate(int64(0)); er != nil {
-				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to truncate PAMPassFile: %v", er))
-			}
+			if pamPassFile != nil {
 
-			if con.Options.PAMPassFile != "" {
-				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, expired password? Rerun Connection.New to refresh PAM auth token"))
+				// Failure, clear out file for another try.
+				if er := pamPassFile.Truncate(int64(0)); er != nil {
+					return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to truncate PAMPassFile: %v", er))
+				}
+
+				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, expired password?"))
 			}
 		}
 
