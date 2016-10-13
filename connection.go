@@ -270,6 +270,7 @@ type Connection struct {
 	zones      Zones
 	resources  Resources
 
+	PAMToken   string
 	Connected  bool
 	Init       bool
 	Options    *ConnectionOptions
@@ -438,6 +439,10 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 		}
 
 		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, invalid password?"))
+	}
+
+	if con.Options.AuthType == PAMAuth {
+		con.PAMToken = C.GoString(opassword)
 	}
 
 	con.cconBuffer = make(chan *C.rcComm_t, 1)
