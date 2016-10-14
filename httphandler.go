@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -28,16 +27,19 @@ func FileServer(opts FSOptions) http.Handler {
 	handler.path = strings.TrimRight(opts.Path, "/")
 	handler.opts = opts
 
-	return handler
+	if handler.opts.CollectionView != "" {
+		tpl = string(handler.opts.CollectionView)
+	}
 
+	return handler
 }
 
 type FSOptions struct {
-	Client             *Client
-	Path               string
-	Download           bool
-	StripPrefix        string
-	CollectionViewPath string
+	Client         *Client
+	Path           string
+	Download       bool
+	StripPrefix    string
+	CollectionView string
 }
 
 type HttpHandler struct {
@@ -372,14 +374,6 @@ func (handler *HttpHandler) Serve404() {
 }
 
 func (handler *HttpHandler) ServeCollectionView(col *Collection) {
-
-	if handler.opts.CollectionViewPath != "" {
-		viewContent, err := ioutil.ReadFile(handler.opts.CollectionViewPath)
-		if err != nil {
-			log.Fatal("Error: Unable to read login view file at %v", handler.opts.CollectionViewPath)
-		}
-		tpl = string(viewContent)
-	}
 
 	handler.response.Header().Set("Content-Type", "text/html")
 
