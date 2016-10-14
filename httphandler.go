@@ -430,6 +430,38 @@ func (handler *HttpHandler) ServeCollectionView(col *Collection) {
 	check(err)
 }
 
+func (handler *HttpHandler) AddMetaAVU(obj IRodsObj) {
+	handler.response.Header().Set("Content-type", "application/json")
+
+	var response struct {
+		Success bool
+		Message string
+	}
+
+	req := handler.request
+
+	req.ParseForm()
+
+	a := strings.TrimSpace(req.PostForm.Get("attribute"))
+	v := strings.TrimSpace(req.PostForm.Get("value"))
+	u := strings.TrimSpace(req.PostForm.Get("units"))
+
+	if _, err := obj.AddMeta(Meta{
+		Attribute: a,
+		Value:     v,
+		Units:     u,
+	}); err == nil {
+		response.Success = true
+		response.Message = "Added metadata successfully"
+	} else {
+		response.Message = err.Error()
+	}
+
+	jsonBytes, _ := json.Marshal(response)
+	handler.response.Write(jsonBytes)
+
+}
+
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
 	handler.response = response
@@ -448,7 +480,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 				if obj, er := con.DataObject(handler.openPath); er == nil {
 
 					if handler.query.Get("meta") != "" {
-						handler.ServeJSONMeta(obj)
+
+						if request.Method == "GET" {
+							handler.ServeJSONMeta(obj)
+						} else if request.Method == "POST" {
+							handler.AddMetaAVU(obj)
+						}
+
 						return
 					}
 
@@ -473,7 +511,11 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 				}); er == nil {
 
 					if handler.query.Get("meta") != "" {
-						handler.ServeJSONMeta(col)
+						if request.Method == "GET" {
+							handler.ServeJSONMeta(col)
+						} else if request.Method == "POST" {
+							handler.AddMetaAVU(col)
+						}
 						return
 					}
 
