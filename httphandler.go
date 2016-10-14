@@ -24,6 +24,7 @@ func FileServer(opts FSOptions) http.Handler {
 	handler := new(HttpHandler)
 
 	handler.client = opts.Client
+	handler.connection = opts.Connection
 	handler.path = strings.TrimRight(opts.Path, "/")
 	handler.opts = opts
 
@@ -36,6 +37,7 @@ func FileServer(opts FSOptions) http.Handler {
 
 type FSOptions struct {
 	Client         *Client
+	Connection     *Connection
 	Path           string
 	Download       bool
 	StripPrefix    string
@@ -44,6 +46,7 @@ type FSOptions struct {
 
 type HttpHandler struct {
 	client      *Client
+	connection  *Connection
 	path        string
 	opts        FSOptions
 	response    http.ResponseWriter
@@ -438,7 +441,7 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 	handler.query = request.URL.Query()
 
-	if er := handler.client.OpenConnection(func(con *Connection) {
+	var handlerMain = func(con *Connection) {
 		if objType, err := con.PathType(handler.openPath); err == nil {
 
 			if objType == DataObjType {
@@ -487,9 +490,15 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 			log.Print(err)
 		}
-	}); er != nil {
-		log.Print(er)
-		return
+	}
+
+	if handler.client != nil {
+		if er := handler.client.OpenConnection(handlerMain); er != nil {
+			log.Print(er)
+			return
+		}
+	} else if handler.connection != nil {
+		handlerMain(handler.connection)
 	}
 
 }
