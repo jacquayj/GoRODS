@@ -462,6 +462,48 @@ func (handler *HttpHandler) AddMetaAVU(obj IRodsObj) {
 
 }
 
+func (handler *HttpHandler) DeleteMetaAVU(obj IRodsObj) {
+	handler.response.Header().Set("Content-type", "application/json")
+
+	var response struct {
+		Success bool
+		Message string
+	}
+
+	req := handler.request
+
+	req.ParseForm()
+
+	a := strings.TrimSpace(req.PostForm.Get("attribute"))
+	v := strings.TrimSpace(req.PostForm.Get("value"))
+	u := strings.TrimSpace(req.PostForm.Get("units"))
+
+	if mc, err := obj.Meta(); err == nil {
+		match := mc.Metas.MatchOne(&Meta{
+			Attribute: a,
+			Value:     v,
+			Units:     u,
+		})
+
+		if match != nil {
+			if _, er := match.Delete(); er == nil {
+				response.Success = true
+				response.Message = "Meta AVU deleted successfully"
+			} else {
+				response.Message = er.Error()
+			}
+		} else {
+			response.Message = "Error finding meta AVU to delete"
+		}
+	} else {
+		response.Message = err.Error()
+	}
+
+	jsonBytes, _ := json.Marshal(response)
+	handler.response.Write(jsonBytes)
+
+}
+
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
 	handler.response = response
@@ -490,6 +532,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 						return
 					}
 
+					if handler.query.Get("deletemeta") != "" {
+						if request.Method == "POST" {
+							handler.DeleteMetaAVU(obj)
+						}
+						return
+					}
+
 					handler.ServeDataObj(obj)
 
 				} else {
@@ -515,6 +564,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 							handler.ServeJSONMeta(col)
 						} else if request.Method == "POST" {
 							handler.AddMetaAVU(col)
+						}
+						return
+					}
+
+					if handler.query.Get("deletemeta") != "" {
+						if request.Method == "POST" {
+							handler.DeleteMetaAVU(col)
 						}
 						return
 					}
