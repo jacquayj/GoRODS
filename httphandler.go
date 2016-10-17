@@ -7,6 +7,7 @@ package gorods
 import "C"
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -608,6 +609,42 @@ func (handler *HttpHandler) AddACL(obj IRodsObj) {
 
 }
 
+func (handler *HttpHandler) Upload(col *Collection) {
+	handler.response.Header().Set("Content-type", "application/json")
+
+	var response struct {
+		Success bool
+		Message string
+	}
+
+	req := handler.request
+
+	req.ParseForm()
+
+	name := strings.TrimSpace(req.PostForm.Get("name"))
+	contents := strings.TrimSpace(req.PostForm.Get("contents"))
+
+	if data, err := base64.StdEncoding.DecodeString(contents); err == nil {
+		if obj, cEr := col.CreateDataObj(DataObjOptions{
+			Name: name,
+		}); cEr == nil {
+			if wEr := obj.Write(data); wEr == nil {
+				response.Success = true
+				response.Message = "File upload success"
+			} else {
+				response.Message = wEr.Error()
+			}
+		} else {
+			response.Message = cEr.Error()
+		}
+	} else {
+		response.Message = err.Error()
+	}
+
+	jsonBytes, _ := json.Marshal(response)
+	handler.response.Write(jsonBytes)
+}
+
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
 	handler.response = response
@@ -696,6 +733,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					if handler.query.Get("createacl") != "" {
 						if request.Method == "POST" {
 							handler.AddACL(col)
+						}
+						return
+					}
+
+					if handler.query.Get("upload") != "" {
+						if request.Method == "POST" {
+							handler.Upload(col)
 						}
 						return
 					}
