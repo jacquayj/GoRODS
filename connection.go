@@ -1,8 +1,8 @@
 /*** Copyright (c) 2016, University of Florida Research Foundation, Inc. ***
  *** For more information please refer to the LICENSE.md file            ***/
 
-// Package gorods is a Golang binding for the iRods C API (iRods client library).
-// GoRods uses cgo to call iRods client functions.
+// Package gorods is a Golang binding for the iRODS C API (iRODS client library).
+// GoRods uses cgo to call iRODS client functions.
 package gorods
 
 // #cgo CFLAGS: -ggdb -I/usr/include/irods -I${SRCDIR}/lib/include
@@ -209,7 +209,7 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool, includeZo
 	)
 
 	if accessLevel != Null && accessLevel != Read && accessLevel != Write && accessLevel != Own && accessLevel != Inherit && accessLevel != NoInherit {
-		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: accessLevel must be Null | Read | Write | Own"))
+		return newError(Fatal, fmt.Sprintf("iRODS Chmod DataObject Failed: accessLevel must be Null | Read | Write | Own"))
 	}
 
 	if includeZone {
@@ -239,13 +239,13 @@ func chmod(obj IRodsObj, user string, accessLevel int, recursive bool, includeZo
 	defer obj.Con().ReturnCcon(ccon)
 
 	if status := C.gorods_chmod(ccon, cPath, cZone, cUser, cAccessLevel, cRecursive, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Chmod DataObject Failed: %v", C.GoString(err)))
+		return newError(Fatal, fmt.Sprintf("iRODS Chmod DataObject Failed: %v", C.GoString(err)))
 	}
 
 	return nil
 }
 
-// ConnectionOptions are used when creating iRods iCAT server connections see gorods.New() docs for more info.
+// ConnectionOptions are used when creating iRODS iCAT server connections see gorods.New() docs for more info.
 type ConnectionOptions struct {
 	Type          int
 	AuthType      int
@@ -277,7 +277,7 @@ type Connection struct {
 	OpenedObjs IRodsObjs
 }
 
-// NewConnection creates a connection to an iRods iCAT server. EnvironmentDefined and UserDefined
+// NewConnection creates a connection to an iRODS iCAT server. EnvironmentDefined and UserDefined
 // constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password
@@ -305,14 +305,14 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 		defer C.free(unsafe.Pointer(username))
 		defer C.free(unsafe.Pointer(zone))
 
-		// BUG(jjacquay712): iRods C API code outputs errors messages, need to implement connect wrapper (gorods_connect_env) from a lower level to suppress this output
+		// BUG(jjacquay712): iRODS C API code outputs errors messages, need to implement connect wrapper (gorods_connect_env) from a lower level to suppress this output
 		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
 		if status = C.gorods_connect_env(&con.ccon, host, port, username, zone, &errMsg); status != 0 {
-			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+			return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	} else {
 		if status = C.gorods_connect(&con.ccon, &errMsg); status != 0 {
-			return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+			return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	}
 
@@ -346,7 +346,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 			// It's not, fetch password and just keep in memory
 			if status = C.gorods_clientLoginPam(con.ccon, ipassword, C.int(con.Options.PAMPassExpire), &opassword, &errMsg); status != 0 {
-				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginPam error, invalid password?"))
+				return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: clientLoginPam error, invalid password?"))
 			}
 
 			defer C.free(unsafe.Pointer(opassword))
@@ -359,19 +359,19 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 					// Open file here
 					pamPassFile, pamFileErr = os.OpenFile(con.Options.PAMPassFile, os.O_RDWR, 0666)
 					if pamFileErr != nil {
-						return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Problem opening PAMPassFile at %v", con.Options.PAMPassFile))
+						return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: Problem opening PAMPassFile at %v", con.Options.PAMPassFile))
 					}
 
 					size = finfo.Size()
 
 				} else {
-					return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: PAMPassFile is a directory durp"))
+					return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: PAMPassFile is a directory durp"))
 				}
 			} else {
 				// Create file here
 				pamPassFile, pamFileErr = os.Create(con.Options.PAMPassFile)
 				if pamFileErr != nil {
-					return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Problem creating PAMPassFile at %v", con.Options.PAMPassFile))
+					return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: Problem creating PAMPassFile at %v", con.Options.PAMPassFile))
 				}
 
 			}
@@ -381,7 +381,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 				fileBtz := make([]byte, size)
 				if _, er := pamPassFile.Read(fileBtz); er != nil {
-					return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Problem reading PAMPassFile at %v", con.Options.PAMPassFile))
+					return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: Problem reading PAMPassFile at %v", con.Options.PAMPassFile))
 				}
 
 				fileStr := string(fileBtz)
@@ -431,14 +431,14 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 				// Failure, clear out file for another try.
 				if er := pamPassFile.Truncate(int64(0)); er != nil {
-					return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to truncate PAMPassFile: %v", er))
+					return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: Unable to truncate PAMPassFile: %v", er))
 				}
 
-				return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, expired password?"))
+				return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: clientLoginWithPassword error, expired password?"))
 			}
 		}
 
-		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginWithPassword error, invalid password?"))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: clientLoginWithPassword error, invalid password?"))
 	}
 
 	if con.Options.AuthType == PAMAuth {
@@ -451,7 +451,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	if status == 0 {
 		con.Connected = true
 	} else {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: %v", C.GoString(errMsg)))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
 
 	if con.Options.Ticket != "" {
@@ -479,17 +479,17 @@ func (con *Connection) fetchAndWritePAMPass(pamPassFile *os.File, ipassword *C.c
 	)
 
 	if status := C.gorods_clientLoginPam(con.ccon, ipassword, C.int(con.Options.PAMPassExpire), &opassword, &errMsg); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: clientLoginPam error, invalid password?"))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: clientLoginPam error, invalid password?"))
 	}
 
 	if er := pamPassFile.Truncate(0); er != nil {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to write new password to PAMPassFile"))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: Unable to write new password to PAMPassFile"))
 	}
 
 	pamPassFormat := strconv.Itoa(int(time.Now().Unix())) + ":" + C.GoString(opassword)
 
 	if _, er := pamPassFile.WriteString(pamPassFormat); er != nil {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Connect Failed: Unable to write new password to PAMPassFile"))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: Unable to write new password to PAMPassFile"))
 	}
 
 	return opassword, nil
@@ -523,13 +523,13 @@ func (con *Connection) SetTicket(t string) error {
 	defer con.ReturnCcon(ccon)
 
 	if status = C.gorods_set_session_ticket(ccon, ticket, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRods Set Ticket Failed: %v", C.GoString(errMsg)))
+		return newError(Fatal, fmt.Sprintf("iRODS Set Ticket Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
 }
 
-// Disconnect closes connection to iRods iCAT server, returns error on failure or nil on success
+// Disconnect closes connection to iRODS iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
 
 	for _, obj := range con.OpenedObjs {
@@ -542,7 +542,7 @@ func (con *Connection) Disconnect() error {
 	defer con.ReturnCcon(ccon)
 
 	if status := int(C.rcDisconnect(ccon)); status < 0 {
-		return newError(Fatal, fmt.Sprintf("iRods rcDisconnect Failed"))
+		return newError(Fatal, fmt.Sprintf("iRODS rcDisconnect Failed"))
 	}
 
 	con.Connected = false
@@ -569,13 +569,13 @@ func (obj *Connection) String() string {
 	defer C.free(unsafe.Pointer(zone))
 
 	if status := C.irods_env(&username, &host, &port, &zone); status != 0 {
-		panic(newError(Fatal, fmt.Sprintf("iRods getEnv Failed")))
+		panic(newError(Fatal, fmt.Sprintf("iRODS getEnv Failed")))
 	}
 
 	return fmt.Sprintf("Host: %v@%v:%v/%v, Connected: %v\n", C.GoString(username), C.GoString(host), int(port), C.GoString(zone), obj.Connected)
 }
 
-// Collection initializes and returns an existing iRods collection using the specified path
+// Collection initializes and returns an existing iRODS collection using the specified path
 func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 
 	startPath := opts.Path
@@ -625,7 +625,7 @@ func (con *Connection) PathType(p string) (int, error) {
 	defer C.freeRodsObjStat(statResult)
 
 	if status := C.gorods_stat_dataobject(path, &statResult, ccon, &err); status != 0 {
-		return -1, newError(Fatal, fmt.Sprintf("iRods Stat Failed: %v, %v", p, C.GoString(err)))
+		return -1, newError(Fatal, fmt.Sprintf("iRODS Stat Failed: %v, %v", p, C.GoString(err)))
 	}
 
 	if statResult.objType == C.DATA_OBJ_T {
@@ -670,7 +670,7 @@ func (con *Connection) IQuest(query string, upperCase bool) ([]map[string]string
 		if status == C.CAT_NO_ROWS_FOUND {
 			return make([]map[string]string, 0), nil
 		} else {
-			return nil, newError(Fatal, fmt.Sprintf("iRods iquest Failed: %v", C.GoString(err)))
+			return nil, newError(Fatal, fmt.Sprintf("iRODS iquest Failed: %v", C.GoString(err)))
 		}
 	}
 
@@ -871,7 +871,7 @@ func (con *Connection) CreateGroup(name string) (*Group, error) {
 			if grp := grps.FindByName(name, con); grp != nil {
 				return grp, nil
 			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods CreateGroup %v Failed: %v", name, "Unable to locate newly created group in cache"))
+				return nil, newError(Fatal, fmt.Sprintf("iRODS CreateGroup %v Failed: %v", name, "Unable to locate newly created group in cache"))
 			}
 		}
 
@@ -900,7 +900,7 @@ func (con *Connection) CreateUser(name string, typ int) (*User, error) {
 			if usr := usrs.FindByName(name, con); usr != nil {
 				return usr, nil
 			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRods CreateUser %v Failed: %v", name, "Unable to locate newly created user in cache"))
+				return nil, newError(Fatal, fmt.Sprintf("iRODS CreateUser %v Failed: %v", name, "Unable to locate newly created user in cache"))
 			}
 		}
 	}
@@ -965,7 +965,7 @@ func (con *Connection) FetchGroups() (Groups, error) {
 
 	if status := C.gorods_get_groups(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Groups Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Groups Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
@@ -1006,7 +1006,7 @@ func (con *Connection) FetchUsers() (Users, error) {
 
 	if status := C.gorods_get_users(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Users Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Users Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
@@ -1039,7 +1039,7 @@ func (con *Connection) FetchUsers() (Users, error) {
 				if zne := zones.FindByName(zonename, con); zne != nil {
 					zone = zne
 				} else {
-					return nil, newError(Fatal, fmt.Sprintf("iRods Fetch Users Failed: Unable to locate zone in cache"))
+					return nil, newError(Fatal, fmt.Sprintf("iRODS Fetch Users Failed: Unable to locate zone in cache"))
 				}
 			}
 
@@ -1069,7 +1069,7 @@ func (con *Connection) FetchResources() (Resources, error) {
 
 	if status := C.gorods_get_resources_new(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods  Get Resources Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS  Get Resources Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
@@ -1112,7 +1112,7 @@ func (con *Connection) FetchZones() (Zones, error) {
 
 	if status := C.gorods_get_zones(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Zones Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Zones Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
@@ -1158,7 +1158,7 @@ func (con *Connection) LocalZone() (*Zone, error) {
 		ccon := con.GetCcon()
 		if status := C.gorods_get_local_zone(ccon, &cZoneName, &err); status != 0 {
 			con.ReturnCcon(ccon)
-			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: %v", C.GoString(err)))
+			return nil, newError(Fatal, fmt.Sprintf("iRODS Get Local Zone Failed: %v", C.GoString(err)))
 		}
 		con.ReturnCcon(ccon)
 	} else {
@@ -1173,7 +1173,7 @@ func (con *Connection) LocalZone() (*Zone, error) {
 		return nil, err
 	} else {
 		if zne := znes.FindByName(zoneName, con); zne == nil {
-			return nil, newError(Fatal, fmt.Sprintf("iRods Get Local Zone Failed: Local zone not found in cache"))
+			return nil, newError(Fatal, fmt.Sprintf("iRODS Get Local Zone Failed: Local zone not found in cache"))
 		} else {
 			return zne, nil
 		}

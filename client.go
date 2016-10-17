@@ -110,7 +110,7 @@ func (cli *Client) OpenConnection(handler func(*Connection)) error {
 	return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
 }
 
-// New creates a test connection to an iRods iCAT server, and returns a *Client struct if successful.
+// New creates a test connection to an iRODS iCAT server, and returns a *Client struct if successful.
 // EnvironmentDefined and UserDefined constants are used in ConnectionOptions{ Type: ... }).
 // When EnvironmentDefined is specified, the options stored in ~/.irods/irods_environment.json will be used.
 // When UserDefined is specified you must also pass Host, Port, Username, and Zone. Password

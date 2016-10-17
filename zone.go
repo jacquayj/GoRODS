@@ -191,7 +191,7 @@ func (zne *Zone) FetchInfo() (map[string]string, error) {
 
 	if status := C.gorods_get_zone(cZone, ccon, &result, &err); status != 0 {
 		zne.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRods Get Zone Info Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Zone Info Failed: %v", C.GoString(err)))
 	}
 
 	zne.con.ReturnCcon(ccon)

@@ -13,7 +13,7 @@ import (
 	"unsafe"
 )
 
-// Meta structs contain information about a single iRods metadata attribute-value-units (AVU) triple
+// Meta structs contain information about a single iRODS metadata attribute-value-units (AVU) triple
 type Meta struct {
 	Attribute string
 	Value     string
@@ -97,7 +97,7 @@ func (m *Meta) Rename(attributeName string) (*Meta, error) {
 	return m.SetAll(attributeName, m.Value, m.Units)
 }
 
-// Delete deletes the current Meta struct from iRods object
+// Delete deletes the current Meta struct from iRODS object
 func (m *Meta) Delete() (*MetaCollection, error) {
 
 	mT := C.CString(m.getTypeRodsString())
@@ -119,7 +119,7 @@ func (m *Meta) Delete() (*MetaCollection, error) {
 	if status := C.gorods_rm_meta(mT, path, oa, ov, ou, ccon, &err); status < 0 {
 		m.Parent.Con.ReturnCcon(ccon)
 
-		return m.Parent, newError(Fatal, fmt.Sprintf("iRods rm Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
+		return m.Parent, newError(Fatal, fmt.Sprintf("iRODS rm Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
 	}
 
 	m.Parent.Con.ReturnCcon(ccon)
@@ -157,7 +157,7 @@ func (m *Meta) SetAll(attributeName string, value string, units string) (newMeta
 
 		if status := C.gorods_mod_meta(mT, path, oa, ov, ou, na, nv, nu, ccon, &err); status < 0 {
 			m.Parent.Con.ReturnCcon(ccon)
-			e = newError(Fatal, fmt.Sprintf("iRods Set Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
+			e = newError(Fatal, fmt.Sprintf("iRODS Set Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
 			return
 		}
 
@@ -218,7 +218,7 @@ func (mc *MetaCollection) ReadMeta() error {
 			if status == C.CAT_NO_ROWS_FOUND {
 				return nil
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v, %v", cwdGo, C.GoString(err), status))
+				return newError(Fatal, fmt.Sprintf("iRODS Get Meta Failed: %v, %v, %v", cwdGo, C.GoString(err), status))
 			}
 		}
 	case CollectionType:
@@ -231,7 +231,7 @@ func (mc *MetaCollection) ReadMeta() error {
 			if status == C.CAT_NO_ROWS_FOUND {
 				return nil
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRods Get Meta Failed: %v, %v, %v", cwdGo, C.GoString(err), status))
+				return newError(Fatal, fmt.Sprintf("iRODS Get Meta Failed: %v, %v, %v", cwdGo, C.GoString(err), status))
 			}
 		}
 	case ResourceType:
@@ -305,10 +305,10 @@ func (mc *MetaCollection) First(attr string) (*Meta, error) {
 		}
 	}
 
-	return nil, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
+	return nil, newError(Fatal, fmt.Sprintf("iRODS Get Meta Failed, no match"))
 }
 
-// Get returns a Meta struct slice (since attributes can share the same name in iRods), matching by their Attribute field. Similar to Attribute() function of other types
+// Get returns a Meta struct slice (since attributes can share the same name in iRODS), matching by their Attribute field. Similar to Attribute() function of other types
 func (mc *MetaCollection) Get(attr string) (Metas, error) {
 	if err := mc.init(); err != nil {
 		return nil, err
@@ -323,7 +323,7 @@ func (mc *MetaCollection) Get(attr string) (Metas, error) {
 	}
 
 	if len(result) == 0 {
-		return result, newError(Fatal, fmt.Sprintf("iRods Get Meta Failed, no match"))
+		return result, newError(Fatal, fmt.Sprintf("iRODS Get Meta Failed, no match"))
 	}
 
 	return result, nil
@@ -382,7 +382,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		if len(existingMeta) > 0 {
 			for _, am := range existingMeta {
 				if m.Value == am.Value {
-					return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Attribute + Value already exists"))
+					return nil, newError(Fatal, fmt.Sprintf("iRODS Add Meta Failed: Attribute + Value already exists"))
 				}
 			}
 		}
@@ -409,7 +409,7 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 
 		if status := C.gorods_add_meta(mT, path, na, nv, nu, ccon, &err); status < 0 {
 			m.Parent.Con.ReturnCcon(ccon)
-			return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
+			return nil, newError(Fatal, fmt.Sprintf("iRODS Add Meta Failed: %v, %v", m.Parent.Obj.Path(), C.GoString(err)))
 		}
 
 		m.Parent.Con.ReturnCcon(ccon)
@@ -417,14 +417,14 @@ func (mc *MetaCollection) Add(m Meta) (*Meta, error) {
 		m.Parent.Refresh()
 
 	} else {
-		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Failed: Please specify Attribute and Value fields"))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Add Meta Failed: Please specify Attribute and Value fields"))
 	}
 
 	if attrs, er := m.Parent.Get(m.Attribute); er == nil {
 		if am := attrs.MatchOne(&m); am != nil {
 			return am, nil
 		}
-		return nil, newError(Fatal, fmt.Sprintf("iRods Add Meta Error: Unable to locate added meta triple"))
+		return nil, newError(Fatal, fmt.Sprintf("iRODS Add Meta Error: Unable to locate added meta triple"))
 	} else {
 		return nil, er
 	}

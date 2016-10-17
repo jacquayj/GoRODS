@@ -569,6 +569,45 @@ func (handler *HttpHandler) CreateCollection(col *Collection) {
 
 }
 
+func (handler *HttpHandler) AddACL(obj IRodsObj) {
+	handler.response.Header().Set("Content-type", "application/json")
+
+	var response struct {
+		Success bool
+		Message string
+	}
+
+	req := handler.request
+
+	req.ParseForm()
+
+	name := strings.TrimSpace(req.PostForm.Get("name"))
+	accessString := strings.TrimSpace(req.PostForm.Get("access"))
+
+	var accessLevel int
+	switch accessString {
+	case "own":
+		accessLevel = Own
+	case "write":
+		accessLevel = Write
+	case "read":
+		accessLevel = Read
+	case "null":
+		accessLevel = Null
+	}
+
+	if err := obj.Chmod(name, accessLevel, true); err == nil {
+		response.Success = true
+		response.Message = "Added metadata successfully"
+	} else {
+		response.Message = err.Error()
+	}
+
+	jsonBytes, _ := json.Marshal(response)
+	handler.response.Write(jsonBytes)
+
+}
+
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
 	handler.response = response
@@ -600,6 +639,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					if handler.query.Get("deletemeta") != "" {
 						if request.Method == "POST" {
 							handler.DeleteMetaAVU(obj)
+						}
+						return
+					}
+
+					if handler.query.Get("createacl") != "" {
+						if request.Method == "POST" {
+							handler.AddACL(obj)
 						}
 						return
 					}
@@ -643,6 +689,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					if handler.query.Get("createcol") != "" {
 						if request.Method == "POST" {
 							handler.CreateCollection(col)
+						}
+						return
+					}
+
+					if handler.query.Get("createacl") != "" {
+						if request.Method == "POST" {
+							handler.AddACL(col)
 						}
 						return
 					}
