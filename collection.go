@@ -427,7 +427,7 @@ func (col *Collection) Size() (int64, error) {
 	i, err := strconv.ParseInt(result[0]["DATA_SIZE"], 10, 64)
 
 	if err != nil {
-		return 0, err
+		return 0, nil
 	}
 
 	return i, nil

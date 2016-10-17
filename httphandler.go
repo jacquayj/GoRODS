@@ -32,6 +32,25 @@ func FileServer(opts FSOptions) http.Handler {
 		tpl = string(handler.opts.CollectionView)
 	}
 
+	var setupUsersGroups func(*Connection) = func(con *Connection) {
+		var err error
+
+		handler.users, err = con.Users()
+		check(err)
+
+		handler.groups, err = con.Groups()
+		check(err)
+	}
+
+	if handler.client != nil {
+		if er := handler.client.OpenConnection(setupUsersGroups); er != nil {
+			log.Print(er)
+			return handler
+		}
+	} else if handler.connection != nil {
+		setupUsersGroups(handler.connection)
+	}
+
 	return handler
 }
 
@@ -54,6 +73,8 @@ type HttpHandler struct {
 	handlerPath string
 	openPath    string
 	query       url.Values
+	users       Users
+	groups      Groups
 }
 
 var check func(error) = func(err error) {
@@ -423,6 +444,24 @@ func (handler *HttpHandler) ServeCollectionView(col *Collection) {
 
 			return headerLinks
 		},
+		"usersJSON": func() []string {
+			usrs := make([]string, 0)
+
+			for _, u := range handler.users {
+				usrs = append(usrs, u.Name())
+			}
+
+			return usrs
+		},
+		"groupsJSON": func() []string {
+			grps := make([]string, 0)
+
+			for _, g := range handler.groups {
+				grps = append(grps, g.Name())
+			}
+
+			return grps
+		},
 	}).Parse(tpl)
 	check(err)
 
@@ -504,6 +543,32 @@ func (handler *HttpHandler) DeleteMetaAVU(obj IRodsObj) {
 
 }
 
+func (handler *HttpHandler) CreateCollection(col *Collection) {
+	handler.response.Header().Set("Content-type", "application/json")
+
+	var response struct {
+		Success bool
+		Message string
+	}
+
+	req := handler.request
+
+	req.ParseForm()
+
+	colName := strings.TrimSpace(req.PostForm.Get("colname"))
+
+	if _, err := col.CreateSubCollection(colName); err == nil {
+		response.Success = true
+		response.Message = "Subcollection created successfully"
+	} else {
+		response.Message = err.Error()
+	}
+
+	jsonBytes, _ := json.Marshal(response)
+	handler.response.Write(jsonBytes)
+
+}
+
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 
 	handler.response = response
@@ -571,6 +636,13 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					if handler.query.Get("deletemeta") != "" {
 						if request.Method == "POST" {
 							handler.DeleteMetaAVU(col)
+						}
+						return
+					}
+
+					if handler.query.Get("createcol") != "" {
+						if request.Method == "POST" {
+							handler.CreateCollection(col)
 						}
 						return
 					}
