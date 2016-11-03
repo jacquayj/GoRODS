@@ -502,6 +502,25 @@ func (handler *HttpHandler) AddMetaAVU(obj IRodsObj) {
 
 }
 
+func (handler *HttpHandler) DeleteObj(obj IRodsObj) {
+	handler.response.Header().Set("Content-type", "application/json")
+
+	var response struct {
+		Success bool
+		Message string
+	}
+
+	if err := obj.Delete(true); err == nil {
+		response.Success = true
+		response.Message = "Object delete successfully"
+	} else {
+		response.Message = err.Error()
+	}
+
+	jsonBytes, _ := json.Marshal(response)
+	handler.response.Write(jsonBytes)
+}
+
 func (handler *HttpHandler) DeleteMetaAVU(obj IRodsObj) {
 	handler.response.Header().Set("Content-type", "application/json")
 
@@ -662,32 +681,28 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 			if objType == DataObjType {
 				if obj, er := con.DataObject(handler.openPath); er == nil {
 
-					if handler.query.Get("meta") != "" {
-
+					switch q := handler.query; true {
+					case q.Get("meta") != "":
 						if request.Method == "GET" {
 							handler.ServeJSONMeta(obj)
 						} else if request.Method == "POST" {
 							handler.AddMetaAVU(obj)
 						}
-
-						return
-					}
-
-					if handler.query.Get("deletemeta") != "" {
+					case q.Get("deletemeta") != "":
 						if request.Method == "POST" {
 							handler.DeleteMetaAVU(obj)
 						}
-						return
-					}
-
-					if handler.query.Get("createacl") != "" {
+					case q.Get("createacl") != "":
 						if request.Method == "POST" {
 							handler.AddACL(obj)
 						}
-						return
+					case q.Get("delete") != "":
+						if request.Method == "POST" {
+							handler.DeleteObj(obj)
+						}
+					default:
+						handler.ServeDataObj(obj)
 					}
-
-					handler.ServeDataObj(obj)
 
 				} else {
 					log.Print(er)
@@ -707,44 +722,37 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 					GetRepls:  false,
 				}); er == nil {
 
-					if handler.query.Get("meta") != "" {
+					switch q := handler.query; true {
+
+					case q.Get("meta") != "":
 						if request.Method == "GET" {
 							handler.ServeJSONMeta(col)
 						} else if request.Method == "POST" {
 							handler.AddMetaAVU(col)
 						}
-						return
-					}
-
-					if handler.query.Get("deletemeta") != "" {
+					case q.Get("deletemeta") != "":
 						if request.Method == "POST" {
 							handler.DeleteMetaAVU(col)
 						}
-						return
-					}
-
-					if handler.query.Get("createcol") != "" {
+					case q.Get("createcol") != "":
 						if request.Method == "POST" {
 							handler.CreateCollection(col)
 						}
-						return
-					}
-
-					if handler.query.Get("createacl") != "" {
+					case q.Get("createacl") != "":
 						if request.Method == "POST" {
 							handler.AddACL(col)
 						}
-						return
-					}
-
-					if handler.query.Get("upload") != "" {
+					case q.Get("upload") != "":
 						if request.Method == "POST" {
 							handler.Upload(col)
 						}
-						return
+					case q.Get("delete") != "":
+						if request.Method == "POST" {
+							handler.DeleteObj(col)
+						}
+					default:
+						handler.ServeCollectionView(col)
 					}
-
-					handler.ServeCollectionView(col)
 
 				} else {
 					log.Print(er)
