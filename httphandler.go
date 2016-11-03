@@ -361,33 +361,38 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 }
 
 func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
-	if handler.opts.Download || handler.query.Get("download") != "" {
-		handler.response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
-		handler.response.Header().Set("Content-type", "application/octet-stream")
-	} else {
-		var mimeType string
-		ext := filepath.Ext(handler.openPath)
-
-		if ext != "" {
-			mimeType = mime.TypeByExtension(ext)
-
-			if mimeType == "" {
-				log.Printf("Can't find mime type for %s extension", ext)
-				mimeType = "application/octet-stream"
-			}
-		} else {
-			mimeType = "application/octet-stream"
-		}
-
-		handler.response.Header().Set("Content-type", mimeType)
-	}
-
-	handler.response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
 
 	if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
+
+		if handler.opts.Download || handler.query.Get("download") != "" {
+			handler.response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
+			handler.response.Header().Set("Content-type", "application/octet-stream")
+		} else {
+			var mimeType string
+			ext := filepath.Ext(handler.openPath)
+
+			if ext != "" {
+				mimeType = mime.TypeByExtension(ext)
+
+				if mimeType == "" {
+					log.Printf("Can't find mime type for %s extension", ext)
+					mimeType = "application/octet-stream"
+				}
+			} else {
+				mimeType = "application/octet-stream"
+			}
+
+			handler.response.Header().Set("Content-type", mimeType)
+		}
+
+		handler.response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
 		handler.response.Write(chunk)
 	}); readEr != nil {
 		log.Print(readEr)
+
+		handler.response.WriteHeader(http.StatusInternalServerError)
+		handler.response.Write([]byte("Error: " + readEr.Error()))
+
 	}
 }
 
