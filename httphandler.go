@@ -334,27 +334,27 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 	var metaResponse JSONArr = make(JSONArr, 0)
 	var aclResponse JSONArr = make(JSONArr, 0)
 
-	mc, _ := obj.Meta()
+	acls, aclErr := obj.ACL()
 
-	mc.Each(func(m *Meta) {
-		metaResponse = append(metaResponse, JSONMap{
-			"attribute": m.Attribute,
-			"value":     m.Value,
-			"units":     m.Units,
+	if mc, err := obj.Meta(); err == nil && aclErr == nil {
+		mc.Each(func(m *Meta) {
+			metaResponse = append(metaResponse, JSONMap{
+				"attribute": m.Attribute,
+				"value":     m.Value,
+				"units":     m.Units,
+			})
 		})
-	})
+		for _, acl := range acls {
+			aclResponse = append(aclResponse, JSONMap{
+				"name":        acl.AccessObject.Name(),
+				"accessLevel": getTypeString(acl.AccessLevel),
+				"type":        getTypeString(acl.Type),
+			})
+		}
 
-	acls, _ := obj.ACL()
-	for _, acl := range acls {
-		aclResponse = append(aclResponse, JSONMap{
-			"name":        acl.AccessObject.Name(),
-			"accessLevel": getTypeString(acl.AccessLevel),
-			"type":        getTypeString(acl.Type),
-		})
+		jsonResponse["metadata"] = metaResponse
+		jsonResponse["acl"] = aclResponse
 	}
-
-	jsonResponse["metadata"] = metaResponse
-	jsonResponse["acl"] = aclResponse
 
 	jsonBytes, _ := json.Marshal(jsonResponse)
 	handler.response.Write(jsonBytes)
