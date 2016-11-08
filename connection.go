@@ -259,6 +259,7 @@ type ConnectionOptions struct {
 	Password      string
 	Ticket        string
 	FastInit      bool
+	Threads       int
 }
 
 // Connection structs hold information about the iRODS iCAT server, and the user who's connecting. It also contains a cache of opened Collections and DataObjs
@@ -454,6 +455,8 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 		return nil, newError(Fatal, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
 
+	con.SetThreads(opts.Threads)
+
 	if con.Options.Ticket != "" {
 		if err := con.SetTicket(con.Options.Ticket); err != nil {
 			return nil, err
@@ -636,6 +639,14 @@ func (con *Connection) PathType(p string) (int, error) {
 
 	return -1, newError(Fatal, "Unknown type")
 
+}
+
+func (con *Connection) SetThreads(num int) {
+	con.ccon.transStat.numThreads = C.int(num)
+}
+
+func (con *Connection) Threads() int {
+	return int(con.ccon.transStat.numThreads)
 }
 
 // IQuest accepts a SQL query fragment, returns results in slice of maps

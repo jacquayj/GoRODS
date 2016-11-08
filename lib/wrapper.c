@@ -171,7 +171,7 @@ int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* con
 }
 
 
-int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, int numThr, rcComm_t* conn, char** err) {
+int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, rcComm_t* conn, char** err) {
     
     int status;
     dataObjInp_t dataObjInp;
@@ -183,7 +183,7 @@ int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode
 
     dataObjInp.createMode = mode;
     dataObjInp.dataSize = size;
-    dataObjInp.numThreads = numThr;
+    dataObjInp.numThreads = conn->transStat.numThreads;
 
     if ( resource != NULL && resource[0] != '\0' ) {
         addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
@@ -237,6 +237,7 @@ int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, c
 
 	dataObjInp.createMode = mode; 
 	dataObjInp.dataSize = size; 
+    dataObjInp.numThreads = conn->transStat.numThreads;
 
 	if ( resource != NULL && resource[0] != '\0' ) {
 		addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
@@ -283,7 +284,8 @@ int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int op
 	
 	// O_RDONLY, O_WRONLY, O_RDWR, O_TRUNC
 	dataObjInp.openFlags = openFlag; 
-	
+	dataObjInp.numThreads = conn->transStat.numThreads;
+
     addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resourceName); 
     addKeyVal(&dataObjInp.condInput, REPL_NUM_KW, replNum);
 
@@ -1305,6 +1307,8 @@ int gorods_trimrepls_dataobject(rcComm_t *conn, char* objPath, char* ageStr, cha
     if ( resource != NULL && resource[0] != '\0' ) {
         addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resource); 
     }
+
+    dataObjInp.numThreads = conn->transStat.numThreads;
     
     status = rcDataObjTrim(conn, &dataObjInp);
 
@@ -1329,6 +1333,8 @@ int gorods_phymv_dataobject(rcComm_t *conn, char* objPath, char* sourceResource,
     addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, sourceResource); 
     addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, destResource); 
 
+    dataObjInp.numThreads = conn->transStat.numThreads;
+
     status = rcDataObjPhymv(conn, &dataObjInp); 
     if ( status < 0 ) { 
         *err = "rcDataObjPhymv failed";
@@ -1348,6 +1354,7 @@ int gorods_repl_dataobject(rcComm_t *conn, char* objPath, char* resourceName, in
     rstrcpy(dataObjInp.objPath, objPath, MAX_NAME_LEN); 
     dataObjInp.createMode = createMode;
     dataObjInp.dataSize = dataSize;
+    dataObjInp.numThreads = conn->transStat.numThreads;
 
     if ( backupMode > 0 ) {
         addKeyVal(&dataObjInp.condInput, BACKUP_RESC_NAME_KW, resourceName);
@@ -1671,6 +1678,8 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 	bzero(&dataObjInp, sizeof(dataObjInp)); 
 	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
 	
+    dataObjInp.numThreads = conn->transStat.numThreads;
+
 	// pass memory address of rodsObjStatOut pointer
 	int status = rcObjStat(conn, &dataObjInp, rodsObjStatOut); 
 	if ( status < 0 ) { 
@@ -1739,6 +1748,8 @@ int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err) 
 	if ( force != 0 ) {
 		addKeyVal(&dataObjInp.condInput, FORCE_FLAG_KW, ""); 
 	}
+
+    dataObjInp.numThreads = conn->transStat.numThreads;
 	
 	int status = rcDataObjUnlink(conn, &dataObjInp); 
 	if ( status < 0 ) { 
@@ -1757,6 +1768,8 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
 
 	addKeyVal(&dataObjInp.condInput, FORCE_CHKSUM_KW, ""); 
+
+    dataObjInp.numThreads = conn->transStat.numThreads;
 
 	int status = rcDataObjChksum(conn, &dataObjInp, outChksum); 
 	if ( status < 0 ) { 
@@ -2314,6 +2327,7 @@ int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* 
 		}
 
 		dataObjInp.openFlags = O_RDONLY;
+        dataObjInp.numThreads = conn->transStat.numThreads;
 
 		rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN);
 

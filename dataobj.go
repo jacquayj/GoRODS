@@ -54,12 +54,11 @@ type DataObj struct {
 
 // DataObjOptions is used for passing options to the CreateDataObj and DataObj.Copy function
 type DataObjOptions struct {
-	Name       string
-	Size       int64
-	Mode       int
-	Force      bool
-	NumThreads int
-	Resource   interface{}
+	Name     string
+	Size     int64
+	Mode     int
+	Force    bool
+	Resource interface{}
 }
 
 // String returns path of data object

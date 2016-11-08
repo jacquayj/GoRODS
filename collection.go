@@ -1123,7 +1123,7 @@ func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, err
 
 	ccon := col.con.GetCcon()
 
-	if status := C.gorods_put_dataobject(cLocalPath, path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, C.int(opts.NumThreads), ccon, &errMsg); status != 0 {
+	if status := C.gorods_put_dataobject(cLocalPath, path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, ccon, &errMsg); status != 0 {
 		col.con.ReturnCcon(ccon)
 		return nil, newError(Fatal, fmt.Sprintf("iRODS Put DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
