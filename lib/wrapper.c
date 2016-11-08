@@ -171,7 +171,7 @@ int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* con
 }
 
 
-int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, rcComm_t* conn, char** err) {
+int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode, int force, char* resource, int numThr, rcComm_t* conn, char** err) {
     
     int status;
     dataObjInp_t dataObjInp;
@@ -183,6 +183,7 @@ int gorods_put_dataobject(char* inPath, char* outPath, rodsLong_t size, int mode
 
     dataObjInp.createMode = mode;
     dataObjInp.dataSize = size;
+    dataObjInp.numThreads = numThr;
 
     if ( resource != NULL && resource[0] != '\0' ) {
         addKeyVal(&dataObjInp.condInput, DEST_RESC_NAME_KW, resource); 
