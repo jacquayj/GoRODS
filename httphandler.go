@@ -33,25 +33,6 @@ func FileServer(opts FSOptions) http.Handler {
 		tpl = string(handler.opts.CollectionView)
 	}
 
-	var setupUsersGroups func(*Connection) = func(con *Connection) {
-		var err error
-
-		handler.users, err = con.Users()
-		check(err)
-
-		handler.groups, err = con.Groups()
-		check(err)
-	}
-
-	if handler.client != nil {
-		if er := handler.client.OpenConnection(setupUsersGroups); er != nil {
-			log.Print(er)
-			return handler
-		}
-	} else if handler.connection != nil {
-		setupUsersGroups(handler.connection)
-	}
-
 	return handler
 }
 
@@ -74,8 +55,6 @@ type HttpHandler struct {
 	handlerPath string
 	openPath    string
 	query       url.Values
-	users       Users
-	groups      Groups
 }
 
 var check func(error) = func(err error) {
@@ -872,7 +851,10 @@ func (handler *HttpHandler) ServeCollectionView(col *Collection) {
 		"usersJSON": func() []string {
 			usrs := make([]string, 0)
 
-			for _, u := range handler.users {
+			conUsers, err := col.Con().Users()
+			check(err)
+
+			for _, u := range conUsers {
 				usrs = append(usrs, u.Name())
 			}
 
@@ -881,7 +863,10 @@ func (handler *HttpHandler) ServeCollectionView(col *Collection) {
 		"groupsJSON": func() []string {
 			grps := make([]string, 0)
 
-			for _, g := range handler.groups {
+			conGroups, err := col.Con().Groups()
+			check(err)
+
+			for _, g := range conGroups {
 				grps = append(grps, g.Name())
 			}
 
