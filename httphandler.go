@@ -108,9 +108,35 @@ var tpl = `
 	    white-space: nowrap;
 	    width: 1%;
 	}
+	a {
+		cursor: pointer;
+	}
+	.modal-dialog {
+		margin-top: 100px;
+	}
+	.meta-del {
+		color: red;
+		cursor: pointer;
+		font-size: 18px;
+	}
+	.logout:hover {
+		color: red !important;
+	}
+
+	.li-sep {
+		line-height: 50px;
+		color:#777;
+	}
+	.li-sep:first-child {
+		display: none;
+	}
 	</style>
 
 	<script type="text/javascript">
+
+	var me = {{ .Con.Options.Username }};
+	var users = {{ usersJSON }};
+	var groups = {{ groupsJSON }};
 
 	function escapeHtml(text) {
 	    'use strict';
@@ -120,47 +146,309 @@ var tpl = `
 	}
 
 	$(function() {
-		$('.show-meta-modal').click(function() {
-			var self = $(this);
 
-			var objName = self.attr("data-objname");
+		var chmod = function(objName, formData, inctx) {
 
-			var ajaxPath = document.location.pathname + objName + "?meta=1";
+			var ajaxPath = document.location.pathname + objName + "?createacl=1";
+
+			$.post(ajaxPath, formData, function(response, status) {
+				if ( response.Success == true ) {
+					var ctx = inctx.parent();
+
+					$(".acl-name", inctx).val("");
+					$(".acl-access", inctx).val("");
+
+					refreshMetas(objName, ctx);
+				} else {
+					alert("An error has occured: " + response.Message);
+				}
+			});
+		};
+
+
+		var createCollectionHandler = function() {
+
+			var colInput = $('.collection-name', $(this).parent().parent());
+
+			var colName = colInput.val();
+
+			var ajaxPath = document.location.pathname + "?createcol=1";
+
+			$.post(ajaxPath, {colname: colName}, function(response, status) {
+				if ( response.Success == true ) {
+					document.location.reload(true);
+				} else {
+					alert("An error has occured: " + response.Message);
+				}
+			});
+			
+		};
+
+		$('[data-toggle="popover"]').popover({
+			content: function(){
+				var cont = $($(this).data('contentwrapper'));
+
+		        return cont.html();
+		    },
+			html: true
+		}).on('shown.bs.popover', function() {
+			var pID = $(this).attr("aria-describedby");
+
+			$('.create-collection', $("#" + pID)).on('click', createCollectionHandler);
+		});
+		
+
+		var deleteMetaHandler = function(objname) {
+			return function() {	
+				var self = $(this);
+
+				var tr = self.parent().parent();
+
+				var tds = $("td", tr);
+
+				var a = tds.eq(0).text();
+				var v = tds.eq(1).text();
+				var u = tds.eq(2).text();
+
+				var ajaxPath = document.location.pathname + objname + "?deletemeta=1";
+
+				var formData = {
+					"attribute": a,
+					"value": v,
+					"units": u
+				};
+
+				$.post(ajaxPath, formData, function(response, status) {
+					if ( response.Success == true ) {
+						var ctx = tr.parent().parent().parent();
+
+						refreshMetas(objname, ctx);
+					} else {
+						alert("An error has occured: " + response.Message);
+					}
+				});
+
+			};
+		};
+
+		var refreshMetas = function(objname, ctx) {
+			var ajaxPath = document.location.pathname + objname + "?meta=1";
 
 			$.ajax({
 				"url": ajaxPath,
 				"complete": function(response, status) {
-					
-					//alert(JSON.stringify(response.responseJSON));
-					
-					var metaData = response.responseJSON.metadata;
-					var aclData = response.responseJSON.acl;
-					
-					var metaTbl = $(".meta-tbl tbody", self.parent()).html("");
-					var aclTbl = $(".acl-tbl tbody", self.parent()).html("");
+					var metaTbl = $(".meta-tbl tbody", ctx).html("");
+					var aclTbl = $(".acl-tbl tbody", ctx).html("");
 
-					if ( metaData.length > 0 ) {
-						for ( var n = 0; metaData.length > n; n++ ) {
-							metaTbl.append('<tr><td>' + escapeHtml(metaData[n].attribute) + '</td><td>' + escapeHtml(metaData[n].value) + '</td><td>' + escapeHtml(metaData[n].units) + '</td></tr>');
+					if ( Object.keys(response.responseJSON).length != 0 ) {
+
+						var metaData = response.responseJSON.metadata;
+						var aclData = response.responseJSON.acl;
+						if ( metaData.length > 0 ) {
+							for ( var n = 0; metaData.length > n; n++ ) {
+								metaTbl.append('<tr><td>' + escapeHtml(metaData[n].attribute) + '</td><td>' + escapeHtml(metaData[n].value) + '</td><td>' + escapeHtml(metaData[n].units) + '</td><td style="text-align:right;"><span class="meta-del glyphicon glyphicon-remove-circle"></span></td></tr>');
+							}
+						} else {
+							metaTbl.append('<tr><td colspan="4" style="text-align:center;">No Metadata Found</td></tr>');
 						}
-					} else {
-						metaTbl.append('<tr><td colspan="3" style="text-align:center;">No Metadata Found</td></tr>');
-					}
+						$(".meta-del", metaTbl).click(deleteMetaHandler(objname));
 
-
-					if ( aclData.length > 0 ) {
 						for ( var n = 0; aclData.length > n; n++ ) {
-							aclTbl.append('<tr><td>' + escapeHtml(aclData[n].name) + '</td><td>' + escapeHtml(aclData[n].accessLevel) + '</td><td>' + escapeHtml(aclData[n].type) + '</td></tr>');
+							var userGroupSelect;
+
+							if ( users.length == 0 ) {
+								userGroupSelect = $('<input class="acl-name form-control" disabled value="' + escapeHtml(aclData[n].name) + '">');
+							} else {
+								userGroupSelect = $('<select class="acl-name form-control" data-prev="' + escapeHtml(aclData[n].name) + '"></select>');
+								for ( var i in users ) {
+									if ( users[i] == aclData[n].name ) {
+										userGroupSelect.append('<option selected value="' + escapeHtml(users[i]) + '">User: ' + escapeHtml(users[i]) + '</option>');
+									} else {
+										userGroupSelect.append('<option value="' + escapeHtml(users[i]) + '">User: ' + escapeHtml(users[i]) + '</option>');
+									}
+								}
+								for ( var i in groups ) {
+									if ( groups[i] == aclData[n].name ) {
+										userGroupSelect.append('<option selected value="' + escapeHtml(groups[i]) + '">Group: ' + escapeHtml(groups[i]) + '</option>');
+									} else {
+										userGroupSelect.append('<option value="' + escapeHtml(groups[i]) + '">Group: ' + escapeHtml(groups[i]) + '</option>');
+									}
+								}
+							}
+							
+
+							var accessLevels = ['read', 'write', 'own', 'null'];
+							var accessLevelSelect = $('<select class="access-level form-control"></select>');
+							for ( var i in accessLevels ) {
+								if ( accessLevels[i] == aclData[n].accessLevel ) {
+									accessLevelSelect.append('<option selected value="' + escapeHtml(accessLevels[i]) + '">' + escapeHtml(accessLevels[i]) + '</option>');
+								} else {
+									accessLevelSelect.append('<option value="' + escapeHtml(accessLevels[i]) + '">' + escapeHtml(accessLevels[i]) + '</option>');
+								}
+							}
+
+							aclTbl.append('<tr><td>' + userGroupSelect[0].outerHTML + '</td><td>' + escapeHtml(aclData[n].type) + '</td><td>' + accessLevelSelect[0].outerHTML+ '</td></tr>');
+
+
+							$(".access-level", aclTbl).change(function() {
+								var self = $(this);
+
+								var tr = self.parent().parent();
+
+								var formData = {
+									name: $(".acl-name", tr).val(),
+									access: self.val()
+								};
+
+								var f = $("form", tr.parent().parent().parent().parent());
+
+								chmod(objname, formData, f);
+
+							});
+
+							$("select.acl-name", aclTbl).change(function() {
+								var self = $(this);
+
+								var tr = self.parent().parent();
+
+								var formData = {
+									name: self.val(),
+									access: $(".access-level", tr).val()
+								};
+
+								var f = $("form", tr.parent().parent().parent().parent());
+
+								chmod(objname, formData, f);
+
+								if ( self.attr("data-prev") != self.val() ) {
+									formData = {
+										name: self.attr("data-prev"),
+										access: "null"
+									};
+
+									chmod(objname, formData, f);
+								}
+							});
 						}
 					} else {
-						aclTbl.append('<tr><td colspan="3" style="text-align:center;">No ACLs Found</td></tr>');
+						aclTbl.append('<tr><td colspan="3" style="text-align:center;">Error Fetching ACLs</td></tr>');
+						metaTbl.append('<tr><td colspan="4" style="text-align:center;">Error Fetching Metadata</td></tr>');
 					}
-					
 
-					$('.modal', self.parent()).modal('show');
+
+					
 				}
 			});
+		};
+
+		$('.upload-btn').click(function() {
+			var reader = new FileReader();
+
+			reader.onloadend = function(e) {
+				var data = reader.result;
+
+				data = data.substr(data.indexOf('base64') + 7); 
+
+				var ajaxPath = document.location.pathname + "?upload=1";
+
+				$.post(ajaxPath, {name: reader.fileName, contents: data}, function(response, status) {
+					if ( response.Success == true ) {
+						document.location.reload(true);
+					} else {
+						alert("An error has occured: " + response.Message);
+					}
+				});
+			}
+
+			var input = $(document.createElement('input'));
+	        input.attr("type", "file");
+	        input.trigger('click');
+
+	        input.change(function() {
+	        	var file = input[0].files[0];
+
+	        	reader.fileName = input[0].files[0].name;
+	        	reader.readAsDataURL(file);
+	        });
+	        
+		});
+
+		$('.show-meta-modal').click(function() {
+			var self = $(this);
+
+			var objName = self.attr("data-objname");
+			var ctx = self.parent().parent();
+
+			refreshMetas(objName, ctx);
+
+			$('.modal', ctx).modal('show');
 			
+		});
+
+		$('.delete-obj').click(function() {
+			var self = $(this);
+
+			if ( !confirm("Are you sure you want to delete this iRODS object? This action cannot be undone.") ) {
+				return;
+			}
+
+			var objName = self.attr("data-objname");
+
+			var ajaxPath = document.location.pathname + objName + "?delete=1";
+
+			$.post(ajaxPath, {}, function(response, status) {
+				if ( response.Success == true ) {
+					document.location.reload(true);
+				} else {
+					alert("An error has occured: " + response.Message);
+				}
+			});
+		});
+
+		$('.acl-form').submit(function(e) {
+			var self = $(this);
+
+			e.preventDefault();
+
+			var objName = self.attr("data-objname");
+
+			var formData = {
+				name: $(".acl-name", self).val(),
+				access: $(".acl-access", self).val()
+			};
+
+			chmod(objName, formData, self);
+		});
+
+		$('.avu-form').submit(function(e) {
+			
+			e.preventDefault();
+
+			var self = $(this);
+
+			var objName = self.attr("data-objname");
+			var ajaxPath = document.location.pathname + objName + "?meta=1";
+
+			var formData = {
+				"attribute": $(".avu-attribute", self).val(),
+				"value": $(".avu-value", self).val(),
+				"units": $(".avu-units", self).val()
+			};
+
+			$.post(ajaxPath, formData, function(response, status) {
+				if ( response.Success == true ) {
+					var ctx = self.parent();
+
+					$(".avu-attribute", self).val("");
+					$(".avu-value", self).val("");
+					$(".avu-units", self).val("");
+
+					refreshMetas(objName, ctx);
+				} else {
+					alert("An error has occured: " + response.Message);
+				}
+			});
+
 		});
 		
 	});
@@ -169,14 +457,16 @@ var tpl = `
 
 </head>
 <body>
+
 	<nav class="navbar navbar-default navbar-fixed-top">
 		<div class="container">
 			<div class="navbar-header">
-				<a class="navbar-brand" href="#">GoRODS HTTP FileServer</a>
+				<a class="navbar-brand" href="#">GoRODS HTTP File Server</a>
 			</div>
 			<div id="navbar" class="navbar-collapse collapse">
 				<ul class="nav navbar-nav navbar-right">
 					{{range headerLinks}}
+						<li class="li-sep">&gt;</li>
 						<li><a href="{{ index . "url" }}">{{ index . "name" }}</a></li>
 					{{end}}
 				</ul>
@@ -186,7 +476,13 @@ var tpl = `
 
 	<div class="container">
 		<br /><br /><br />
-		<h3>{{.Path}}</h3>
+
+		<div style="float:right;margin-top: 8px;" class="btn-group" role="group">
+			<button type="button" class="btn btn-default" data-container="body" data-contentwrapper="#create-collection-cont" data-toggle="popover" data-placement="bottom">Create Collection</button>
+			<button type="button" class="btn btn-default upload-btn">Upload Data Object</button>
+		</div>
+
+		<h4 style="margin-top:15px;">{{.Path}}</h4>
 
 		<table class="table table-hover">
 			<thead>
@@ -194,7 +490,7 @@ var tpl = `
 					<th>Name</th>
 					<th>Size</th>
 					<th>Type</th>
-					<th></th>
+					<th style="width:8%;"></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -212,8 +508,10 @@ var tpl = `
 						<td>{{prettySize .Size}}</td>
 						<td>Collection</td>
 						<td>
-							
-							<span style="cursor:pointer;color:#337ab7;" data-objname="{{.Name}}/" class="glyphicon glyphicon-th-list show-meta-modal"></span>
+							<div style="text-align:right;">
+								<span style="cursor:pointer;color:#337ab7;margin-right:10px;" data-objname="{{.Name}}/" class="glyphicon glyphicon-th-list show-meta-modal"></span>
+								<span class="glyphicon glyphicon-remove delete-obj" style="color:red;cursor:pointer;" data-objname="{{.Name}}/"></span>
+							</div>
 
 							<!-- Modal -->
 							<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
@@ -221,36 +519,91 @@ var tpl = `
 									<div class="modal-content">
 										<div class="modal-header">
 											<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-											<h4 class="modal-title" id="myModalLabel">Collection "{{.Name}}"</h4>
+											<h4 class="modal-title" class="myModalLabel">Collection "{{.Name}}"</h4>
 										</div>
 										<div class="modal-body">
-											<h4>Metadata</h4>
-											<table class="table table-hover meta-tbl">
-											<thead>
-												<tr>
-													<th>Attribute</th>
-													<th>Value</th>
-													<th>Units</th>
-												</tr>
-											</thead>
-											<tbody>
-												
-											</tbody>
-											</table>
 
-											<h4>ACL</h4>
-											<table class="table table-hover acl-tbl">
-											<thead>
-												<tr>
-													<th>Name</th>
-													<th>Access Level</th>
-													<th>Type</th>
-												</tr>
-											</thead>
-											<tbody>
-												
-											</tbody>
-											</table>
+											<ul class="nav nav-tabs">
+												<li class="active"><a data-toggle="tab" data-target=".metadata-cont">Metadata</a></li>
+												<li><a data-toggle="tab" data-target=".acl-cont">ACL</a></li>
+											</ul>
+
+											<div class="tab-content">
+												<div class="metadata-cont tab-pane fade in active">
+													<br />
+													<table class="table table-hover meta-tbl">
+													<thead>
+														<tr>
+															<th>Attribute</th>
+															<th>Value</th>
+															<th>Units</th>
+															<th style="width:1%;"></th>
+														</tr>
+													</thead>
+													<tbody>
+													</tbody>
+													</table>
+													<form class="form-inline avu-form" data-objname="{{.Name}}/">
+														<div class="form-group">
+															<div class="input-group" style="width: 84%;">
+																<div class="input-group-addon">A:</div>
+																<input type="text" class="form-control avu-attribute" placeholder="Attribute" style="border-right: 0;">
+																<div class="input-group-addon">V:</div>
+																<input type="text" class="form-control avu-value" placeholder="Value" style="border-left: 0; border-right:0;">
+																<div class="input-group-addon">U:</div>
+																<input type="text" class="form-control avu-units" placeholder="Units" style="border-left: 0;">
+															</div>
+															<button type="submit" class="add-avu btn btn-primary">Add AVU</button>
+														</div>
+													</form>
+												</div>
+												<div class="acl-cont tab-pane fade">
+													<br />
+													<table class="table table-hover acl-tbl">
+													<thead>
+														<tr>
+															<th>Name</th>
+															<th>Type</th>
+															<th style="min-width:16%;">Access Level</th>
+														</tr>
+													</thead>
+													<tbody>
+														
+													</tbody>
+													</table>
+													<form class="form-inline acl-form" data-objname="{{.Name}}/">
+														<div class="form-group" style="width:100%;">
+															<div class="input-group" style="width: 77%;">
+																<div class="input-group-addon">User/Group:</div>
+																{{ if ne (len .Con.Users) 0 }}
+																	<select class="form-control acl-name" style="margin-left:-3px;border-radius: 4px;margin-right:5px;">
+																		<option></option>
+																		
+																		{{ range .Con.Users }}
+																			<option value="{{ .Name }}">User: {{ .Name }}</option>
+																		{{ end }}
+																		{{ range .Con.Groups }}
+																			<option value="{{ .Name }}">Group: {{ .Name }}</option>
+																		{{ end }}
+																		
+																	</select>
+																{{ else }}
+																	<input type="text" class="form-control acl-name" style="margin-left:-3px;border-radius: 4px;margin-right:5px;">
+																{{ end }}
+																<div class="input-group-addon" style="border-radius: 4px;">Access:</div>
+																<select class="form-control acl-access" style="margin-left:-6px;">
+																	<option></option>
+																	<option value="read">read</option>
+																	<option value="write">write</option>
+																	<option value="own">own</option>
+																	<option value="null">revoke</option>
+																</select>
+															</div>
+															<button type="submit" class="add-acl btn btn-primary">Modify Access</button>
+														</div>
+													</form>
+												</div>
+											</div>
 										</div>
 										<div class="modal-footer">
 											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -266,8 +619,13 @@ var tpl = `
 						<th><a href="{{.Name}}">{{.Name}}</a></th>
 						<td>{{prettySize .Size}}</td>
 						<td>Data Object</td>
-						<td><a href="{{.Name}}?download=1"><span style="margin-right:10px;" class="glyphicon glyphicon-download-alt"></span></a>
-							<span style="cursor:pointer;color:#337ab7;" data-objname="{{.Name}}" class="glyphicon glyphicon-th-list show-meta-modal"></span>
+						<td>
+
+							<div style="text-align:right;">
+								<a href="{{.Name}}?download=1"><span style="margin-right:10px;" class="glyphicon glyphicon-download-alt"></span></a>
+								<span style="cursor:pointer;color:#337ab7;margin-right:10px;" data-objname="{{.Name}}" class="glyphicon glyphicon-th-list show-meta-modal"></span>
+								<span class="glyphicon glyphicon-remove delete-obj" style="color:red;cursor:pointer;" data-objname="{{.Name}}"></span>
+							</div>
 
 							<!-- Modal -->
 							<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
@@ -278,34 +636,89 @@ var tpl = `
 											<h4 class="modal-title" id="myModalLabel">Data Object "{{.Name}}"</h4>
 										</div>
 										<div class="modal-body">
-											<h4>Metadata</h4>
-											<table class="table table-hover meta-tbl">
-											<thead>
-												<tr>
-													<th>Attribute</th>
-													<th>Value</th>
-													<th>Units</th>
-												</tr>
-											</thead>
-											<tbody>
-												
-											</tbody>
-											</table>
+											<ul class="nav nav-tabs">
+												<li class="active"><a data-toggle="tab" data-target=".metadata-cont">Metadata</a></li>
+												<li><a data-toggle="tab" data-target=".acl-cont">ACL</a></li>
+											</ul>
 
-											<h4>ACL</h4>
-											<table class="table table-hover acl-tbl">
-											<thead>
-												<tr>
-													<th>Name</th>
-													<th>Access Level</th>
-													<th>Type</th>
-												</tr>
-											</thead>
-											<tbody>
-												
-											</tbody>
-											</table>
+											<div class="tab-content">
 
+												<div class="metadata-cont tab-pane fade in active">
+													<br />
+													<table class="table table-hover meta-tbl">
+													<thead>
+														<tr>
+															<th>Attribute</th>
+															<th>Value</th>
+															<th>Units</th>
+															<th style="width:1%;"></th>
+														</tr>
+													</thead>
+													<tbody>
+														
+													</tbody>
+													</table>
+													<form class="form-inline avu-form" data-objname="{{.Name}}">
+														<div class="form-group">
+															<div class="input-group" style="width: 84%;">
+																<div class="input-group-addon">A:</div>
+																<input type="text" class="form-control avu-attribute" placeholder="Attribute" style="border-right: 0;">
+																<div class="input-group-addon">V:</div>
+																<input type="text" class="form-control avu-value" placeholder="Value" style="border-left: 0; border-right:0;">
+																<div class="input-group-addon">U:</div>
+																<input type="text" class="form-control avu-units" placeholder="Units" style="border-left: 0;">
+															</div>
+															<button type="submit" class="add-avu btn btn-primary">Add AVU</button>
+														</div>
+													</form>
+												</div>
+												<div class="acl-cont tab-pane fade">
+													<br />
+													<table class="table table-hover acl-tbl">
+													<thead>
+														<tr>
+															<th>Name</th>
+															<th>Type</th>
+															<th style="min-width:16%;">Access Level</th>
+														</tr>
+													</thead>
+													<tbody>
+														
+													</tbody>
+													</table>
+													<form class="form-inline acl-form" data-objname="{{.Name}}">
+														<div class="form-group" style="width:100%;">
+															<div class="input-group" style="width: 77%;">
+																<div class="input-group-addon">User/Group:</div>
+																{{ if ne (len .Con.Users) 0 }}
+																	<select class="form-control acl-name" style="margin-left:-3px;border-radius: 4px;margin-right:5px;">
+																		<option></option>
+																		
+																		{{ range .Con.Users }}
+																			<option value="{{ .Name }}">User: {{ .Name }}</option>
+																		{{ end }}
+																		{{ range .Con.Groups }}
+																			<option value="{{ .Name }}">Group: {{ .Name }}</option>
+																		{{ end }}
+																		
+																	</select>
+																{{ else }}
+																	<input type="text" class="form-control acl-name" style="margin-left:-3px;border-radius: 4px;margin-right:5px;">
+																{{ end }}
+																<div class="input-group-addon" style="border-radius: 4px;">Access:</div>
+																<select class="form-control acl-access" style="margin-left:-6px;">
+																	<option></option>
+																	<option value="read">read</option>
+																	<option value="write">write</option>
+																	<option value="own">own</option>
+																	<option value="null">revoke</option>
+																</select>
+															</div>
+															<button type="submit" class="add-acl btn btn-primary">Modify Access</button>
+														</div>
+													</form>	
+												</div>
+											</div>
 										</div>
 										<div class="modal-footer">
 											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -319,7 +732,13 @@ var tpl = `
 			</tbody>
 		</table>
 	</div>
-
+	<div id="create-collection-cont" style="display:none;">
+		<strong>Create Collection</strong>
+		<div style='margin-top:10px;' class='input-group'>
+			<input type='text' class='form-control collection-name' placeholder='Collection name...'>
+			<span class='input-group-btn'><button class='btn create-collection btn-success' type='button'>Create</button></span>
+		</div>
+	</div>
 </body>
 </html>
 `
