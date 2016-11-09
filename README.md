@@ -1,8 +1,6 @@
 # GoRODS
 
-Golang binding for iRODS C API. Requires go version >= 1.5 for cgo support.
-
-**Notice:** This package is incomplete and still under heavy development. API is subject to change without warning until a stable version is released.
+Golang binding for iRODS C API. Compatable with golang version >= 1.5
 
 ### Installation
 
