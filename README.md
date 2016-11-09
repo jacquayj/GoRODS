@@ -1,6 +1,6 @@
 # GoRODS
 
-Golang binding for iRODS C API. Compatable with golang version >= 1.5
+Golang binding for iRODS C API. Compatible with golang version >= 1.5
 
 ### Installation
 
