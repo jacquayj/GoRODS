@@ -21,19 +21,9 @@ import (
 )
 
 func FileServer(opts FSOptions) http.Handler {
-
-	handler := new(HttpHandler)
-
-	handler.client = opts.Client
-	handler.connection = opts.Connection
-	handler.path = strings.TrimRight(opts.Path, "/")
-	handler.opts = opts
-
-	if handler.opts.CollectionView != "" {
-		tpl = string(handler.opts.CollectionView)
-	}
-
-	return handler
+	h := new(HandlerFactory)
+	h.opts = opts
+	return h
 }
 
 type FSOptions struct {
@@ -45,11 +35,33 @@ type FSOptions struct {
 	CollectionView string
 }
 
+type HandlerFactory struct {
+	opts FSOptions
+}
+
+func (hf *HandlerFactory) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+
+	handler := new(HttpHandler)
+
+	handler.client = hf.opts.Client
+	handler.connection = hf.opts.Connection
+	handler.path = strings.TrimRight(hf.opts.Path, "/")
+	handler.opts = hf.opts
+
+	if handler.opts.CollectionView != "" {
+		tpl = string(handler.opts.CollectionView)
+	}
+
+	handler.ServeHTTP(response, request)
+
+}
+
 type HttpHandler struct {
-	client      *Client
-	connection  *Connection
-	path        string
-	opts        FSOptions
+	client     *Client
+	connection *Connection
+	path       string
+	opts       FSOptions
+
 	response    http.ResponseWriter
 	request     *http.Request
 	handlerPath string
@@ -760,7 +772,79 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 
 func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 
-	if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
+	rng := handler.request.Header["Range"]
+
+	lenStr := strconv.FormatInt(obj.Size(), 10)
+
+	if len(rng) > 0 {
+		rangeHeader := rng[0]
+
+		byteRange := strings.Split(rangeHeader, "bytes=")
+
+		if len(byteRange) == 2 && byteRange[0] == "" && byteRange[1] != "" {
+
+			byteRangeSplit := strings.Split(byteRange[1], ",")
+
+			// FIXME: We should support multiple ranges with 4 loop, but only send headers once... sum up content length?
+			//for _, rangeStr := range byteRangeSplit {
+
+			rangeStrSplit := strings.Split(byteRangeSplit[0], "-")
+			if len(rangeStrSplit) == 2 {
+
+				var convErr error
+				var firstByteN int64
+				var lastByteN int64
+
+				firstByte := rangeStrSplit[0]
+				lastByte := rangeStrSplit[1]
+
+				// should we only get last bytes
+				if firstByte == "" {
+					if lastByteN, convErr = strconv.ParseInt(lastByte, 10, 64); convErr != nil {
+						log.Print("Error parsing byte range")
+						return
+					}
+
+					firstByteN = obj.Size() - lastByteN
+					lastByteN = obj.Size() - 1
+				} else if lastByte == "" {
+					if firstByteN, convErr = strconv.ParseInt(firstByte, 10, 64); convErr != nil {
+						log.Print("Error parsing byte range")
+						return
+					}
+
+					lastByteN = obj.Size() - 1
+				} else {
+					if firstByteN, convErr = strconv.ParseInt(firstByte, 10, 64); convErr != nil {
+						log.Print("Error parsing byte range")
+						return
+					}
+
+					if lastByteN, convErr = strconv.ParseInt(lastByte, 10, 64); convErr != nil {
+						log.Print("Error parsing byte range")
+						return
+					}
+				}
+
+				handler.response.Header().Set("Content-Range", "bytes "+strconv.FormatInt(firstByteN, 10)+"-"+strconv.FormatInt(lastByteN, 10)+"/"+lenStr)
+				handler.response.Header().Set("Accept-Ranges", "bytes")
+				handler.response.Header().Set("Content-Length", strconv.FormatInt((lastByteN-firstByteN)+1, 10))
+
+				handler.response.WriteHeader(http.StatusPartialContent)
+
+				if byteData, err := obj.ReadBytes(firstByteN, int(lastByteN-firstByteN)+1); err == nil {
+					handler.response.Write(byteData)
+				} else {
+					log.Print(err)
+				}
+
+			} else {
+				log.Print("Error parsing byte range")
+			}
+			//}
+		}
+
+	} else {
 
 		if handler.opts.Download || handler.query.Get("download") != "" {
 			handler.response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
@@ -783,15 +867,20 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 			handler.response.Header().Set("Content-type", mimeType)
 		}
 
-		handler.response.Header().Set("Content-Length", strconv.FormatInt(obj.Size(), 10))
-		handler.response.Write(chunk)
-	}); readEr != nil {
-		log.Print(readEr)
+		handler.response.Header().Set("Accept-Ranges", "bytes")
+		handler.response.Header().Set("Content-Length", lenStr)
 
-		handler.response.WriteHeader(http.StatusInternalServerError)
-		handler.response.Write([]byte("Error: " + readEr.Error()))
+		if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
+			handler.response.Write(chunk)
+		}); readEr != nil {
+			log.Print(readEr)
 
+			handler.response.WriteHeader(http.StatusInternalServerError)
+			handler.response.Write([]byte("Error: " + readEr.Error()))
+
+		}
 	}
+
 }
 
 func (handler *HttpHandler) Serve404() {
