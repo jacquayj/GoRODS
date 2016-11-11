@@ -872,6 +872,10 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 
 				mpWriter := multipart.NewWriter(handler.response)
 
+				handler.response.Header().Set("Content-Type", "multipart/byteranges; boundary="+mpWriter.Boundary())
+
+				handler.response.WriteHeader(http.StatusPartialContent)
+
 				for _, outputSegment := range outputBuffer {
 
 					var headers textproto.MIMEHeader = make(textproto.MIMEHeader)
