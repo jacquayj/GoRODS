@@ -13,7 +13,9 @@ import (
 	"html/template"
 	"log"
 	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"path/filepath"
 	"strconv"
@@ -770,9 +772,28 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 	handler.response.Write(jsonBytes)
 }
 
+type RangeSegmentOutput struct {
+	ContentRange string
+	ContentType  string
+	ByteContent  []byte
+}
+
+type RangeOutput []RangeSegmentOutput
+
+func (ro RangeOutput) TotalLength() string {
+	var sum int
+
+	for _, seg := range ro {
+		sum += len(seg.ByteContent)
+	}
+
+	return strconv.Itoa(sum)
+}
+
 func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 
 	rng := handler.request.Header["Range"]
+	objMime := handler.getObjMime(obj)
 
 	lenStr := strconv.FormatInt(obj.Size(), 10)
 
@@ -783,65 +804,99 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 
 		if len(byteRange) == 2 && byteRange[0] == "" && byteRange[1] != "" {
 
+			var outputBuffer RangeOutput
+
 			byteRangeSplit := strings.Split(byteRange[1], ",")
 
-			// FIXME: We should support multiple ranges with 4 loop, but only send headers once... sum up content length?
-			//for _, rangeStr := range byteRangeSplit {
+			for _, rangeStr := range byteRangeSplit {
 
-			rangeStrSplit := strings.Split(byteRangeSplit[0], "-")
-			if len(rangeStrSplit) == 2 {
+				rangeStrSplit := strings.Split(rangeStr, "-")
+				if len(rangeStrSplit) == 2 {
 
-				var convErr error
-				var firstByteN int64
-				var lastByteN int64
+					var convErr error
+					var firstByteN int64
+					var lastByteN int64
 
-				firstByte := rangeStrSplit[0]
-				lastByte := rangeStrSplit[1]
+					firstByte := rangeStrSplit[0]
+					lastByte := rangeStrSplit[1]
 
-				// should we only get last bytes
-				if firstByte == "" {
-					if lastByteN, convErr = strconv.ParseInt(lastByte, 10, 64); convErr != nil {
-						log.Print("Error parsing byte range")
-						return
+					// should we only get last bytes
+					if firstByte == "" {
+						if lastByteN, convErr = strconv.ParseInt(lastByte, 10, 64); convErr != nil {
+							log.Print("Error parsing byte range")
+							return
+						}
+
+						firstByteN = obj.Size() - lastByteN
+						lastByteN = obj.Size() - 1
+					} else if lastByte == "" {
+						if firstByteN, convErr = strconv.ParseInt(firstByte, 10, 64); convErr != nil {
+							log.Print("Error parsing byte range")
+							return
+						}
+
+						lastByteN = obj.Size() - 1
+					} else {
+						if firstByteN, convErr = strconv.ParseInt(firstByte, 10, 64); convErr != nil {
+							log.Print("Error parsing byte range")
+							return
+						}
+
+						if lastByteN, convErr = strconv.ParseInt(lastByte, 10, 64); convErr != nil {
+							log.Print("Error parsing byte range")
+							return
+						}
 					}
 
-					firstByteN = obj.Size() - lastByteN
-					lastByteN = obj.Size() - 1
-				} else if lastByte == "" {
-					if firstByteN, convErr = strconv.ParseInt(firstByte, 10, 64); convErr != nil {
-						log.Print("Error parsing byte range")
-						return
+					if byteData, err := obj.ReadBytes(firstByteN, int(lastByteN-firstByteN)+1); err == nil {
+
+						outputBuffer = append(outputBuffer, RangeSegmentOutput{
+							ContentRange: "bytes " + strconv.FormatInt(firstByteN, 10) + "-" + strconv.FormatInt(lastByteN, 10) + "/" + lenStr,
+							ContentType:  objMime,
+							ByteContent:  byteData,
+						})
+
+					} else {
+						log.Print(err)
 					}
 
-					lastByteN = obj.Size() - 1
 				} else {
-					if firstByteN, convErr = strconv.ParseInt(firstByte, 10, 64); convErr != nil {
-						log.Print("Error parsing byte range")
-						return
-					}
+					log.Print("Error parsing byte range")
+				}
+			}
 
-					if lastByteN, convErr = strconv.ParseInt(lastByte, 10, 64); convErr != nil {
-						log.Print("Error parsing byte range")
-						return
+			if len(outputBuffer) > 1 {
+
+				handler.response.Header().Set("Accept-Ranges", "bytes")
+				//handler.response.Header().Set("Content-Length", outputBuffer.TotalLength())
+
+				mpWriter := multipart.NewWriter(handler.response)
+
+				for _, outputSegment := range outputBuffer {
+
+					var headers textproto.MIMEHeader = make(textproto.MIMEHeader)
+
+					headers.Add("Content-Type", outputSegment.ContentType)
+					headers.Add("Content-Range", outputSegment.ContentRange)
+
+					if writer, err := mpWriter.CreatePart(headers); err != nil {
+						log.Print(err)
+						continue
+					} else {
+						writer.Write(outputSegment.ByteContent)
 					}
 				}
 
-				handler.response.Header().Set("Content-Range", "bytes "+strconv.FormatInt(firstByteN, 10)+"-"+strconv.FormatInt(lastByteN, 10)+"/"+lenStr)
+			} else if len(outputBuffer) == 1 {
+				handler.response.Header().Set("Content-Range", outputBuffer[0].ContentRange)
 				handler.response.Header().Set("Accept-Ranges", "bytes")
-				handler.response.Header().Set("Content-Length", strconv.FormatInt((lastByteN-firstByteN)+1, 10))
+				handler.response.Header().Set("Content-Length", strconv.Itoa(len(outputBuffer[0].ByteContent)))
+				handler.response.Header().Set("Content-Type", outputBuffer[0].ContentType)
 
 				handler.response.WriteHeader(http.StatusPartialContent)
 
-				if byteData, err := obj.ReadBytes(firstByteN, int(lastByteN-firstByteN)+1); err == nil {
-					handler.response.Write(byteData)
-				} else {
-					log.Print(err)
-				}
-
-			} else {
-				log.Print("Error parsing byte range")
+				handler.response.Write(outputBuffer[0].ByteContent)
 			}
-			//}
 		}
 
 	} else {
@@ -850,21 +905,7 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 			handler.response.Header().Set("Content-Disposition", "attachment; filename="+obj.Name())
 			handler.response.Header().Set("Content-type", "application/octet-stream")
 		} else {
-			var mimeType string
-			ext := filepath.Ext(handler.openPath)
-
-			if ext != "" {
-				mimeType = mime.TypeByExtension(ext)
-
-				if mimeType == "" {
-					log.Printf("Can't find mime type for %s extension", ext)
-					mimeType = "application/octet-stream"
-				}
-			} else {
-				mimeType = "application/octet-stream"
-			}
-
-			handler.response.Header().Set("Content-type", mimeType)
+			handler.response.Header().Set("Content-type", objMime)
 		}
 
 		handler.response.Header().Set("Accept-Ranges", "bytes")
@@ -881,6 +922,25 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 		}
 	}
 
+}
+
+func (handler *HttpHandler) getObjMime(obj *DataObj) string {
+	var mimeType string
+
+	ext := filepath.Ext(obj.Path())
+
+	if ext != "" {
+		mimeType = mime.TypeByExtension(ext)
+
+		if mimeType == "" {
+			log.Printf("Can't find mime type for %s extension", ext)
+			mimeType = "application/octet-stream"
+		}
+	} else {
+		mimeType = "application/octet-stream"
+	}
+
+	return mimeType
 }
 
 func (handler *HttpHandler) Serve404() {
