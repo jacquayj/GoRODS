@@ -209,7 +209,7 @@ func (grp *Group) RefreshInfo() error {
 			if zne := zones.FindByName(infoMap["zone_name"], grp.con); zne != nil {
 				grp.zone = zne
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRODS Refresh Group Info Failed: Unable to locate zone in cache"))
+				return newError(Fatal, -1, fmt.Sprintf("iRODS Refresh Group Info Failed: Unable to locate zone in cache"))
 			}
 		}
 	} else {
@@ -247,7 +247,7 @@ func (grp *Group) FetchInfo() (map[string]string, error) {
 
 	if status := C.gorods_get_user(cGroup, ccon, &result, &err); status != 0 {
 		grp.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Group Info Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Group Info Failed: %v", C.GoString(err)))
 	}
 
 	grp.con.ReturnCcon(ccon)
@@ -302,7 +302,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 			return make(Users, 0), nil
 		} else {
 
-			return nil, newError(Fatal, fmt.Sprintf("iRODS Get Group %v Failed: %v", grp.name, C.GoString(err)))
+			return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Group %v Failed: %v", grp.name, C.GoString(err)))
 		}
 
 	}
@@ -326,7 +326,7 @@ func (grp *Group) FetchUsers() (Users, error) {
 			if usr := usrs.FindByName(usrFrags[0], grp.con); usr != nil {
 				response = append(response, usr)
 			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRODS FetchUsers Failed: User in response not found in cache"))
+				return nil, newError(Fatal, -1, fmt.Sprintf("iRODS FetchUsers Failed: User in response not found in cache"))
 			}
 
 		}
@@ -352,7 +352,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 				zoneName := existingUsr.zone
 				return addToGroup(usrName, zoneName, grp.name, grp.con)
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRODS AddUser Failed: can't find iRODS user by string"))
+				return newError(Fatal, -1, fmt.Sprintf("iRODS AddUser Failed: can't find iRODS user by string"))
 			}
 		} else {
 			return err
@@ -364,7 +364,7 @@ func (grp *Group) AddUser(usr interface{}) error {
 	default:
 	}
 
-	return newError(Fatal, fmt.Sprintf("iRODS AddUser Failed: unknown type passed"))
+	return newError(Fatal, -1, fmt.Sprintf("iRODS AddUser Failed: unknown type passed"))
 }
 
 // RemoveUser removes an iRODS user from the group. Accepts a string or *User struct.
@@ -380,7 +380,7 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 				zoneName := existingUsr.zone
 				return removeFromGroup(usrName, zoneName, grp.name, grp.con)
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRODS RemoveUser Failed: can't find iRODS user by string"))
+				return newError(Fatal, -1, fmt.Sprintf("iRODS RemoveUser Failed: can't find iRODS user by string"))
 			}
 		} else {
 			return err
@@ -392,7 +392,7 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	default:
 	}
 
-	return newError(Fatal, fmt.Sprintf("iRODS RemoveUser Failed: unknown type passed"))
+	return newError(Fatal, -1, fmt.Sprintf("iRODS RemoveUser Failed: unknown type passed"))
 }
 
 func addToGroup(userName string, zone *Zone, groupName string, con *Connection) error {
@@ -412,7 +412,7 @@ func addToGroup(userName string, zone *Zone, groupName string, con *Connection) 
 	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_add_user_to_group(cUserName, cZoneName, cGroupName, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS AddToGroup %v Failed: %v", groupName, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS AddToGroup %v Failed: %v", groupName, C.GoString(err)))
 	}
 
 	return nil
@@ -434,7 +434,7 @@ func removeFromGroup(userName string, zone *Zone, groupName string, con *Connect
 	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_remove_user_from_group(cUserName, cZoneName, cGroupName, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS AddToGroup %v Failed: %v", groupName, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS AddToGroup %v Failed: %v", groupName, C.GoString(err)))
 	}
 
 	return nil
@@ -454,7 +454,7 @@ func deleteGroup(groupName string, zone *Zone, con *Connection) error {
 	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_delete_group(cGroupName, cZoneName, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS DeleteGroup %v Failed: %v", groupName, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS DeleteGroup %v Failed: %v", groupName, C.GoString(err)))
 	}
 
 	return nil
@@ -474,7 +474,7 @@ func createGroup(groupName string, zone *Zone, con *Connection) error {
 	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_create_group(cGroupName, cZoneName, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS CreateGroup %v Failed: %v", groupName, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS CreateGroup %v Failed: %v", groupName, C.GoString(err)))
 	}
 
 	return nil

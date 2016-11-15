@@ -103,7 +103,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 		if u := usrs.FindByName(col.ownerName, col.con); u != nil {
 			col.owner = u
 		} else {
-			return nil, newError(Fatal, fmt.Sprintf("iRODS initCollection Failed: Unable to locate user in cache"))
+			return nil, newError(Fatal, -1, fmt.Sprintf("iRODS initCollection Failed: Unable to locate user in cache"))
 		}
 	}
 
@@ -149,7 +149,7 @@ func (col *Collection) Stat() (map[string]interface{}, error) {
 	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_stat_dataobject(path, &statResult, ccon, &err); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Stat Failed: %v, %v", col.path, C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Stat Failed: %v, %v", col.path, C.GoString(err)))
 	}
 
 	result := make(map[string]interface{})
@@ -213,7 +213,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 			if u := usrs.FindByName(col.ownerName, col.con); u != nil {
 				col.owner = u
 			} else {
-				return nil, newError(Fatal, fmt.Sprintf("iRODS getCollection Failed: Unable to locate user in cache"))
+				return nil, newError(Fatal, -1, fmt.Sprintf("iRODS getCollection Failed: Unable to locate user in cache"))
 			}
 		}
 	} else {
@@ -239,7 +239,7 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 
 	if status := C.gorods_create_collection(path, ccon, &errMsg); status != 0 {
 		coll.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Create Collection Failed: %v, Does the collection already exist?", C.GoString(errMsg)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Create Collection Failed: %v, Does the collection already exist?", C.GoString(errMsg)))
 	}
 
 	coll.con.ReturnCcon(ccon)
@@ -361,7 +361,7 @@ func (col *Collection) Inheritance() (bool, error) {
 	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_get_collection_inheritance(ccon, collName, &enabled, &err); status != 0 {
-		return false, newError(Fatal, fmt.Sprintf("iRODS Get Collection Inheritance Failed: %v", C.GoString(err)))
+		return false, newError(Fatal, status, fmt.Sprintf("iRODS Get Collection Inheritance Failed: %v", C.GoString(err)))
 	}
 
 	if int(enabled) > 0 {
@@ -410,7 +410,7 @@ func (col *Collection) ACL() (ACLs, error) {
 
 	if status := C.gorods_get_collection_acl(ccon, collName, &result, zoneHint, &err); status != 0 {
 		col.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Collection ACL Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Collection ACL Failed: %v", C.GoString(err)))
 	}
 
 	col.con.ReturnCcon(ccon)
@@ -523,7 +523,7 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_rm(path, 1, cRecursive, cForce, ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS Rm Collection Failed: %v", C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Rm Collection Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
@@ -613,7 +613,7 @@ func (col *Collection) DownloadTo(localPath string) error {
 		}
 
 	} else {
-		return newError(Fatal, fmt.Sprintf("iRODS DownloadTo Failed: localPath doesn't exist or isn't a directory"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS DownloadTo Failed: localPath doesn't exist or isn't a directory"))
 	}
 
 	return nil
@@ -642,7 +642,7 @@ func (col *Collection) Open() error {
 		defer col.con.ReturnCcon(ccon)
 
 		if status := C.gorods_open_collection(path, cTrimRepls, &col.chandle, ccon, &errMsg); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRODS Open Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
+			return newError(Fatal, status, fmt.Sprintf("iRODS Open Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
 		}
 	}
 
@@ -665,7 +665,7 @@ func (col *Collection) Close() error {
 		defer col.con.ReturnCcon(ccon)
 
 		if status := C.gorods_close_collection(col.chandle, ccon, &errMsg); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRODS Close Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
+			return newError(Fatal, status, fmt.Sprintf("iRODS Close Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
 		}
 
 		col.chandle = C.int(-1)
@@ -703,7 +703,7 @@ func (col *Collection) CopyTo(iRODSCollection interface{}) error {
 		destinationCollectionString = (iRODSCollection.(*Collection)).path + "/"
 		destination = destinationCollectionString + col.name
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS CopyTo Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS CopyTo Failed, unknown variable type passed as collection"))
 	}
 
 	var colEr error
@@ -925,7 +925,7 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 		destinationCollectionString = (iRODSCollection.(*Collection)).path + "/"
 		destination = destinationCollectionString + col.name
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Move Collection Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Move Collection Failed, unknown variable type passed as collection"))
 	}
 
 	path := C.CString(col.path)
@@ -938,7 +938,7 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 
 	if status := C.gorods_move_dataobject(path, dest, C.RENAME_COLL, ccon, &err); status != 0 {
 		col.con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRODS Move Collection Failed: %v, D:%v, %v", col.path, destination, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Move Collection Failed: %v, D:%v, %v", col.path, destination, C.GoString(err)))
 	}
 
 	col.con.ReturnCcon(ccon)
@@ -962,7 +962,7 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 	case *Collection:
 		destinationCollection = (iRODSCollection.(*Collection))
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Move Collection Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Move Collection Failed, unknown variable type passed as collection"))
 	}
 
 	destinationCollection.Refresh()
@@ -980,7 +980,7 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 func (col *Collection) Rename(newFileName string) error {
 
 	if strings.Contains(newFileName, "/") {
-		return newError(Fatal, fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
+		return newError(Fatal, -1, fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
 	}
 
 	var err *C.char
@@ -998,7 +998,7 @@ func (col *Collection) Rename(newFileName string) error {
 	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_move_dataobject(s, d, C.RENAME_COLL, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS Rename Collection Failed: %v, %v", col.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Rename Collection Failed: %v, %v", col.path, C.GoString(err)))
 	}
 
 	col.name = newFileName
@@ -1104,7 +1104,7 @@ func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, err
 			r := opts.Resource.(*Resource)
 			resource = C.CString(r.Name())
 		default:
-			return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+			return nil, newError(Fatal, -1, fmt.Sprintf("Wrong variable type passed in Resource field"))
 		}
 	} else {
 		resource = C.CString("")
@@ -1125,7 +1125,7 @@ func (col *Collection) Put(localPath string, opts DataObjOptions) (*DataObj, err
 
 	if status := C.gorods_put_dataobject(cLocalPath, path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, ccon, &errMsg); status != 0 {
 		col.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Put DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Put DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
 	col.con.ReturnCcon(ccon)
 

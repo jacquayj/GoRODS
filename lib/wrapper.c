@@ -164,7 +164,7 @@ int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* con
 	*handle = rcOpenCollection(conn, &collOpenInp); 
 	if ( *handle < 0 ) { 
 		*err = "rcOpenCollection failed";
-		return -1;
+		return *handle;
 	} 
 
 	return 0;
@@ -221,7 +221,7 @@ int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, ch
 	if ( bytesWrite < 0 ) { 
 		*err = "rcDataObjWrite failed";
         free(dataObjWriteOutBBuf.buf);
-		return -1;
+		return bytesWrite;
 	}
 
 	free(dataObjWriteOutBBuf.buf);
@@ -250,7 +250,7 @@ int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, c
 	*handle = rcDataObjCreate(conn, &dataObjInp); 
 	if ( *handle < 0 ) { 
 		*err = "rcDataObjCreate failed";
-		return -1;
+		return *handle;
 	}
 
 	return 0;
@@ -270,7 +270,7 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err) {
 	status = rcCollCreate(conn, &collCreateInp);
 	if ( status < 0 ) { 
 		*err = "rcCollCreate failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -292,7 +292,7 @@ int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int op
 	*handle = rcDataObjOpen(conn, &dataObjInp); 
 	if ( *handle < 0 ) { 
 		*err = "rcDataObjOpen failed";
-		return -1;
+		return *handle;
 	}
 
 	return 0;
@@ -309,7 +309,7 @@ int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err) {
 	status = rcDataObjClose(conn, &openedDataObjInp); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjClose failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -320,7 +320,7 @@ int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
 
 	if ( status < 0 ) { 
 		*err = "rcCloseCollection failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -1060,8 +1060,8 @@ int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char*
 
         if ( status == 0 ) {
             freeGenQueryOut(&genQueryOut);
-            *err = "None";
-            return -1;
+            *err = "No rows found";
+            return CAT_NO_ROWS_FOUND;
         }
 
         if ( status == CAT_NO_ROWS_FOUND ) {
@@ -1634,7 +1634,7 @@ int gorods_read_dataobject(int handleInx, rodsLong_t length, bytesBuf_t* buffer,
 
 	if ( *bytesRead < 0 ) { 
 		*err = "rcDataObjRead failed";
-		return -1;
+		return *bytesRead;
 	}
 
 	return 0;
@@ -1661,7 +1661,7 @@ int gorods_lseek_dataobject(int handleInx, rodsLong_t offset, rcComm_t* conn, ch
 	status = rcDataObjLseek(conn, &dataObjLseekInp, &dataObjLseekOut); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjLSeek failed";
-		return -1;
+		return status;
 	}
 
 	free(dataObjLseekOut);
@@ -1684,7 +1684,7 @@ int gorods_stat_dataobject(char* path, rodsObjStat_t** rodsObjStatOut, rcComm_t*
 	int status = rcObjStat(conn, &dataObjInp, rodsObjStatOut); 
 	if ( status < 0 ) { 
 		*err = "rcObjStat failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -1711,7 +1711,7 @@ int gorods_copy_dataobject(char* source, char* destination, int force, char* res
 	int status = rcDataObjCopy(conn, &dataObjCopyInp); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjCopy failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -1733,7 +1733,7 @@ int gorods_move_dataobject(char* source, char* destination, int objType, rcComm_
 	int status = rcDataObjRename(conn, &dataObjRenameInp); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjRename failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -1754,7 +1754,7 @@ int gorods_unlink_dataobject(char* path, int force, rcComm_t* conn, char** err) 
 	int status = rcDataObjUnlink(conn, &dataObjInp); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjRename failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -1774,7 +1774,7 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 	int status = rcDataObjChksum(conn, &dataObjInp, outChksum); 
 	if ( status < 0 ) { 
 		*err = "rcDataObjChksum failed";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -1782,7 +1782,7 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 
 int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
 
-	int collectionResponseCapacity = 100;
+	int collectionResponseCapacity = 500;
 	*size = 0;
 
 	*arr = gorods_malloc(sizeof(collEnt_t) * collectionResponseCapacity);
@@ -1919,7 +1919,7 @@ int gorods_query_dataobj(rcComm_t* conn, char* query, goRodsPathResult_t* result
 	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
         freeGenQueryOut(&genQueryOut);
 		*err = "Error in rcGenQuery";
-		return -1;
+		return status;
 	}
 
 	getPathGenQueryResults(status, genQueryOut, columnNames, result);
@@ -2032,7 +2032,7 @@ int gorods_query_collection(rcComm_t* conn, char* query, goRodsPathResult_t* res
 	if ( status != 0 && status != CAT_NO_ROWS_FOUND ) {
 		*err = "Error in rcGenQuery";
         freeGenQueryOut(&genQueryOut);
-		return -1;
+		return status;
 	}
 
 	getPathGenQueryResults(status, genQueryOut, columnNames, result);
@@ -2424,7 +2424,7 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 		if ( status == CAT_NO_ROWS_FOUND ) {
 			*err = "Collection does not exist.\n";
             freeGenQueryOut(&genQueryOut);
-			return -1;
+			return status;
 		}
 	}
 
@@ -2489,7 +2489,7 @@ int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* 
     int status = rcModAVUMetadata(conn, &modAVUMetadataInp);
     if ( status != 0 ) {
 		*err = "Unable to mod metadata";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -2520,7 +2520,7 @@ int gorods_add_meta(char* type, char* path, char* na, char* nv, char* nu, rcComm
     int status = rcModAVUMetadata(conn, &modAVUMetadataInp);
     if ( status != 0 ) {
 		*err = "Unable to add metadata";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -2555,7 +2555,7 @@ int gorods_rm_meta(char* type, char* path, char* oa, char* ov, char* ou, rcComm_
     int status = rcModAVUMetadata(conn, &modAVUMetadataInp);
     if ( status != 0 ) {
 		*err = "Unable to rm metadata";
-		return -1;
+		return status;
 	}
 
 	return 0;
@@ -2669,7 +2669,7 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 		if ( status == CAT_NO_ROWS_FOUND ) {
 			*err = "Object does not exist.\n";
             freeGenQueryOut(&genQueryOut);
-			return -1;
+			return status;
 		}
 	}
 
@@ -2712,7 +2712,7 @@ char* irods_env_str() {
 	
 	int status = getRodsEnv(&myEnv);
 	if ( status != 0 ) {
-		return -1;
+		return status;
 	}
 
 	*username = myEnv.rodsUserName;

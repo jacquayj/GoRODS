@@ -3,9 +3,13 @@
 
 package gorods
 
+// #include "wrapper.h"
+import "C"
+
 import (
 	"fmt"
 	"time"
+	"unsafe"
 )
 
 // Log level constants
@@ -17,9 +21,10 @@ const (
 
 // GoRodsError stores information about errors
 type GoRodsError struct {
-	LogLevel int
-	Message  string
-	Time     time.Time
+	LogLevel  int
+	Message   string
+	IRODSCode string
+	Time      time.Time
 }
 
 // Error returns error string, alias of String(). Sample output:
@@ -33,7 +38,7 @@ func (err *GoRodsError) Error() string {
 //
 // 	2016-04-22 10:02:30.802355258 -0400 EDT: Fatal - iRODS Connect Failed: rcConnect failed
 func (err *GoRodsError) String() string {
-	return fmt.Sprintf("%v: %v - %v", err.Time, err.lookupError(err.LogLevel), err.Message)
+	return fmt.Sprintf("%v: %v - %v%v", err.Time, err.lookupError(err.LogLevel), err.Message, err.IRODSCode)
 }
 
 func (err *GoRodsError) lookupError(code int) string {
@@ -46,12 +51,26 @@ func (err *GoRodsError) lookupError(code int) string {
 	return constLookup[code]
 }
 
-func newError(logLevel int, message string) *GoRodsError {
+func newError(logLevel int, status C.int, message string) *GoRodsError {
+	var (
+		errStr    *C.char
+		subErrStr *C.char
+	)
+
 	err := new(GoRodsError)
 
 	err.LogLevel = logLevel
 	err.Message = message
 	err.Time = time.Now()
+
+	if status != -1 {
+		defer C.free(unsafe.Pointer(errStr))
+		defer C.free(unsafe.Pointer(subErrStr))
+
+		errStr = C.rodsErrorName(status, &subErrStr)
+
+		err.IRODSCode = " " + C.GoString(errStr) + " " + C.GoString(subErrStr)
+	}
 
 	return err
 }

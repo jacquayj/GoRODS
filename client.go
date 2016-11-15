@@ -33,7 +33,7 @@ func (cli *Client) OpenCollection(opts CollectionOptions, handler func(*Collecti
 			col, colEr := con.Collection(opts)
 
 			if colEr != nil {
-				return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", colEr))
+				return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", colEr))
 			}
 
 			handler(col, con)
@@ -47,11 +47,11 @@ func (cli *Client) OpenCollection(opts CollectionOptions, handler func(*Collecti
 
 			return nil
 		} else {
-			return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", err))
+			return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", err))
 		}
 	}
 
-	return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
+	return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
 }
 
 // OpenDataObject will create a new connection using the previously configured iRODS client. It will execute the handler,
@@ -79,11 +79,11 @@ func (cli *Client) OpenDataObject(path string, handler func(*DataObj, *Connectio
 
 			return nil
 		} else {
-			return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", err))
+			return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", err))
 		}
 	}
 
-	return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
+	return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
 }
 
 // OpenConnection will create a new connection using the previously configured iRODS client. It will execute the handler,
@@ -103,11 +103,11 @@ func (cli *Client) OpenConnection(handler func(*Connection)) error {
 
 			return nil
 		} else {
-			return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", err))
+			return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", err))
 		}
 	}
 
-	return newError(Fatal, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
+	return newError(Fatal, -1, fmt.Sprintf("Can't open new connection: %v", cli.ConnectErr))
 }
 
 // New creates a test connection to an iRODS iCAT server, and returns a *Client struct if successful.

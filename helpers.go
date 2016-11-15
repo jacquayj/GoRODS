@@ -64,7 +64,7 @@ func getTypeString(typ int) string {
 	case Archive:
 		return "archive"
 	default:
-		panic(newError(Fatal, "unrecognized type constant"))
+		panic(newError(Fatal, -1, "unrecognized type constant"))
 	}
 }
 
@@ -113,7 +113,7 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 				if existingUsr := usrs.FindByName(C.GoString(acl.name), con); existingUsr != nil {
 					accessObject = existingUsr
 				} else {
-					return nil, newError(Fatal, fmt.Sprintf("iRODS GetACL Failed: can't find iRODS user by string"))
+					return nil, newError(Fatal, -1, fmt.Sprintf("iRODS GetACL Failed: can't find iRODS user by string"))
 				}
 			} else {
 				return nil, err
@@ -123,13 +123,13 @@ func aclSliceToResponse(result *C.goRodsACLResult_t, con *Connection) (ACLs, err
 				if existingGrp := grps.FindByName(C.GoString(acl.name), con); existingGrp != nil {
 					accessObject = existingGrp
 				} else {
-					return nil, newError(Fatal, fmt.Sprintf("iRODS GetACL Failed: can't find iRODS group by string"))
+					return nil, newError(Fatal, -1, fmt.Sprintf("iRODS GetACL Failed: can't find iRODS group by string"))
 				}
 			} else {
 				return nil, err
 			}
 		} else if aclType == UnknownType {
-			return nil, newError(Fatal, fmt.Sprintf("iRODS GetACL Failed: Unknown Type"))
+			return nil, newError(Fatal, -1, fmt.Sprintf("iRODS GetACL Failed: Unknown Type"))
 		}
 
 		response = append(response, &ACL{

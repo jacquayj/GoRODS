@@ -305,7 +305,7 @@ func (resc *Resource) RefreshInfo() error {
 			if zne := zones.FindByName(infoMap["zone_name"], resc.con); zne != nil {
 				resc.zone = zne
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRODS Refresh Resource Info Failed: Unable to locate zone in cache"))
+				return newError(Fatal, -1, fmt.Sprintf("iRODS Refresh Resource Info Failed: Unable to locate zone in cache"))
 			}
 		}
 
@@ -332,7 +332,7 @@ func (resc *Resource) FetchInfo() (map[string]string, error) {
 
 	if status := C.gorods_get_resource(cResource, ccon, &result, &err); status != 0 {
 		resc.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Resource Info Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Resource Info Failed: %v", C.GoString(err)))
 	}
 
 	resc.con.ReturnCcon(ccon)

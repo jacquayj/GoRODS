@@ -188,7 +188,7 @@ func (usr *User) RefreshInfo() error {
 			if zne := zones.FindByName(infoMap["zone_name"], usr.con); zne != nil {
 				usr.zone = zne
 			} else {
-				return newError(Fatal, fmt.Sprintf("iRODS Refresh User Info Failed: Unable to locate zone in cache"))
+				return newError(Fatal, -1, fmt.Sprintf("iRODS Refresh User Info Failed: Unable to locate zone in cache"))
 			}
 		}
 	} else {
@@ -257,7 +257,7 @@ func (usr *User) FetchGroups() (Groups, error) {
 
 	if status := C.gorods_get_user_groups(ccon, cName, &result, &err); status != 0 {
 		usr.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Groups Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Groups Failed: %v", C.GoString(err)))
 	}
 
 	usr.con.ReturnCcon(ccon)
@@ -283,7 +283,7 @@ func (usr *User) FetchGroups() (Groups, error) {
 				if grp != nil {
 					response = append(response, grp)
 				} else {
-					return nil, newError(Fatal, fmt.Sprintf("iRODS FetchGroups Failed: Group in response not found in cache"))
+					return nil, newError(Fatal, -1, fmt.Sprintf("iRODS FetchGroups Failed: Group in response not found in cache"))
 				}
 			}
 		}
@@ -311,7 +311,7 @@ func (usr *User) FetchInfo() (map[string]string, error) {
 
 	if status := C.gorods_get_user(cUser, ccon, &result, &err); status != 0 {
 		usr.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Users Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Users Failed: %v", C.GoString(err)))
 	}
 
 	usr.con.ReturnCcon(ccon)
@@ -359,7 +359,7 @@ func (usr *User) AddToGroup(grp interface{}) error {
 	default:
 	}
 
-	return newError(Fatal, fmt.Sprintf("iRODS AddToGroup Failed: unknown type passed"))
+	return newError(Fatal, -1, fmt.Sprintf("iRODS AddToGroup Failed: unknown type passed"))
 }
 
 // RemoveFromGroup removes the user from an iRODS group.
@@ -373,7 +373,7 @@ func (usr *User) RemoveFromGroup(grp interface{}) error {
 	default:
 	}
 
-	return newError(Fatal, fmt.Sprintf("iRODS RemoveFromGroup Failed: unknown type passed"))
+	return newError(Fatal, -1, fmt.Sprintf("iRODS RemoveFromGroup Failed: unknown type passed"))
 }
 
 // ChangePassword changes the user's password.
@@ -394,7 +394,7 @@ func (usr *User) ChangePassword(newPass string) error {
 	defer usr.Con().ReturnCcon(ccon)
 
 	if status := C.gorods_change_user_password(cUserName, cNewPass, cMyPass, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS ChangePassword Failed: %v", C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS ChangePassword Failed: %v", C.GoString(err)))
 	}
 
 	return nil
@@ -414,7 +414,7 @@ func deleteUser(userName string, zone *Zone, con *Connection) error {
 	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_delete_user(cUserName, cZoneName, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS DeleteUser %v Failed: %v", userName, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS DeleteUser %v Failed: %v", userName, C.GoString(err)))
 	}
 
 	return nil
@@ -434,7 +434,7 @@ func createUser(userName string, zoneName string, typ int, con *Connection) erro
 	case GroupAdminType:
 		cType = C.CString("groupadmin")
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS CreateUser Failed: Unknown user type passed"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS CreateUser Failed: Unknown user type passed"))
 	}
 
 	cZoneName := C.CString(zoneName)
@@ -447,7 +447,7 @@ func createUser(userName string, zoneName string, typ int, con *Connection) erro
 	defer con.ReturnCcon(ccon)
 
 	if status := C.gorods_create_user(cUserName, cZoneName, cType, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS CreateUser %v Failed: %v", userName, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS CreateUser %v Failed: %v", userName, C.GoString(err)))
 	}
 
 	return nil

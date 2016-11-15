@@ -131,7 +131,7 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 
 			return obj, nil
 		} else {
-			return nil, newError(Fatal, fmt.Sprintf("Can't find DataObj within collection %v", collectionDir))
+			return nil, newError(Fatal, -1, fmt.Sprintf("Can't find DataObj within collection %v", collectionDir))
 		}
 	} else {
 		return nil, err
@@ -163,7 +163,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 			r := opts.Resource.(*Resource)
 			resource = C.CString(r.Name())
 		default:
-			return nil, newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+			return nil, newError(Fatal, -1, fmt.Sprintf("Wrong variable type passed in Resource field"))
 		}
 	} else {
 		resource = C.CString("")
@@ -178,7 +178,7 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 
 	if status := C.gorods_create_dataobject(path, C.rodsLong_t(opts.Size), C.int(opts.Mode), C.int(force), resource, &handle, ccon, &errMsg); status != 0 {
 		coll.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Create DataObject Failed: %v, Does the file already exist?", C.GoString(errMsg)))
 	}
 	coll.con.ReturnCcon(ccon)
 
@@ -237,7 +237,7 @@ func (obj *DataObj) ACL() (ACLs, error) {
 
 	if status := C.gorods_get_dataobject_acl(ccon, cDataId, &result, zoneHint, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Get Data Object ACL Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Data Object ACL Failed: %v", C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -384,7 +384,7 @@ func (obj *DataObj) Rm(recursive bool, force bool) error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_rm(path, 0, cRecursive, cForce, ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS Rm DataObject Failed: %v", C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Rm DataObject Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
@@ -405,7 +405,7 @@ func (obj *DataObj) Open() error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_open_dataobject(path, resourceName, replNum, C.O_RDONLY, &obj.chandle, ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS Open DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Open DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
 	}
 
 	obj.openedAs = C.O_RDONLY
@@ -428,7 +428,7 @@ func (obj *DataObj) OpenRW() error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_open_dataobject(path, resourceName, replNum, C.O_RDWR, &obj.chandle, ccon, &errMsg); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS OpenRW DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS OpenRW DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
 	}
 
 	obj.openedAs = C.O_RDWR
@@ -446,7 +446,7 @@ func (obj *DataObj) Close() error {
 		defer obj.con.ReturnCcon(ccon)
 
 		if status := C.gorods_close_dataobject(obj.chandle, ccon, &errMsg); status != 0 {
-			return newError(Fatal, fmt.Sprintf("iRODS Close DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
+			return newError(Fatal, status, fmt.Sprintf("iRODS Close DataObject Failed: %v, %v", obj.path, C.GoString(errMsg)))
 		}
 
 		obj.chandle = C.int(-1)
@@ -475,7 +475,7 @@ func (obj *DataObj) Read() ([]byte, error) {
 
 	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(obj.size), &buffer, &bytesRead, ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -508,7 +508,7 @@ func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, &bytesRead, ccon, &err); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRODS ReadBytes DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS ReadBytes DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	buf := unsafe.Pointer(buffer.buf)
@@ -533,7 +533,7 @@ func (obj *DataObj) LSeek(offset int64) error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_lseek_dataobject(obj.chandle, C.rodsLong_t(offset), ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS LSeek DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS LSeek DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	obj.offset = offset
@@ -563,7 +563,7 @@ func (obj *DataObj) ReadChunk(size int64, callback func([]byte)) error {
 
 		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, &bytesRead, ccon, &err); status != 0 {
 			obj.con.ReturnCcon(ccon)
-			return newError(Fatal, fmt.Sprintf("iRODS Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+			return newError(Fatal, status, fmt.Sprintf("iRODS Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 		}
 
 		obj.con.ReturnCcon(ccon)
@@ -598,7 +598,7 @@ func (obj *DataObj) DownloadTo(localPath string) error {
 		return err
 	} else {
 		if er := ioutil.WriteFile(localPath, objContents, 0644); er != nil {
-			return newError(Fatal, fmt.Sprintf("iRODS Download DataObject Failed: %v, %v", obj.path, er))
+			return newError(Fatal, -1, fmt.Sprintf("iRODS Download DataObject Failed: %v, %v", obj.path, er))
 		}
 	}
 
@@ -630,7 +630,7 @@ func (obj *DataObj) Write(data []byte) error {
 
 	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRODS Write DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Write DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -661,7 +661,7 @@ func (obj *DataObj) WriteBytes(data []byte) error {
 
 	if status := C.gorods_write_dataobject(obj.chandle, dataPointer, C.int(size), ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRODS Write DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Write DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -703,7 +703,7 @@ func (obj *DataObj) Stat() (map[string]interface{}, error) {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_stat_dataobject(path, &statResult, ccon, &err); status != 0 {
-		return nil, newError(Fatal, fmt.Sprintf("iRODS Close Stat Failed: %v, %v", obj.path, C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Close Stat Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	result := make(map[string]interface{})
@@ -799,7 +799,7 @@ func (obj *DataObj) CopyTo(iRODSCollection interface{}) error {
 		destinationCollectionString = (iRODSCollection.(*Collection)).path + "/"
 		destination = destinationCollectionString + obj.name
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Copy DataObject Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Copy DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	path := C.CString(obj.path)
@@ -814,7 +814,7 @@ func (obj *DataObj) CopyTo(iRODSCollection interface{}) error {
 
 	if status := C.gorods_copy_dataobject(path, dest, C.int(0), resource, ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRODS Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -837,7 +837,7 @@ func (obj *DataObj) CopyTo(iRODSCollection interface{}) error {
 		destinationCollection = (iRODSCollection.(*Collection))
 
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Copy DataObject Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Copy DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	destinationCollection.Refresh()
@@ -875,7 +875,7 @@ func (obj *DataObj) CopyToOpts(iRODSCollection interface{}, opts DataObjOptions)
 		destinationCollectionString = (iRODSCollection.(*Collection)).path + "/"
 		destination = destinationCollectionString + obj.name
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Copy DataObject Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Copy DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	if opts.Force {
@@ -891,7 +891,7 @@ func (obj *DataObj) CopyToOpts(iRODSCollection interface{}, opts DataObjOptions)
 		r := opts.Resource.(*Resource)
 		resource = C.CString(r.Name())
 	default:
-		newError(Fatal, fmt.Sprintf("Wrong variable type passed in Resource field"))
+		newError(Fatal, -1, fmt.Sprintf("Wrong variable type passed in Resource field"))
 	}
 
 	path := C.CString(obj.path)
@@ -905,7 +905,7 @@ func (obj *DataObj) CopyToOpts(iRODSCollection interface{}, opts DataObjOptions)
 
 	if status := C.gorods_copy_dataobject(path, dest, C.int(force), resource, ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRODS Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Copy DataObject Failed: %v, %v", destination, C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -928,7 +928,7 @@ func (obj *DataObj) CopyToOpts(iRODSCollection interface{}, opts DataObjOptions)
 		destinationCollection = (iRODSCollection.(*Collection))
 
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Move DataObject Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Move DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	destinationCollection.Refresh()
@@ -964,7 +964,7 @@ func (obj *DataObj) MoveTo(iRODSCollection interface{}) error {
 		destinationCollectionString = (iRODSCollection.(*Collection)).path + "/"
 		destination = destinationCollectionString + obj.name
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Move DataObject Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Move DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	path := C.CString(obj.path)
@@ -977,7 +977,7 @@ func (obj *DataObj) MoveTo(iRODSCollection interface{}) error {
 
 	if status := C.gorods_move_dataobject(path, dest, C.RENAME_DATA_OBJ, ccon, &err); status != 0 {
 		obj.con.ReturnCcon(ccon)
-		return newError(Fatal, fmt.Sprintf("iRODS Move DataObject Failed S:%v, D:%v, %v", obj.path, destination, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Move DataObject Failed S:%v, D:%v, %v", obj.path, destination, C.GoString(err)))
 	}
 
 	obj.con.ReturnCcon(ccon)
@@ -1003,7 +1003,7 @@ func (obj *DataObj) MoveTo(iRODSCollection interface{}) error {
 		destinationCollection = (iRODSCollection.(*Collection))
 
 	default:
-		return newError(Fatal, fmt.Sprintf("iRODS Move DataObject Failed, unknown variable type passed as collection"))
+		return newError(Fatal, -1, fmt.Sprintf("iRODS Move DataObject Failed, unknown variable type passed as collection"))
 	}
 
 	destinationCollection.Refresh()
@@ -1021,7 +1021,7 @@ func (obj *DataObj) MoveTo(iRODSCollection interface{}) error {
 func (obj *DataObj) Rename(newFileName string) error {
 
 	if strings.Contains(newFileName, "/") {
-		return newError(Fatal, fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
+		return newError(Fatal, -1, fmt.Sprintf("Can't Rename DataObject, path detected in: %v", newFileName))
 	}
 
 	var err *C.char
@@ -1039,7 +1039,7 @@ func (obj *DataObj) Rename(newFileName string) error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_move_dataobject(s, d, C.RENAME_DATA_OBJ, ccon, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS Rename DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Rename DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	obj.name = newFileName
@@ -1071,7 +1071,7 @@ func (obj *DataObj) Chksum() (string, error) {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_checksum_dataobject(path, &chksumOut, ccon, &err); status != 0 {
-		return "", newError(Fatal, fmt.Sprintf("iRODS Chksum DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		return "", newError(Fatal, status, fmt.Sprintf("iRODS Chksum DataObject Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	obj.checksum = C.GoString(chksumOut)
@@ -1114,7 +1114,7 @@ func (obj *DataObj) TrimRepls(opts TrimOptions) error {
 	case *Resource:
 		resourceStr = (opts.TargetResource.(*Resource)).Name()
 	default:
-		return newError(Fatal, fmt.Sprintf("Unknown type passed as targetResource"))
+		return newError(Fatal, -1, fmt.Sprintf("Unknown type passed as targetResource"))
 
 	}
 
@@ -1131,7 +1131,7 @@ func (obj *DataObj) TrimRepls(opts TrimOptions) error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_trimrepls_dataobject(ccon, cPath, cAgeStr, cResource, cNumCopies, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS TrimRepls Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS TrimRepls Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	return nil
@@ -1152,7 +1152,7 @@ func (obj *DataObj) MoveToResource(targetResource interface{}) error {
 	case *Resource:
 		resourceStr = (targetResource.(*Resource)).Name()
 	default:
-		return newError(Fatal, fmt.Sprintf("Unknown type passed as targetResource"))
+		return newError(Fatal, -1, fmt.Sprintf("Unknown type passed as targetResource"))
 
 	}
 
@@ -1167,7 +1167,7 @@ func (obj *DataObj) MoveToResource(targetResource interface{}) error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_phymv_dataobject(ccon, cPath, cSourceResource, cResource, &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS MoveToResource Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS MoveToResource Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	return nil
@@ -1188,7 +1188,7 @@ func (obj *DataObj) Replicate(targetResource interface{}, opts DataObjOptions) e
 	case *Resource:
 		resourceStr = (targetResource.(*Resource)).Name()
 	default:
-		return newError(Fatal, fmt.Sprintf("Unknown type passed as targetResource"))
+		return newError(Fatal, -1, fmt.Sprintf("Unknown type passed as targetResource"))
 
 	}
 
@@ -1201,7 +1201,7 @@ func (obj *DataObj) Replicate(targetResource interface{}, opts DataObjOptions) e
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_repl_dataobject(ccon, cPath, cResource, C.int(0), C.int(opts.Mode), C.rodsLong_t(opts.Size), &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS ReplicateOpts Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS ReplicateOpts Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	return nil
@@ -1221,7 +1221,7 @@ func (obj *DataObj) Backup(targetResource interface{}, opts DataObjOptions) erro
 	case *Resource:
 		resourceStr = (targetResource.(*Resource)).Name()
 	default:
-		return newError(Fatal, fmt.Sprintf("Unknown type passed as targetResource"))
+		return newError(Fatal, -1, fmt.Sprintf("Unknown type passed as targetResource"))
 
 	}
 
@@ -1234,7 +1234,7 @@ func (obj *DataObj) Backup(targetResource interface{}, opts DataObjOptions) erro
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_repl_dataobject(ccon, cPath, cResource, C.int(1), C.int(opts.Mode), C.rodsLong_t(opts.Size), &err); status != 0 {
-		return newError(Fatal, fmt.Sprintf("iRODS Backup Failed: %v, %v", obj.path, C.GoString(err)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Backup Failed: %v, %v", obj.path, C.GoString(err)))
 	}
 
 	return nil
