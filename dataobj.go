@@ -488,6 +488,132 @@ func (obj *DataObj) Read() ([]byte, error) {
 	return data, obj.Close()
 }
 
+type ByteArr struct {
+	Contents []byte
+	Ptr      unsafe.Pointer
+}
+
+func (br ByteArr) Free() {
+	C.free(br.Ptr)
+}
+
+// ReadChunkFree is similar to ReadChunk, except it doesn't copy bytes into a new byte slice, making the process more efficient. It uses the existing C byte array and casts it as a go []byte. You must explicitally call ByteArr.Free on the returned struct or there will be a memory leak.
+func (obj *DataObj) ReadChunkFree(size int64, callback func(*ByteArr)) error {
+	if er := obj.init(); er != nil {
+		return er
+	}
+
+	var (
+		buffer    C.bytesBuf_t
+		err       *C.char
+		bytesRead C.int
+	)
+
+	if er := obj.LSeek(0); er != nil {
+		return er
+	}
+
+	for obj.offset < obj.size {
+
+		ccon := obj.con.GetCcon()
+
+		if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(size), &buffer, &bytesRead, ccon, &err); status != 0 {
+			obj.con.ReturnCcon(ccon)
+			return newError(Fatal, status, fmt.Sprintf("iRODS Read DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+		}
+
+		obj.con.ReturnCcon(ccon)
+
+		buf := unsafe.Pointer(buffer.buf)
+
+		bufLen := int(buffer.len)
+		data := (*[1 << 30]byte)(unsafe.Pointer(buf))[:bufLen:bufLen]
+
+		callback(&ByteArr{
+			Contents: data,
+			Ptr:      buf,
+		})
+
+		if er := obj.LSeek(obj.offset + size); er != nil {
+			return er
+		}
+	}
+
+	if er := obj.LSeek(0); er != nil {
+		return er
+	}
+
+	return obj.Close()
+}
+
+// FastReadFree is similar to ReadBytes, except it doesn't copy bytes into a new byte slice, making the process more efficient. It uses the existing C byte array and casts it as a go []byte. You must explicitally call ByteArr.Free on the returned struct or there will be a memory leak.
+func (obj *DataObj) FastReadFree(pos int64, length int) (*ByteArr, error) {
+	if er := obj.init(); er != nil {
+		return nil, er
+	}
+
+	var (
+		buffer    C.bytesBuf_t
+		err       *C.char
+		bytesRead C.int
+	)
+
+	if er := obj.LSeek(pos); er != nil {
+		return nil, er
+	}
+
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
+
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, &bytesRead, ccon, &err); status != 0 {
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS ReadBytes DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+	}
+
+	buf := unsafe.Pointer(buffer.buf)
+
+	bufLen := int(buffer.len)
+	data := (*[1 << 30]byte)(unsafe.Pointer(buf))[:bufLen:bufLen]
+
+	return &ByteArr{
+		Contents: data,
+		Ptr:      buf,
+	}, nil
+}
+
+// FastRead is similar to ReadBytes, except it doesn't copy bytes into a new byte slice, making the process more efficient. It uses the existing C byte array and casts it as a go []byte. Once your call back is run, the allocated memory is freed automatically.
+// This function will block until bytes are received and your callback has been run.
+func (obj *DataObj) FastRead(pos int64, length int, callback func([]byte) error) error {
+	if er := obj.init(); er != nil {
+		return er
+	}
+
+	var (
+		buffer    C.bytesBuf_t
+		err       *C.char
+		bytesRead C.int
+	)
+
+	if er := obj.LSeek(pos); er != nil {
+		return er
+	}
+
+	ccon := obj.con.GetCcon()
+	defer obj.con.ReturnCcon(ccon)
+
+	if status := C.gorods_read_dataobject(obj.chandle, C.rodsLong_t(length), &buffer, &bytesRead, ccon, &err); status != 0 {
+		return newError(Fatal, status, fmt.Sprintf("iRODS ReadBytes DataObject Failed: %v, %v", obj.path, C.GoString(err)))
+	}
+
+	buf := unsafe.Pointer(buffer.buf)
+	defer C.free(buf)
+
+	bufLen := int(buffer.len)
+
+	data := (*[1 << 30]byte)(unsafe.Pointer(buf))[:bufLen:bufLen]
+
+	return callback(data)
+}
+
 // ReadBytes reads bytes from a data object at the specified position and length, returns []byte slice and error.
 func (obj *DataObj) ReadBytes(pos int64, length int) ([]byte, error) {
 	if er := obj.init(); er != nil {

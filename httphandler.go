@@ -848,12 +848,14 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 						}
 					}
 
-					if byteData, err := obj.ReadBytes(firstByteN, int(lastByteN-firstByteN)+1); err == nil {
+					if byteData, err := obj.FastReadFree(firstByteN, int(lastByteN-firstByteN)+1); err == nil {
+
+						defer byteData.Free()
 
 						outputBuffer = append(outputBuffer, RangeSegmentOutput{
 							ContentRange: "bytes " + strconv.FormatInt(firstByteN, 10) + "-" + strconv.FormatInt(lastByteN, 10) + "/" + lenStr,
 							ContentType:  objMime,
-							ByteContent:  byteData,
+							ByteContent:  byteData.Contents,
 						})
 
 					} else {
@@ -915,25 +917,26 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 		handler.response.Header().Set("Accept-Ranges", "bytes")
 		handler.response.Header().Set("Content-Length", lenStr)
 
-		outBuff := make(chan []byte, 100)
+		outBuff := make(chan *ByteArr, 100)
 
 		go func() {
-			for b := range outBuff {
-				handler.response.Write(b)
+			if readEr := obj.ReadChunkFree(10240000, func(chunk *ByteArr) {
+				outBuff <- chunk
+			}); readEr != nil {
+				log.Print(readEr)
+
+				handler.response.WriteHeader(http.StatusInternalServerError)
+				handler.response.Write([]byte("Error: " + readEr.Error()))
+
 			}
+
+			close(outBuff)
 		}()
 
-		if readEr := obj.ReadChunk(10240000, func(chunk []byte) {
-			outBuff <- chunk
-		}); readEr != nil {
-			log.Print(readEr)
-
-			handler.response.WriteHeader(http.StatusInternalServerError)
-			handler.response.Write([]byte("Error: " + readEr.Error()))
-
+		for b := range outBuff {
+			handler.response.Write(b.Contents)
+			b.Free()
 		}
-
-		close(outBuff)
 	}
 
 }
