@@ -915,8 +915,16 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 		handler.response.Header().Set("Accept-Ranges", "bytes")
 		handler.response.Header().Set("Content-Length", lenStr)
 
-		if readEr := obj.ReadChunk(1024000, func(chunk []byte) {
-			handler.response.Write(chunk)
+		outBuff := make(chan []byte, 100)
+
+		go func() {
+			for b := range outBuff {
+				handler.response.Write(b)
+			}
+		}()
+
+		if readEr := obj.ReadChunk(10240000, func(chunk []byte) {
+			outBuff <- chunk
 		}); readEr != nil {
 			log.Print(readEr)
 
@@ -924,6 +932,8 @@ func (handler *HttpHandler) ServeDataObj(obj *DataObj) {
 			handler.response.Write([]byte("Error: " + readEr.Error()))
 
 		}
+
+		close(outBuff)
 	}
 
 }
