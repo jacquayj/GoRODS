@@ -235,6 +235,10 @@ int gorods_create_dataobject(char* path, rodsLong_t size, int mode, int force, c
 	bzero(&dataObjInp, sizeof(dataObjInp)); 
 	rstrcpy(dataObjInp.objPath, path, MAX_NAME_LEN); 
 
+    if ( mode == 0 ) {
+        mode = 0750;
+    }
+
 	dataObjInp.createMode = mode; 
 	dataObjInp.dataSize = size; 
     dataObjInp.numThreads = conn->transStat.numThreads;

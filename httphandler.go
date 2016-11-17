@@ -7,10 +7,11 @@ package gorods
 import "C"
 
 import (
-	"encoding/base64"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"mime"
 	"mime/multipart"
@@ -1213,16 +1214,18 @@ func (handler *HttpHandler) Upload(col *Collection) {
 
 	req := handler.request
 
-	req.ParseForm()
+	req.ParseMultipartForm(32 << 20)
 
-	name := strings.TrimSpace(req.PostForm.Get("name"))
-	contents := strings.TrimSpace(req.PostForm.Get("contents"))
+	if file, meta, err := req.FormFile("data"); err == nil {
+		name := meta.Filename
+		contents := bytes.NewBuffer(nil)
 
-	if data, err := base64.StdEncoding.DecodeString(contents); err == nil {
+		io.Copy(contents, file)
+
 		if obj, cEr := col.CreateDataObj(DataObjOptions{
 			Name: name,
 		}); cEr == nil {
-			if wEr := obj.Write(data); wEr == nil {
+			if wEr := obj.Write(contents.Bytes()); wEr == nil {
 				response.Success = true
 				response.Message = "File upload success"
 			} else {
@@ -1231,6 +1234,7 @@ func (handler *HttpHandler) Upload(col *Collection) {
 		} else {
 			response.Message = cEr.Error()
 		}
+
 	} else {
 		response.Message = err.Error()
 	}
