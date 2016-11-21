@@ -737,7 +737,7 @@ func (obj *DataObj) Write(data []byte) error {
 		return er
 	}
 
-	if obj.openedAs != C.O_RDWR || obj.openedAs != C.O_WRONLY {
+	if !(obj.openedAs == C.O_RDWR || obj.openedAs == C.O_WRONLY) {
 		obj.Close()
 		obj.OpenRW()
 	}
@@ -772,7 +772,7 @@ func (obj *DataObj) WriteBytes(data []byte) error {
 		return er
 	}
 
-	if obj.openedAs != C.O_RDWR || obj.openedAs != C.O_WRONLY {
+	if !(obj.openedAs == C.O_RDWR || obj.openedAs == C.O_WRONLY) {
 		obj.Close()
 		obj.OpenRW()
 	}

@@ -212,19 +212,13 @@ int gorods_write_dataobject(int handle, void* data, int size, rcComm_t* conn, ch
 	dataObjWriteInp.l1descInx = handle;
 	
 	dataObjWriteOutBBuf.len = size; 
-	dataObjWriteOutBBuf.buf = gorods_malloc(size); 
-	
-	// copy data to dataObjWriteOutBBuf.buf 
-	memcpy(dataObjWriteOutBBuf.buf, data, size);
+	dataObjWriteOutBBuf.buf = data; 
 	
 	int bytesWrite = rcDataObjWrite(conn, &dataObjWriteInp, &dataObjWriteOutBBuf); 
 	if ( bytesWrite < 0 ) { 
 		*err = "rcDataObjWrite failed";
-        free(dataObjWriteOutBBuf.buf);
 		return bytesWrite;
 	}
-
-	free(dataObjWriteOutBBuf.buf);
 
 	return 0;
 }
