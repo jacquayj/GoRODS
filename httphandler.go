@@ -1253,8 +1253,6 @@ func (handler *HttpHandler) Upload(col *Collection) {
 				}
 			}
 
-			obj.Close()
-
 		} else {
 			response.Message = cEr.Error()
 		}
@@ -1368,6 +1366,8 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 
 			log.Print(err)
 		}
+
+		con.Disconnect()
 	}
 
 	if handler.client != nil {
