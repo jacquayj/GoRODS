@@ -745,10 +745,12 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 	var jsonResponse map[string]JSONArr = make(map[string]JSONArr)
 	var metaResponse JSONArr = make(JSONArr, 0)
 	var aclResponse JSONArr = make(JSONArr, 0)
+	var statResponse JSONArr = make(JSONArr, 0)
 
 	acls, aclErr := obj.ACL()
+	stats, stErr := obj.Stat()
 
-	if mc, err := obj.Meta(); err == nil && aclErr == nil {
+	if mc, err := obj.Meta(); err == nil && aclErr == nil && stErr == nil {
 		mc.Each(func(m *Meta) {
 			metaResponse = append(metaResponse, JSONMap{
 				"attribute": m.Attribute,
@@ -764,8 +766,20 @@ func (handler *HttpHandler) ServeJSONMeta(obj IRodsObj) {
 			})
 		}
 
+		statResponse = append(statResponse, JSONMap{})
+		for k, v := range stats {
+			switch realVal := v.(type) {
+			case int:
+				statResponse[0][k] = strconv.Itoa(realVal)
+			case string:
+				statResponse[0][k] = realVal
+
+			}
+		}
+
 		jsonResponse["metadata"] = metaResponse
 		jsonResponse["acl"] = aclResponse
+		jsonResponse["stat"] = statResponse
 	}
 
 	jsonBytes, _ := json.Marshal(jsonResponse)

@@ -65,6 +65,7 @@ type IRodsObj interface {
 	Col() *Collection
 	Con() *Connection
 	ACL() (ACLs, error)
+	Stat() (map[string]interface{}, error)
 
 	OwnerName() string
 	CreateTime() time.Time
