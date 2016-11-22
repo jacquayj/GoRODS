@@ -1507,6 +1507,10 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 						handler.ServeDataObj(obj)
 					}
 
+					if cErr := obj.Close(); cErr != nil {
+						log.Print(cErr)
+					}
+
 				} else {
 					log.Print(er)
 				}
@@ -1555,6 +1559,10 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 						}
 					default:
 						handler.ServeCollectionView(col)
+					}
+
+					if cErr := col.Close(); cErr != nil {
+						log.Print(cErr)
 					}
 
 				} else {
