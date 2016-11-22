@@ -123,6 +123,15 @@ var tpl = `
 	.li-sep:first-child {
 		display: none;
 	}
+
+	.prog-bar {
+		width: 0%;
+	    height: 3px;
+	    background-color: #337ab7;
+	    position: absolute;
+	    top: 0px;
+	    z-index: 9999;
+	}
 	</style>
 
 	<script type="text/javascript">
@@ -224,7 +233,7 @@ var tpl = `
 			};
 		};
 
-		var refreshMetas = function(objname, ctx) {
+		var refreshMetas = function(objname, ctx, done) {
 			var ajaxPath = document.location.pathname + objname + "?meta=1";
 
 			$.ajax({
@@ -233,10 +242,23 @@ var tpl = `
 					var metaTbl = $(".meta-tbl tbody", ctx).html("");
 					var aclTbl = $(".acl-tbl tbody", ctx).html("");
 
+
 					if ( Object.keys(response.responseJSON).length != 0 ) {
 
 						var metaData = response.responseJSON.metadata;
 						var aclData = response.responseJSON.acl;
+						var statData = response.responseJSON.stat[0];
+
+						$('.chksum', ctx).text(statData.chksum);
+						$('.createTime', ctx).text((new Date(parseInt(statData.createTime) * 1000)).toLocaleString());
+						$('.modifyTime', ctx).text((new Date(parseInt(statData.modifyTime) * 1000)).toLocaleString());
+						$('.dataId', ctx).text(statData.dataId);
+						$('.dataMode', ctx).text(statData.dataMode);
+						$('.objSize', ctx).text(statData.objSize);
+						$('.ownerName', ctx).text(statData.ownerName);
+						$('.ownerZone', ctx).text(statData.ownerZone);
+
+
 						if ( metaData.length > 0 ) {
 							for ( var n = 0; metaData.length > n; n++ ) {
 								metaTbl.append('<tr><td>' + escapeHtml(metaData[n].attribute) + '</td><td>' + escapeHtml(metaData[n].value) + '</td><td>' + escapeHtml(metaData[n].units) + '</td><td style="text-align:right;"><span class="meta-del glyphicon glyphicon-remove-circle"></span></td></tr>');
@@ -328,6 +350,7 @@ var tpl = `
 						metaTbl.append('<tr><td colspan="4" style="text-align:center;">Error Fetching Metadata</td></tr>');
 					}
 
+					if ( done ) done();
 
 					
 				}
@@ -335,33 +358,53 @@ var tpl = `
 		};
 
 		$('.upload-btn').click(function() {
-			var reader = new FileReader();
 
-			reader.onloadend = function(e) {
-				var data = reader.result;
-
-				data = data.substr(data.indexOf('base64') + 7); 
-
-				var ajaxPath = document.location.pathname + "?upload=1";
-
-				$.post(ajaxPath, {name: reader.fileName, contents: data}, function(response, status) {
-					if ( response.Success == true ) {
-						document.location.reload(true);
-					} else {
-						alert("An error has occured: " + response.Message);
-					}
-				});
-			}
-
+			var form = $(document.createElement('form'));
 			var input = $(document.createElement('input'));
-	        input.attr("type", "file");
+
+	        input.attr("type", "file").attr("name", "data");
+
+	        form.append(input);
+
 	        input.trigger('click');
 
 	        input.change(function() {
-	        	var file = input[0].files[0];
+	        	var ajaxPath = document.location.pathname + "?upload=1";
 
-	        	reader.fileName = input[0].files[0].name;
-	        	reader.readAsDataURL(file);
+	        	var formData = new FormData(form[0]);
+
+	        	var progBar = $(".prog-bar");
+	        	progBar.show();
+
+	        	$.ajax({
+	                url: ajaxPath,
+	                type: 'POST',
+	                xhr: function() {
+	                    myXhr = $.ajaxSettings.xhr();
+	                    if ( myXhr.upload ) {
+	                        myXhr.upload.addEventListener('progress', function(ev) {
+	                        	var percentComplete = (ev.loaded / ev.total) * 100;
+
+	                        	progBar.animate({
+	                        		width: percentComplete + "%"
+	                        	}, 100);
+
+	                        }, false);
+	                    }
+	                    return myXhr;
+	                },
+	                success: function(response) {
+	                    document.location.reload(true);
+	                },
+	                error: function(response) {
+	                   	alert("An error has occured: " + response.Message);
+	                },
+	                data: formData,
+	                cache: false,
+	                contentType: false,
+	                processData: false
+            	}, 'json');
+
 	        });
 	        
 		});
@@ -372,9 +415,10 @@ var tpl = `
 			var objName = self.attr("data-objname");
 			var ctx = self.parent().parent();
 
-			refreshMetas(objName, ctx);
-
-			$('.modal', ctx).modal('show');
+			refreshMetas(objName, ctx, function() {
+				$('.modal', ctx).modal('show');
+			});
+			
 			
 		});
 
@@ -450,7 +494,7 @@ var tpl = `
 
 </head>
 <body>
-
+	<div class="prog-bar" style="display: none;"></div>
 	<nav class="navbar navbar-default navbar-fixed-top">
 		<div class="container">
 			<div class="navbar-header">
@@ -462,6 +506,7 @@ var tpl = `
 						<li class="li-sep">&gt;</li>
 						<li><a href="{{ index . "url" }}">{{ index . "name" }}</a></li>
 					{{end}}
+					<li><a class="glyphicon logout glyphicon-log-out" style="font-size: 19px;margin-left: 25px;" href="/logout"></a></li>
 				</ul>
 			</div><!--/.nav-collapse -->
 		</div>
@@ -517,12 +562,84 @@ var tpl = `
 										<div class="modal-body">
 
 											<ul class="nav nav-tabs">
-												<li class="active"><a data-toggle="tab" data-target=".metadata-cont">Metadata</a></li>
+												<li class="active"><a data-toggle="tab" data-target=".stat-cont">Stat</a></li>
+												<li><a data-toggle="tab" data-target=".metadata-cont">Metadata</a></li>
 												<li><a data-toggle="tab" data-target=".acl-cont">ACL</a></li>
 											</ul>
 
 											<div class="tab-content">
-												<div class="metadata-cont tab-pane fade in active">
+												<div class="stat-cont tab-pane fade in active">
+													<br />
+													<table class="table table-hover">
+													<tbody>
+														<tr>
+															<td>
+																Checksum:
+															</td>
+															<td class="chksum">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Created At:
+															</td>
+															<td class="createTime">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Modified At:
+															</td>
+															<td class="modifyTime">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Data ID:
+															</td>
+															<td class="dataId">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Data Mode:
+															</td>
+															<td class="dataMode">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Object Size (bytes):
+															</td>
+															<td class="objSize">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Owner:
+															</td>
+															<td class="ownerName">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Zone:
+															</td>
+															<td class="ownerZone">
+																
+															</td>
+														</tr>
+													</tbody>
+													</table>
+												</div>
+												<div class="metadata-cont tab-pane fade">
 													<br />
 													<table class="table table-hover meta-tbl">
 													<thead>
@@ -630,13 +747,84 @@ var tpl = `
 										</div>
 										<div class="modal-body">
 											<ul class="nav nav-tabs">
-												<li class="active"><a data-toggle="tab" data-target=".metadata-cont">Metadata</a></li>
+												<li class="active"><a data-toggle="tab" data-target=".stat-cont">Stat</a></li>
+												<li><a data-toggle="tab" data-target=".metadata-cont">Metadata</a></li>
 												<li><a data-toggle="tab" data-target=".acl-cont">ACL</a></li>
 											</ul>
 
 											<div class="tab-content">
-
-												<div class="metadata-cont tab-pane fade in active">
+												<div class="stat-cont tab-pane fade in active">
+													<br />
+													<table class="table table-hover">
+													<tbody>
+														<tr>
+															<td>
+																Checksum:
+															</td>
+															<td class="chksum">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Created At:
+															</td>
+															<td class="createTime">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Modified At:
+															</td>
+															<td class="modifyTime">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Data ID:
+															</td>
+															<td class="dataId">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Data Mode:
+															</td>
+															<td class="dataMode">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Object Size (bytes):
+															</td>
+															<td class="objSize">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Owner:
+															</td>
+															<td class="ownerName">
+																
+															</td>
+														</tr>
+														<tr>
+															<td>
+																Zone:
+															</td>
+															<td class="ownerZone">
+																
+															</td>
+														</tr>
+													</tbody>
+													</table>
+												</div>
+												<div class="metadata-cont tab-pane fade">
 													<br />
 													<table class="table table-hover meta-tbl">
 													<thead>
@@ -1381,7 +1569,6 @@ func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *htt
 			log.Print(err)
 		}
 
-		con.Disconnect()
 	}
 
 	if handler.client != nil {
