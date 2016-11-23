@@ -112,10 +112,6 @@ var tpl = `
 		cursor: pointer;
 		font-size: 18px;
 	}
-	.logout:hover {
-		color: red !important;
-	}
-
 	.li-sep {
 		line-height: 50px;
 		color:#777;
@@ -506,7 +502,6 @@ var tpl = `
 						<li class="li-sep">&gt;</li>
 						<li><a href="{{ index . "url" }}">{{ index . "name" }}</a></li>
 					{{end}}
-					<li><a class="glyphicon logout glyphicon-log-out" style="font-size: 19px;margin-left: 25px;" href="/logout"></a></li>
 				</ul>
 			</div><!--/.nav-collapse -->
 		</div>
