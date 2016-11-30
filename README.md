@@ -28,7 +28,7 @@ $ sudo dpkg -i irods-icommands-4.1.10-ubuntu14-x86_64.deb
 **Note:** The irods-icat-4.1.10 or irods-resource-4.1.10 packages also contain the required /var/lib/irods/plugins/network/libtcp.so shared object that is loaded at runtime. Be sure that at least one of those three packages is installed when deploying a GoRODS binary.
 
 
-**Step #3:** Install GoRODS
+**Step #3:** Install GoRODS (assuming GOPATH is setup)
 
 ```
 $ go get github.com/jjacquay712/GoRODS 
