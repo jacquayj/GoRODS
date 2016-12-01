@@ -2,6 +2,8 @@
 
 Golang binding for iRODS C API. Compatible with golang version >= 1.5
 
+[![GoDoc](https://godoc.org/github.com/jjacquay712/GoRODS?status.svg)](https://godoc.org/github.com/jjacquay712/GoRODS)
+
 ### Installation
 
 **Step #1:** Install build dependencies (http://irods.org/download/): irods-dev-4.1.10
