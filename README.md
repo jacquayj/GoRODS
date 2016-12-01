@@ -177,7 +177,6 @@ Send me a pull request!
 
 ## Known Issues
 
-* The static library included (lib/build/libgorods.a) in this repo won't work on 32-bit systems and OSX. Install irods-dev system package, and run the build.sh script to compile binaries for your system.
 * Bug list: https://godoc.org/github.com/jjacquay712/GoRODS#pkg-note-bug
 
 ## License & Copyright
