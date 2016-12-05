@@ -1,5 +1,5 @@
-/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. ***
- *** For more information please refer to the LICENSE.md file            ***/
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The Bio Team, Inc. ***
+ *** For more information please refer to the LICENSE.md file                                   ***/
 
 #include "wrapper.h"
 
