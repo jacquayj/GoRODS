@@ -27,5 +27,5 @@ Note: The icommand (or icat/resource) package runtime dependency from 4.1.10 is 
 
 | iRODS Version | Build Dependencies | Runtime Dependencies |
 | --- | --- | --- |
-| <= 4.1.10 | irods-dev | Pick one: irods-icommands or irods-icat or irods-resource |
+| <= 4.1.10 | irods-dev | irods-icommands (or irods-icat or irods-resource) |
 | >= 4.2.0 | irods-devel, irods-externals* | irods-runtime, irods-externals* | 
