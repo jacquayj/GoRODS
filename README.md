@@ -185,6 +185,6 @@ Send me a pull request!
 
 ## License & Copyright
 
-Copyright (c) 2016, University of Florida Research Foundation, Inc. All Rights Reserved.
+Copyright (c) 2016, University of Florida Research Foundation, Inc. and The BioTeam, Inc. All Rights Reserved.
 
 GoRODS is released under a 3-clause BSD License. For more information please refer to the LICENSE.md file

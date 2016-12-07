@@ -1,4 +1,4 @@
-/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The Bio Team, Inc. ***
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The BioTeam, Inc.  ***
  *** For more information please refer to the LICENSE.md file                                   ***/
 
 #include "wrapper.h"
