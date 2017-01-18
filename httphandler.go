@@ -1182,15 +1182,27 @@ func (handler *HttpHandler) ServeCollectionView(col *Collection) {
 				return fmt.Sprintf("%.1f TiB", float64(size)/1099511627776.0)
 			}
 		},
+		"preHeaderLinksLen": func() int {
+			return len(strings.Split(handler.handlerPath, "/"))
+		},
 		"headerLinks": func() []map[string]string {
 			headerLinks := make([]map[string]string, 0)
+
+			preFrags := strings.Split(handler.handlerPath, "/")
+			for i := range preFrags {
+
+				headerLinks = append(headerLinks, map[string]string{
+					"name": preFrags[i],
+					"url":  handler.opts.StripPrefix,
+				})
+
+			}
 
 			if handler.openPath == handler.handlerPath {
 				return headerLinks
 			}
 
 			p := strings.TrimPrefix(handler.openPath, handler.handlerPath+"/")
-
 			frags := strings.Split(p, "/")
 
 			for i := range frags {
