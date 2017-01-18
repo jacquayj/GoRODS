@@ -23,6 +23,10 @@ func timeStringToTime(ts string) time.Time {
 	return time.Unix(unixStamp, 0)
 }
 
+func GetTypeString(typ int) string {
+	return getTypeString(typ)
+}
+
 func getTypeString(typ int) string {
 	switch typ {
 	case DataObjType:
