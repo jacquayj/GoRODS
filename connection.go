@@ -67,6 +67,12 @@ type IRodsObj interface {
 	ACL() (ACLs, error)
 	Stat() (map[string]interface{}, error)
 
+	Size() int64
+	Mode() os.FileMode
+	ModTime() time.Time
+	IsDir() bool
+	Sys() interface{}
+
 	OwnerName() string
 	CreateTime() time.Time
 	ModifyTime() time.Time

@@ -335,6 +335,28 @@ func (col *Collection) All() (IRodsObjs, error) {
 	return col.dataObjects, nil
 }
 
+func (col *Collection) Walk(callback func(IRodsObj) error) error {
+
+	all, err := col.All()
+	if err != nil {
+		return err
+	}
+
+	for _, item := range all {
+		if item.Type() == CollectionType {
+			if cbErr := (item.(*Collection)).Walk(callback); cbErr != nil {
+				return cbErr
+			}
+		} else {
+			if cbErr := callback(item); cbErr != nil {
+				return cbErr
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetInheritance sets the inheritance option of the collection. If true, sub-collections and data objects inherit the permissions (ACL) of this collection.
 func (col *Collection) SetInheritance(inherits bool, recursive bool) error {
 	var ih int
@@ -418,19 +440,19 @@ func (col *Collection) ACL() (ACLs, error) {
 	return aclSliceToResponse(&result, col.con)
 }
 
-func (col *Collection) Size() (int64, error) {
+func (col *Collection) Size() int64 {
 	result, err := col.con.IQuest("select sum(DATA_SIZE) where COLL_NAME like '"+col.path+"%'", false)
 	if err != nil {
-		return 0, err
+		return -1
 	}
 
 	i, err := strconv.ParseInt(result[0]["DATA_SIZE"], 10, 64)
 
 	if err != nil {
-		return 0, nil
+		return -1
 	}
 
-	return i, nil
+	return i
 }
 
 // Type gets the type
@@ -471,6 +493,22 @@ func (col *Collection) Owner() *User {
 // CreateTime returns the create time of the collection
 func (col *Collection) CreateTime() time.Time {
 	return col.createTime
+}
+
+func (col *Collection) Mode() os.FileMode {
+	return 0755
+}
+
+func (col *Collection) ModTime() time.Time {
+	return col.ModifyTime()
+}
+
+func (col *Collection) IsDir() bool {
+	return true
+}
+
+func (col *Collection) Sys() interface{} {
+	return nil
 }
 
 // ModifyTime returns the modify time of the collection
