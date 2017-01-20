@@ -443,13 +443,13 @@ func (col *Collection) ACL() (ACLs, error) {
 func (col *Collection) Size() int64 {
 	result, err := col.con.IQuest("select sum(DATA_SIZE) where COLL_NAME like '"+col.path+"%'", false)
 	if err != nil {
-		return -1
+		return 0
 	}
 
 	i, err := strconv.ParseInt(result[0]["DATA_SIZE"], 10, 64)
 
 	if err != nil {
-		return -1
+		return 0
 	}
 
 	return i
