@@ -478,7 +478,7 @@ func (con *Connection) InitCon() error {
 		return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
 
-	con.SetThreads(opts.Threads)
+	con.SetThreads(con.Options.Threads)
 
 	if con.Options.Ticket != "" {
 		if err := con.SetTicket(con.Options.Ticket); err != nil {
