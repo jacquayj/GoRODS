@@ -309,6 +309,7 @@ func (con *Connection) InitCon() error {
 		if err := con.Disconnect(); err != nil {
 			return err
 		}
+		// Should the con.Options.PAMToken be reset here?
 	}
 
 	var (
@@ -451,6 +452,9 @@ func (con *Connection) InitCon() error {
 
 		if con.Options.AuthType == PAMAuth {
 
+			// TODO
+			// If PAM token is set, and error is password expires, reset token, reinit?
+
 			if pamPassFile != nil {
 
 				// Failure, clear out file for another try.
@@ -563,6 +567,8 @@ func (con *Connection) Disconnect() error {
 			return er
 		}
 	}
+
+	//con.OpenedObjs = make(IRodsObjs, 0)
 
 	ccon := con.GetCcon()
 	defer con.ReturnCcon(ccon)

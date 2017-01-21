@@ -981,8 +981,8 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 
 	col.con.ReturnCcon(ccon)
 
-	// Reload source collection, we are now detached
-	col.parent.Refresh()
+	// Reload source collection, we are now detached... buggy?
+	//col.parent.Refresh()
 
 	// Find & reload destination collection
 	switch iRODSCollection.(type) {
