@@ -49,6 +49,7 @@ type CollectionOptions struct {
 	Path      string
 	Recursive bool
 	GetRepls  bool
+	SkipCache bool
 }
 
 // String shows the contents of the collection.

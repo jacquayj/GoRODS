@@ -614,7 +614,7 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 	recursive := opts.Recursive
 
 	// Check the cache
-	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
+	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil || opts.SkipCache {
 		//if collection := con.OpenedObjs.FindRecursive(startPath); true {
 
 		// Load collection, no cache found
@@ -1109,7 +1109,7 @@ func (con *Connection) FetchResources() (Resources, error) {
 
 	if status := C.gorods_get_resources_new(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, status, fmt.Sprintf("iRODS  Get Resources Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Resources Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
