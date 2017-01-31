@@ -1,4 +1,4 @@
-/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The Bio Team, Inc. ***
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The BioTeam, Inc. ***
  *** For more information please refer to the LICENSE.md file                                   ***/
 
 package gorods
@@ -21,6 +21,10 @@ func cTimeToTime(cTime *C.char) time.Time {
 func timeStringToTime(ts string) time.Time {
 	unixStamp, _ := strconv.ParseInt(ts, 10, 64)
 	return time.Unix(unixStamp, 0)
+}
+
+func GetTypeString(typ int) string {
+	return getTypeString(typ)
 }
 
 func getTypeString(typ int) string {

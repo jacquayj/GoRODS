@@ -1,4 +1,4 @@
-/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The Bio Team, Inc. ***
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The BioTeam, Inc. ***
  *** For more information please refer to the LICENSE.md file                                   ***/
 
 package gorods
@@ -9,6 +9,7 @@ import "C"
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -332,6 +333,22 @@ func (obj *DataObj) Offset() int64 {
 // Size returns the size in bytes of the data object
 func (obj *DataObj) Size() int64 {
 	return obj.size
+}
+
+func (obj *DataObj) Mode() os.FileMode {
+	return 0644
+}
+
+func (obj *DataObj) ModTime() time.Time {
+	return obj.ModifyTime()
+}
+
+func (obj *DataObj) IsDir() bool {
+	return false
+}
+
+func (obj *DataObj) Sys() interface{} {
+	return nil
 }
 
 // CreateTime returns the create time of the data object

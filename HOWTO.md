@@ -4,7 +4,7 @@ This document goes over a few common iRODS tasks that could be implemented with 
 
 ### 1. How do I read data from a file stored in iRODS?
 
-First we need to create our bare bones .go file, import the GoRODS package, and setup the client struct. Info on ConnectionOptions [can be found in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#New).
+First we need to create our bare bones .go file, import the GoRODS package, and setup the client struct. Info on ConnectionOptions [can be found in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v0#New).
 
 ```go
 package main
@@ -70,7 +70,7 @@ hello.txt file contents: 'Hello, World!'
 
 ### 2. Can I selectively read sections of a file stored in iRODS (seek certain byte range)? If so, how?
 
-This example is very similar to the one above, except it starts reading at an offset of 7 bytes, e.g. lseek(7) and reads the next 6 bytes. See [ReadChunk](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObj.ReadChunk) if you want to read the entire file in chucks.
+This example is very similar to the one above, except it starts reading at an offset of 7 bytes, e.g. lseek(7) and reads the next 6 bytes. See [ReadChunk](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v0#DataObj.ReadChunk) if you want to read the entire file in chucks.
 
 **Example:**
 
@@ -101,7 +101,7 @@ hello.txt file contents: 'World!'
 
 ### 3. How do I write a file into iRODS?
 
-There are a few ways to accomplish this, depending on whether the file (data object) already exists. This first example assumes you want to upload (iput) a new file into iRODS. To learn about the options available in DataObjOptions, [see the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObjOptions).
+There are a few ways to accomplish this, depending on whether the file (data object) already exists. This first example assumes you want to upload (iput) a new file into iRODS. To learn about the options available in DataObjOptions, [see the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v0#DataObjOptions).
 
 **Example:**
 
@@ -355,7 +355,7 @@ if openErr := client.OpenConnection(func(con *gorods.Connection) {
 
 Access controls can be set on data objects and collections using a few different functions (Chmod, GrantAccess). Regardless of the function you choose, there are three things you must know: the user or group you are granting the access to, the access level (Null, Read, Write, or Own), and whether or not the operation is recursive. You must pass the recursive flag to chmod on data objects, but the value isn't used for anything.
 
-GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it is otherwise identical to Chmod. These user and group structs can be retrieved using [Connection.Groups()](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#Connection.Groups) / [Connection.Users()](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#Connection.Users) (returns slice of all groups/users in iCAT) or the data object or collection [Owner() property](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v1#DataObj.Owner).
+GrantAccess accepts a *gorods.User or *gorods.Group instead of a string, but it is otherwise identical to Chmod. These user and group structs can be retrieved using [Connection.Groups()](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v0#Connection.Groups) / [Connection.Users()](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v0#Connection.Users) (returns slice of all groups/users in iCAT) or the data object or collection [Owner() property](https://godoc.org/gopkg.in/jjacquay712/GoRODS.v0#DataObj.Owner).
 
 **Example:**
 
@@ -443,9 +443,9 @@ client, conErr := gorods.New(gorods.ConnectionOptions{
 
 These are the three functions available as a starting point, once you've initialized the client:
 
-1. [client.OpenDataObject](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenDataObject)
-2. [client.OpenCollection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenCollection)
-3. [client.OpenConnection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Client.OpenConnection)
+1. [client.OpenDataObject](https://godoc.org/gopkg.in/jjacquay712/GoRods.v0#Client.OpenDataObject)
+2. [client.OpenCollection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v0#Client.OpenCollection)
+3. [client.OpenConnection](https://godoc.org/gopkg.in/jjacquay712/GoRods.v0#Client.OpenConnection)
 
 These three functions create a new connection to iRODS each time they're called. This has importance for application concurrency, see [this section](#threading--goroutine-connection-concerns) for more details. If you'd rather manage the opening and closing of connections, collections, and data objects yourself, you can initialize the connection directly:
 
@@ -477,11 +477,11 @@ col := obj.Col()
 
 ```
 
-From there you are free to use the connection [as described in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#Connection), just remember to call Disconnect when you're finished.
+From there you are free to use the connection [as described in the documentation](https://godoc.org/gopkg.in/jjacquay712/GoRods.v0#Connection), just remember to call Disconnect when you're finished.
 
 ### Data Object Replicas
 
-By default, when you access a slice of data objects or use a collection iterator, you will only retrieve a single reference to a particular data object. Even if the data object is replicated to multiple resource servers. You can find out which resource the data object belongs to using the [DataObj.Resource()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.Resource) function.
+By default, when you access a slice of data objects or use a collection iterator, you will only retrieve a single reference to a particular data object. Even if the data object is replicated to multiple resource servers. You can find out which resource the data object belongs to using the [DataObj.Resource()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v0#DataObj.Resource) function.
 
 To access a data object reference for every replica (resource it's stored in), simply set the GetRepls field to true in your CollectionOptions. Here's an example:
 
@@ -516,7 +516,7 @@ Collection: /tempZone/home/rods
 
 ```
 
-Notice the duplicate data object "hello.txt" appears, because it is replicated to multiple resource servers. You can find out which resource the data object belongs to using the [DataObj.Resource()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v1#DataObj.Resource) function. In later versions of GoRODS, duplicates might be combined into a single data object reference.
+Notice the duplicate data object "hello.txt" appears, because it is replicated to multiple resource servers. You can find out which resource the data object belongs to using the [DataObj.Resource()](https://godoc.org/gopkg.in/jjacquay712/GoRods.v0#DataObj.Resource) function. In later versions of GoRODS, duplicates might be combined into a single data object reference.
 
 
 ### PAM Authentication

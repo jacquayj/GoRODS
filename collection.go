@@ -1,4 +1,4 @@
-/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The Bio Team, Inc. ***
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The BioTeam, Inc. ***
  *** For more information please refer to the LICENSE.md file                                   ***/
 
 package gorods
@@ -39,7 +39,8 @@ type Collection struct {
 	createTime time.Time
 	modifyTime time.Time
 
-	chandle C.int
+	opened     bool
+	cColHandle C.collHandle_t
 }
 
 // CollectionOptions stores options relating to collection initialization.
@@ -49,6 +50,7 @@ type CollectionOptions struct {
 	Path      string
 	Recursive bool
 	GetRepls  bool
+	SkipCache bool
 }
 
 // String shows the contents of the collection.
@@ -81,7 +83,7 @@ func initCollection(data *C.collEnt_t, acol *Collection) (*Collection, error) {
 
 	col := new(Collection)
 
-	col.chandle = C.int(-1)
+	col.opened = false
 	col.typ = CollectionType
 	col.col = acol
 	col.con = col.col.con
@@ -178,7 +180,7 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 
 	col.options = &opts
 
-	col.chandle = C.int(-1)
+	col.opened = false
 	col.typ = CollectionType
 	col.con = con
 	col.path = strings.TrimRight(opts.Path, "/")
@@ -335,6 +337,28 @@ func (col *Collection) All() (IRodsObjs, error) {
 	return col.dataObjects, nil
 }
 
+func (col *Collection) Walk(callback func(IRodsObj) error) error {
+
+	all, err := col.All()
+	if err != nil {
+		return err
+	}
+
+	for _, item := range all {
+		if item.Type() == CollectionType {
+			if cbErr := (item.(*Collection)).Walk(callback); cbErr != nil {
+				return cbErr
+			}
+		} else {
+			if cbErr := callback(item); cbErr != nil {
+				return cbErr
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetInheritance sets the inheritance option of the collection. If true, sub-collections and data objects inherit the permissions (ACL) of this collection.
 func (col *Collection) SetInheritance(inherits bool, recursive bool) error {
 	var ih int
@@ -418,19 +442,19 @@ func (col *Collection) ACL() (ACLs, error) {
 	return aclSliceToResponse(&result, col.con)
 }
 
-func (col *Collection) Size() (int64, error) {
+func (col *Collection) Size() int64 {
 	result, err := col.con.IQuest("select sum(DATA_SIZE) where COLL_NAME like '"+col.path+"%'", false)
 	if err != nil {
-		return 0, err
+		return 0
 	}
 
 	i, err := strconv.ParseInt(result[0]["DATA_SIZE"], 10, 64)
 
 	if err != nil {
-		return 0, nil
+		return 0
 	}
 
-	return i, nil
+	return i
 }
 
 // Type gets the type
@@ -471,6 +495,22 @@ func (col *Collection) Owner() *User {
 // CreateTime returns the create time of the collection
 func (col *Collection) CreateTime() time.Time {
 	return col.createTime
+}
+
+func (col *Collection) Mode() os.FileMode {
+	return 0755
+}
+
+func (col *Collection) ModTime() time.Time {
+	return col.ModifyTime()
+}
+
+func (col *Collection) IsDir() bool {
+	return true
+}
+
+func (col *Collection) Sys() interface{} {
+	return nil
 }
 
 // ModifyTime returns the modify time of the collection
@@ -622,7 +662,7 @@ func (col *Collection) DownloadTo(localPath string) error {
 // Open connects to iRODS and sets the handle for Collection.
 // Usually called by Collection.init()
 func (col *Collection) Open() error {
-	if int(col.chandle) < 0 {
+	if !col.opened {
 		var (
 			errMsg     *C.char
 			cTrimRepls C.int
@@ -641,9 +681,11 @@ func (col *Collection) Open() error {
 		ccon := col.con.GetCcon()
 		defer col.con.ReturnCcon(ccon)
 
-		if status := C.gorods_open_collection(path, cTrimRepls, &col.chandle, ccon, &errMsg); status != 0 {
+		if status := C.gorods_open_collection(path, cTrimRepls, &col.cColHandle, ccon, &errMsg); status != 0 {
 			return newError(Fatal, status, fmt.Sprintf("iRODS Open Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
 		}
+
+		col.opened = true
 	}
 
 	return nil
@@ -659,16 +701,16 @@ func (col *Collection) Close() error {
 		}
 	}
 
-	if int(col.chandle) > -1 {
+	if col.opened {
 
 		ccon := col.con.GetCcon()
 		defer col.con.ReturnCcon(ccon)
 
-		if status := C.gorods_close_collection(col.chandle, ccon, &errMsg); status != 0 {
+		if status := C.gorods_close_collection(&col.cColHandle, &errMsg); status != 0 {
 			return newError(Fatal, status, fmt.Sprintf("iRODS Close Collection Failed: %v, %v", col.path, C.GoString(errMsg)))
 		}
 
-		col.chandle = C.int(-1)
+		col.opened = false
 	}
 
 	return nil
@@ -943,8 +985,8 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 
 	col.con.ReturnCcon(ccon)
 
-	// Reload source collection, we are now detached
-	col.parent.Refresh()
+	// Reload source collection, we are now detached... buggy?
+	//col.parent.Refresh()
 
 	// Find & reload destination collection
 	switch iRODSCollection.(type) {
@@ -971,7 +1013,7 @@ func (col *Collection) MoveTo(iRODSCollection interface{}) error {
 	col.parent = destinationCollection
 	col.path = destinationCollection.path + "/" + col.name
 
-	col.chandle = C.int(-1)
+	col.opened = false
 
 	return nil
 }
@@ -1004,7 +1046,7 @@ func (col *Collection) Rename(newFileName string) error {
 	col.name = newFileName
 	col.path = destination
 
-	col.chandle = C.int(-1)
+	col.opened = false
 
 	return nil
 }
@@ -1031,7 +1073,7 @@ func (col *Collection) ReadCollection() error {
 	ccon := col.con.GetCcon()
 
 	// Read data objs from collection
-	C.gorods_read_collection(ccon, col.chandle, &arr, &arrSize, &err)
+	C.gorods_read_collection(ccon, &col.cColHandle, &arr, &arrSize, &err)
 
 	col.con.ReturnCcon(ccon)
 
@@ -1068,6 +1110,7 @@ func (col *Collection) ReadCollection() error {
 			C.free(unsafe.Pointer(obj.resource))
 			//C.free(unsafe.Pointer(obj.rescGrp))
 			C.free(unsafe.Pointer(obj.phyPath))
+			C.free(unsafe.Pointer(obj.resc_hier))
 		}
 
 		// String in both object types

@@ -1,4 +1,4 @@
-/*** Copyright (c) 2016, The Bio Team, Inc.                    ***
+/*** Copyright (c) 2016, The BioTeam, Inc.                    ***
  *** For more information please refer to the LICENSE.md file  ***/
 
 package gorods

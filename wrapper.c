@@ -1,4 +1,4 @@
-/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The Bio Team, Inc. ***
+/*** Copyright (c) 2016, University of Florida Research Foundation, Inc. and The BioTeam, Inc. ***
  *** For more information please refer to the LICENSE.md file                                   ***/
 
 #include "wrapper.h"
@@ -148,23 +148,23 @@ int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
 
 
 
-int gorods_open_collection(char* path, int trimRepls, int* handle, rcComm_t* conn, char** err) {
-	collInp_t collOpenInp; 
+int gorods_open_collection(char* path, int trimRepls, collHandle_t* collHandle, rcComm_t* conn, char** err) {
 
-	bzero(&collOpenInp, sizeof(collOpenInp)); 
-	
-    rstrcpy(collOpenInp.collName, path, MAX_NAME_LEN);
+    int flag;
+    int status;
 
-	collOpenInp.flags = VERY_LONG_METADATA_FG;
+	bzero(collHandle, sizeof(collHandle_t)); 
+
+	flag = VERY_LONG_METADATA_FG;
 
     if ( trimRepls == 0 ) {
-        collOpenInp.flags |= NO_TRIM_REPL_FG;;
+        flag |= NO_TRIM_REPL_FG;;
     }
 
-	*handle = rcOpenCollection(conn, &collOpenInp); 
-	if ( *handle < 0 ) { 
+	status = rclOpenCollection(conn, path, flag, collHandle); 
+	if ( status < 0 ) { 
 		*err = "rcOpenCollection failed";
-		return *handle;
+		return status;
 	} 
 
 	return 0;
@@ -313,8 +313,8 @@ int gorods_close_dataobject(int handleInx, rcComm_t* conn, char** err) {
 	return 0;
 }
 
-int gorods_close_collection(int handleInx, rcComm_t* conn, char** err) {
-	int status = rcCloseCollection(conn, handleInx);
+int gorods_close_collection(collHandle_t* collHandle, char** err) {
+	int status = rclCloseCollection(collHandle);
 
 	if ( status < 0 ) { 
 		*err = "rcCloseCollection failed";
@@ -1778,17 +1778,19 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 	return 0;
 }
 
-int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* size, char** err) {
+int gorods_read_collection(rcComm_t* conn, collHandle_t* collHandle, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 500;
 	*size = 0;
 
 	*arr = gorods_malloc(sizeof(collEnt_t) * collectionResponseCapacity);
 	
-	collEnt_t* collEnt = NULL;
+    collEnt_t theCollEnt;
+
+	collEnt_t* collEnt = &theCollEnt;
 	int status;
 
-	while ( (status = rcReadCollection(conn, handleInx, &collEnt)) >= 0 ) { 
+	while ( (status = rclReadCollection(conn, collHandle, collEnt)) >= 0 ) { 
 
 		// Expand array if needed
 		if ( *size >= collectionResponseCapacity ) {
@@ -1819,7 +1821,7 @@ int gorods_read_collection(rcComm_t* conn, int handleInx, collEnt_t** arr, int* 
 
 		(*size)++;
 		
-		gorodsFreeCollEnt(collEnt); 
+		//gorodsFreeCollEnt(collEnt); 
 	} 
 
 	return 0;
