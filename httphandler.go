@@ -1410,56 +1410,74 @@ func (handler *HttpHandler) Upload(col *Collection) {
 
 	req := handler.request
 
-	req.ParseMultipartForm(1024 * 200000)
+	if mpReader, err := req.MultipartReader(); err == nil {
 
-	if file, meta, err := req.FormFile("data"); err == nil {
-		name := meta.Filename
-
-		if obj, cEr := col.CreateDataObj(DataObjOptions{
-			Name: name,
-		}); cEr == nil {
-
-			contents := make([]byte, 1024*200000)
-
-			response.Success = true
-			response.Message = "File upload success"
-
-			totalBytes := 0
-
-			for {
-
-				n, fErr := file.Read(contents)
-
-				totalBytes += n
-
-				if fErr != nil && fErr != io.EOF {
-					log.Print(fErr.Error())
-					panic(fErr)
-				}
-				if n == 0 && io.EOF == fErr {
-					break
-				}
-
-				if wEr := obj.WriteBytes(contents[:n]); wEr != nil {
-					response.Message = wEr.Error()
-					response.Success = false
-
-					log.Print(wEr)
-
-					break
-				}
+	MPLoop:
+		for {
+			part, pErr := mpReader.NextPart()
+			if pErr == io.EOF {
+				break MPLoop
 			}
 
-		} else {
-			response.Message = cEr.Error()
+			if pErr != nil {
+				response.Message = pErr.Error()
+				log.Print(pErr)
+				break MPLoop
+			}
+
+			if obj, cEr := col.CreateDataObj(DataObjOptions{
+				Name: part.FileName(),
+			}); cEr == nil {
+
+				contents := make([]byte, 1024*200000)
+
+				response.Success = true
+				response.Message = "File upload success"
+
+			ReadLoop:
+				for {
+
+					n, fErr := part.Read(contents)
+
+					if fErr != nil && fErr != io.EOF {
+						log.Print(fErr.Error())
+						panic(fErr)
+					}
+
+					if n == 0 && io.EOF == fErr {
+						break ReadLoop
+					}
+
+					if wEr := obj.WriteBytes(contents[:n]); wEr != nil {
+						response.Message = wEr.Error()
+						response.Success = false
+
+						log.Print(wEr)
+
+						break ReadLoop
+					}
+				}
+
+				obj.Close()
+
+			} else {
+				log.Print(cEr)
+				response.Message = cEr.Error()
+			}
 		}
 
 	} else {
+		log.Print(err)
 		response.Message = err.Error()
 	}
 
-	jsonBytes, _ := json.Marshal(response)
-	handler.response.Write(jsonBytes)
+	if jsonBytes, jErr := json.Marshal(response); jErr == nil {
+		if _, wErr := handler.response.Write(jsonBytes); wErr != nil {
+			log.Print(wErr)
+		}
+	} else {
+		log.Print(jErr)
+	}
 }
 
 func (handler *HttpHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {

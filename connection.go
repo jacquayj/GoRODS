@@ -67,6 +67,12 @@ type IRodsObj interface {
 	ACL() (ACLs, error)
 	Stat() (map[string]interface{}, error)
 
+	Size() int64
+	Mode() os.FileMode
+	ModTime() time.Time
+	IsDir() bool
+	Sys() interface{}
+
 	OwnerName() string
 	CreateTime() time.Time
 	ModifyTime() time.Time
@@ -289,6 +295,23 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 	con.Options = opts
 
+	if err := con.InitCon(); err == nil {
+		return con, nil
+	} else {
+		return nil, err
+	}
+
+}
+
+func (con *Connection) InitCon() error {
+
+	if con.Connected {
+		if err := con.Disconnect(); err != nil {
+			return err
+		}
+		// Should the con.Options.PAMToken be reset here?
+	}
+
 	var (
 		status    C.int
 		errMsg    *C.char
@@ -310,11 +333,11 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 		// BUG(jjacquay712): iRODS C API code outputs errors messages, need to implement connect wrapper (gorods_connect_env) from a lower level to suppress this output
 		// https://github.com/irods/irods/blob/master/iRODS/lib/core/src/rcConnect.cpp#L109
 		if status = C.gorods_connect_env(&con.ccon, host, port, username, zone, &errMsg); status != 0 {
-			return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
+			return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	} else {
 		if status = C.gorods_connect(&con.ccon, &errMsg); status != 0 {
-			return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
+			return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	}
 
@@ -348,7 +371,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 			// It's not, fetch password and just keep in memory
 			if status = C.gorods_clientLoginPam(con.ccon, ipassword, C.int(con.Options.PAMPassExpire), &opassword, &errMsg); status != 0 {
-				return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: clientLoginPam error, invalid password?"))
+				return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: clientLoginPam error, invalid password?"))
 			}
 
 			defer C.free(unsafe.Pointer(opassword))
@@ -361,19 +384,19 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 					// Open file here
 					pamPassFile, pamFileErr = os.OpenFile(con.Options.PAMPassFile, os.O_RDWR, 0666)
 					if pamFileErr != nil {
-						return nil, newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: Problem opening PAMPassFile at %v", con.Options.PAMPassFile))
+						return newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: Problem opening PAMPassFile at %v", con.Options.PAMPassFile))
 					}
 
 					size = finfo.Size()
 
 				} else {
-					return nil, newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: PAMPassFile is a directory durp"))
+					return newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: PAMPassFile is a directory durp"))
 				}
 			} else {
 				// Create file here
 				pamPassFile, pamFileErr = os.Create(con.Options.PAMPassFile)
 				if pamFileErr != nil {
-					return nil, newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: Problem creating PAMPassFile at %v", con.Options.PAMPassFile))
+					return newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: Problem creating PAMPassFile at %v", con.Options.PAMPassFile))
 				}
 
 			}
@@ -383,7 +406,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 				fileBtz := make([]byte, size)
 				if _, er := pamPassFile.Read(fileBtz); er != nil {
-					return nil, newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: Problem reading PAMPassFile at %v", con.Options.PAMPassFile))
+					return newError(Fatal, -1, fmt.Sprintf("iRODS Connect Failed: Problem reading PAMPassFile at %v", con.Options.PAMPassFile))
 				}
 
 				fileStr := string(fileBtz)
@@ -398,7 +421,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 					// we're expired, refresh
 					opassword, pamFileErr = con.fetchAndWritePAMPass(pamPassFile, ipassword)
 					if pamFileErr != nil {
-						return nil, pamFileErr
+						return pamFileErr
 					}
 				} else {
 					// It's still good, use it
@@ -411,7 +434,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 				// Nope, it's new. Write to the file
 				opassword, pamFileErr = con.fetchAndWritePAMPass(pamPassFile, ipassword)
 				if pamFileErr != nil {
-					return nil, pamFileErr
+					return pamFileErr
 				}
 
 				defer C.free(unsafe.Pointer(opassword))
@@ -429,18 +452,21 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 		if con.Options.AuthType == PAMAuth {
 
+			// TODO
+			// If PAM token is set, and error is password expires, reset token, reinit?
+
 			if pamPassFile != nil {
 
 				// Failure, clear out file for another try.
 				if er := pamPassFile.Truncate(int64(0)); er != nil {
-					return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: Unable to truncate PAMPassFile: %v", er))
+					return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: Unable to truncate PAMPassFile: %v", er))
 				}
 
-				return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: clientLoginWithPassword error, expired password?"))
+				return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: clientLoginWithPassword error, expired password?"))
 			}
 		}
 
-		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: clientLoginWithPassword error, invalid password?"))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: clientLoginWithPassword error, invalid password?"))
 	}
 
 	if con.Options.AuthType == PAMAuth {
@@ -453,24 +479,24 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	if status == 0 {
 		con.Connected = true
 	} else {
-		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
 
-	con.SetThreads(opts.Threads)
+	con.SetThreads(con.Options.Threads)
 
 	if con.Options.Ticket != "" {
 		if err := con.SetTicket(con.Options.Ticket); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	if !con.Options.FastInit {
 		if err := con.init(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return con, nil
+	return nil
 }
 
 // fetchAndWritePAMPass attempts to authenticate with the iCAT server using PAM.
@@ -542,6 +568,8 @@ func (con *Connection) Disconnect() error {
 		}
 	}
 
+	//con.OpenedObjs = make(IRodsObjs, 0)
+
 	ccon := con.GetCcon()
 	defer con.ReturnCcon(ccon)
 
@@ -586,7 +614,7 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 	recursive := opts.Recursive
 
 	// Check the cache
-	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil {
+	if collection := con.OpenedObjs.FindRecursive(startPath); collection == nil || opts.SkipCache {
 		//if collection := con.OpenedObjs.FindRecursive(startPath); true {
 
 		// Load collection, no cache found
@@ -1081,7 +1109,7 @@ func (con *Connection) FetchResources() (Resources, error) {
 
 	if status := C.gorods_get_resources_new(ccon, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
-		return nil, newError(Fatal, status, fmt.Sprintf("iRODS  Get Resources Failed: %v", C.GoString(err)))
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS Get Resources Failed: %v", C.GoString(err)))
 	}
 
 	con.ReturnCcon(ccon)
