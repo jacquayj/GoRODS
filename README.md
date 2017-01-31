@@ -182,6 +182,7 @@ Send me a pull request!
 ## Known Issues
 
 * Bug list: https://godoc.org/github.com/jjacquay712/GoRODS#pkg-note-bug
+* Missing functionality: https://github.com/jjacquay712/GoRODS/wiki
 
 ## License & Copyright
 
