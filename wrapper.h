@@ -55,6 +55,26 @@ typedef struct {
 	char** pathArr;
 } goRodsPathResult_t;
 
+
+typedef struct GoRodsQueryOpts {
+    int limit;
+    int offset;
+} goRodsQueryOpts_t;
+
+int gorods_rclReadCollection(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
+int gorods_readCollection( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
+int gorods_genCollResInColl( queryHandle_t *queryHandle, collHandle_t *collHandle, goRodsQueryOpts_t opts);
+int gorods_genDataResInColl( queryHandle_t *queryHandle, collHandle_t *collHandle, goRodsQueryOpts_t opts);
+int gorods_queryCollInColl( queryHandle_t *queryHandle, char *collection,
+                 int flags, genQueryInp_t *genQueryInp,
+                 genQueryOut_t **genQueryOut, goRodsQueryOpts_t opts );
+int gorods_queryDataObjInColl( queryHandle_t *queryHandle, char *collection,
+                    int flags, genQueryInp_t *genQueryInp,
+                    genQueryOut_t **genQueryOut, keyValPair_t *condInput, goRodsQueryOpts_t opts );
+int gorods_getNextCollMetaInfo( collHandle_t *collHandle, collEnt_t *outCollEnt );
+int gorods_getNextDataObjMetaInfo( collHandle_t *collHandle, collEnt_t *outCollEnt );
+
+
 void display_mallinfo(void);
 void* gorods_malloc(size_t size);
 int gorods_connect(rcComm_t** conn, char** err);
