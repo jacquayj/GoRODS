@@ -642,6 +642,15 @@ func (con *Connection) Collection(opts CollectionOptions) (*Collection, error) {
 
 }
 
+// CollectionOpts initializes and returns an existing iRODS collection using the specified path
+func (con *Connection) CollectionOpts(opts CollectionOptions, readOpts CollectionReadOpts) (*Collection, error) {
+	if col, err := getCollectionOpts(opts, readOpts, con); err == nil {
+		return col, nil
+	} else {
+		return nil, err
+	}
+}
+
 // PathType returns DataObjType, CollectionType, or -1 (error) for the iRODS path specified
 func (con *Connection) PathType(p string) (int, error) {
 	var (

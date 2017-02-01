@@ -1778,6 +1778,9 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 	return 0;
 }
 
+
+
+
 int gorods_read_collection(rcComm_t* conn, collHandle_t* collHandle, collEnt_t** arr, int* size, char** err) {
 
 	int collectionResponseCapacity = 500;
@@ -1788,15 +1791,9 @@ int gorods_read_collection(rcComm_t* conn, collHandle_t* collHandle, collEnt_t**
     collEnt_t theCollEnt;
 	collEnt_t* collEnt = &theCollEnt;
 
-    goRodsQueryOpts_t opts;
-    bzero(&opts, sizeof(goRodsQueryOpts_t));
-
-    opts.limit = 10;
-    opts.offset = 0;
-
 	int status;
 
-	while ( (status = gorods_rclReadCollection(conn, collHandle, collEnt, opts)) >= 0 ) { 
+	while ( (status = rclReadCollection(conn, collHandle, collEnt)) >= 0 ) { 
 
 		// Expand array if needed
 		if ( *size >= collectionResponseCapacity ) {
@@ -1994,6 +1991,7 @@ int gorods_genCollResInColl( queryHandle_t *queryHandle, collHandle_t *collHandl
                                       &collHandle->genQueryInp, &genQueryOut, opts );
         }
         else {
+
             if ( strlen( collHandle->linkedObjPath ) > 0 ) {
                 rstrcpy( collHandle->dataObjInp.objPath,
                          collHandle->linkedObjPath, MAX_NAME_LEN );
@@ -2107,7 +2105,9 @@ int gorods_queryCollInColl( queryHandle_t *queryHandle, char *collection,
     addInxIval( &genQueryInp->selectInp, COL_COLL_INFO1, 1 );
     addInxIval( &genQueryInp->selectInp, COL_COLL_INFO2, 1 );
 
-    genQueryInp->maxRows = opts.limit;
+    genQueryInp->maxRows = opts.c_limit;
+    genQueryInp->rowOffset = opts.c_offset;
+    genQueryInp->options = RETURN_TOTAL_ROW_COUNT;
 
     status = ( *queryHandle->genQuery )(
                  ( rcComm_t * ) queryHandle->conn, genQueryInp, genQueryOut );
@@ -2147,7 +2147,8 @@ gorods_queryDataObjInColl( queryHandle_t *queryHandle, char *collection,
 
     setQueryInpForData( flags, genQueryInp );
 
-    genQueryInp->maxRows = opts.limit;
+    genQueryInp->maxRows = opts.d_limit;
+    genQueryInp->rowOffset = opts.d_offset;
     genQueryInp->options = RETURN_TOTAL_ROW_COUNT;
 
     status = ( *queryHandle->genQuery )(
@@ -2181,38 +2182,7 @@ int gorods_getNextCollMetaInfo( collHandle_t *collHandle, collEnt_t *outCollEnt 
         clearCollSqlResult( collSqlResult );
 
         // TODO: MESS WITH THIS SECTION TO PREVENT MORE QUEURIES
-        if ( continueInx > 0 && 0 ) {
-            /* More to come */
-
-            if ( dataObjInp->specColl != NULL ) {
-                dataObjInp->openFlags = continueInx;
-                status = ( *queryHandle->querySpecColl )(
-                             ( rcComm_t * ) queryHandle->conn, dataObjInp, &genQueryOut );
-            }
-            else {
-                genQueryInp->continueInx = continueInx;
-                status = ( *queryHandle->genQuery )(
-                             ( rcComm_t * ) queryHandle->conn, genQueryInp, &genQueryOut );
-            }
-            if ( status < 0 ) {
-                collHandle->rowInx = 0;
-                genQueryInp->continueInx = 0;
-                collSqlResult->continueInx = 0;
-                freeGenQueryOut( &genQueryOut );
-                return status;
-            }
-            else {
-                status = genQueryOutToCollRes( &genQueryOut, collSqlResult );
-                if ( status < 0 ) {
-                    rodsLog( LOG_ERROR, "genQueryOutToCollRes in getNextCollMetaInfo failed with status %d", status );
-                }
-                collHandle->rowInx = 0;
-                free( genQueryOut );
-            }
-        }
-        else {
-            return CAT_NO_ROWS_FOUND;
-        }
+        return CAT_NO_ROWS_FOUND;
     }
     value = collSqlResult->collName.value;
     len = collSqlResult->collName.len;
@@ -2294,39 +2264,7 @@ int gorods_getNextDataObjMetaInfo( collHandle_t *collHandle, collEnt_t *outCollE
         clearDataObjSqlResult( dataObjSqlResult );
 
         // TODO: MESS WITH THIS SECTION TO PREVENT MORE QUEURIES
-        if ( continueInx > 0 && 0 ) {
-            /* More to come */
-
-            if ( dataObjInp->specColl != NULL ) {
-                dataObjInp->openFlags = continueInx;
-                status = ( *queryHandle->querySpecColl )(
-                             ( rcComm_t * ) queryHandle->conn, dataObjInp, &genQueryOut );
-            }
-            else {
-                genQueryInp->continueInx = continueInx;
-                status = ( *queryHandle->genQuery )(
-                             ( rcComm_t * ) queryHandle->conn, genQueryInp, &genQueryOut );
-            }
-            if ( status < 0 ) {
-                collHandle->rowInx = 0;
-                genQueryInp->continueInx = 0;
-                dataObjSqlResult->continueInx = 0;
-                freeGenQueryOut( &genQueryOut );
-                return status;
-            }
-            else {
-                status = genQueryOutToDataObjRes( &genQueryOut,
-                                                  dataObjSqlResult );
-                if ( status < 0 ) {
-                    rodsLogError( LOG_ERROR, status, "genQueryOut failed in %s.", __PRETTY_FUNCTION__ );
-                }
-                collHandle->rowInx = 0;
-                free( genQueryOut );
-            }
-        }
-        else {
-            return CAT_NO_ROWS_FOUND;
-        }
+        return CAT_NO_ROWS_FOUND;
     }
 
     dataId = dataObjSqlResult->dataId.value;

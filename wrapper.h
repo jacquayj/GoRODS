@@ -57,8 +57,10 @@ typedef struct {
 
 
 typedef struct GoRodsQueryOpts {
-    int limit;
-    int offset;
+    int c_limit;
+    int c_offset;
+    int d_limit;
+    int d_offset;
 } goRodsQueryOpts_t;
 
 int gorods_rclReadCollection(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);

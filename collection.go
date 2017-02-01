@@ -19,7 +19,9 @@ import (
 
 // Collection structs contain information about single collections in an iRODS zone.
 type Collection struct {
-	options *CollectionOptions
+	options  *CollectionOptions
+	readOpts *CollectionReadOpts
+	readInfo *CollectionReadInfo
 
 	trimRepls   bool
 	path        string
@@ -179,14 +181,34 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 	col := new(Collection)
 
 	col.options = &opts
+	col.con = con
 
+	return setupCollection(col)
+
+}
+
+// getCollectionOpts initializes specified collection located at startPath using gorods.connection.
+// Could be considered alias of Connection.collection()
+func getCollectionOpts(opts CollectionOptions, readOpts CollectionReadOpts, con *Connection) (*Collection, error) {
+
+	col := new(Collection)
+
+	col.options = &opts
+	col.con = con
+
+	col.readOpts = &readOpts
+
+	return setupCollection(col)
+}
+
+func setupCollection(col *Collection) (*Collection, error) {
 	col.opened = false
 	col.typ = CollectionType
-	col.con = con
-	col.path = strings.TrimRight(opts.Path, "/")
+
+	col.path = strings.TrimRight(col.options.Path, "/")
 	col.name = filepath.Base(col.path)
-	col.recursive = opts.Recursive
-	col.trimRepls = !opts.GetRepls
+	col.recursive = col.options.Recursive
+	col.trimRepls = !col.options.GetRepls
 
 	if col.recursive {
 		if er := col.init(); er != nil {
@@ -223,7 +245,6 @@ func getCollection(opts CollectionOptions, con *Connection) (*Collection, error)
 	}
 
 	return col, nil
-
 }
 
 // CreateCollection creates a collection in the specified collection using provided options. Returns the newly created collection object.
@@ -262,9 +283,16 @@ func (col *Collection) init() error {
 			return err
 		}
 
-		if err := col.ReadCollection(); err != nil {
-			return err
+		if col.readOpts == nil {
+			if err := col.ReadCollection(); err != nil {
+				return err
+			}
+		} else {
+			if _, err := col.ReadCollectionOpts(*col.readOpts); err != nil {
+				return err
+			}
 		}
+
 	}
 
 	col.hasInit = true
@@ -1054,6 +1082,68 @@ func (col *Collection) Rename(newFileName string) error {
 // Refresh is an alias of ReadCollection()
 func (col *Collection) Refresh() error {
 	return col.ReadCollection()
+}
+
+type CollectionReadOpts struct {
+	ColLimit  int
+	ColOffset int
+	ObjLimit  int
+	ObjOffset int
+}
+
+type CollectionReadInfo struct {
+	ColTotal int
+	ObjTotal int
+}
+
+func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionReadInfo, error) {
+	errInfo := CollectionReadInfo{0, 0}
+	if er := col.Open(); er != nil {
+		return errInfo, er
+	}
+
+	var colTotal, objTotal int
+
+	var cOpts C.goRodsQueryOpts_t
+
+	cOpts.c_limit = C.int(opts.ColLimit)
+	cOpts.c_offset = C.int(opts.ColOffset)
+	cOpts.d_limit = C.int(opts.ObjLimit)
+	cOpts.d_offset = C.int(opts.ObjOffset)
+
+	var colEnt C.collEnt_t
+
+	col.dataObjects = make([]IRodsObj, 0)
+
+	ccon := col.con.GetCcon()
+
+	for int(C.gorods_rclReadCollection(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
+
+		if colEnt.objType == C.DATA_OBJ_T {
+			objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+
+			col.add(initDataObj(&colEnt, col))
+		} else {
+			colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
+
+			if newCol, er := initCollection(&colEnt, col); er == nil {
+				col.add(newCol)
+			} else {
+				return errInfo, er
+			}
+
+		}
+
+	}
+
+	col.con.ReturnCcon(ccon)
+
+	info := CollectionReadInfo{colTotal, objTotal}
+
+	col.readInfo = &info
+
+	return info, col.Close()
+
 }
 
 // ReadCollection reads data (overwrites) into col.dataObjects field.
