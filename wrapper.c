@@ -1832,20 +1832,28 @@ int gorods_read_collection(rcComm_t* conn, collHandle_t* collHandle, collEnt_t**
 
 const char NON_ROOT_COLL_CHECK_STR[] = "<>'/'";
 
-int gorods_rclReadCollection(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
+int gorods_rclReadCollectionObjs(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
     int status;
 
     collHandle->queryHandle.conn = conn;        /* in case it changed */
-    status = gorods_readCollection( collHandle, collEnt, opts );
+    status = gorods_readCollectionObjs( collHandle, collEnt, opts );
 
     return status;
 }
 
-int gorods_readCollection( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
+int gorods_rclReadCollectionCols(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
+    int status;
+
+    collHandle->queryHandle.conn = conn;        /* in case it changed */
+    status = gorods_readCollectionCols( collHandle, collEnt, opts );
+
+    return status;
+}
+
+int gorods_readCollectionCols( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
     int status = 0;
     int savedStatus = 0;
-    collMetaInfo_t collMetaInfo;
-    dataObjMetaInfo_t dataObjMetaInfo;
+
     queryHandle_t *queryHandle = &collHandle->queryHandle;
 
     if ( queryHandle == NULL || collHandle == NULL || collEnt == NULL ) {
@@ -1860,123 +1868,91 @@ int gorods_readCollection( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQ
         return CAT_NO_ROWS_FOUND;
     }
 
-    if ( ( collHandle->flags & DATA_QUERY_FIRST_FG ) == 0 ) {
-        /* recursive - coll first, dataObj second */
-        if ( collHandle->state == COLL_OPENED ) {
-            status = gorods_genCollResInColl( queryHandle, collHandle, opts );
-            if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
-                rodsLog( LOG_ERROR, "genCollResInColl in readCollection failed with status %d", status );
-            }
-        }
 
-        if ( collHandle->state == COLL_COLL_OBJ_QUERIED ) {
-            memset( &collMetaInfo, 0, sizeof( collMetaInfo ) );
-            status = gorods_getNextCollMetaInfo( collHandle, collEnt );
-            if ( status >= 0 ) {
-                return status;
-            }
-            else {
-                if ( status != CAT_NO_ROWS_FOUND ) {
-                    rodsLog( LOG_ERROR,
-                             "rclReadCollection: getNextCollMetaInfo error for %s. status = %d",
-                             collHandle->dataObjInp.objPath, status );
-                }
-                if ( collHandle->dataObjInp.specColl == NULL ) {
-                    clearGenQueryInp( &collHandle->genQueryInp );
-                }
-            }
-            status = gorods_genDataResInColl( queryHandle, collHandle, opts );
-            if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
-                rodsLog( LOG_ERROR, "genDataResInColl in readCollection failed with status %d", status );
-            }
+    if ( collHandle->state == COLL_OPENED ) {
+        status = gorods_genCollResInColl( queryHandle, collHandle, opts );
+        if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
+            rodsLog( LOG_ERROR, "genCollResInColl in readCollection failed with status %d", status );
         }
-        if ( collHandle->state == COLL_DATA_OBJ_QUERIED ) {
-            memset( &dataObjMetaInfo, 0, sizeof( dataObjMetaInfo ) );
-            status = gorods_getNextDataObjMetaInfo( collHandle, collEnt );
+    }
 
-            if ( status >= 0 ) {
-                return status;
-            }
-            else {
-                if ( status != CAT_NO_ROWS_FOUND ) {
-                    rodsLog( LOG_ERROR,
-                             "rclReadCollection: getNextDataObjMetaInfo error for %s. status = %d",
-                             collHandle->dataObjInp.objPath, status );
-                }
-                /* cleanup */
-                if ( collHandle->dataObjInp.specColl == NULL ) {
-                    clearGenQueryInp( &collHandle->genQueryInp );
-                }
-                /* Nothing else to do. cleanup */
-                collHandle->state = COLL_CLOSED;
-            }
+    if ( collHandle->state == COLL_COLL_OBJ_QUERIED ) {
+        status = gorods_getNextCollMetaInfo( collHandle, collEnt );
+
+        if ( status >= 0 ) {
             return status;
         }
+        else {
+            if ( status != CAT_NO_ROWS_FOUND ) {
+                rodsLog( LOG_ERROR,
+                         "rclReadCollection: getNextCollMetaInfo error for %s. status = %d",
+                         collHandle->dataObjInp.objPath, status );
+            }
+            /* cleanup */
+            if ( collHandle->dataObjInp.specColl == NULL ) {
+                clearGenQueryInp( &collHandle->genQueryInp );
+            }
+            // Leave open for Data Obj Reads
+            collHandle->state = COLL_OPENED;
+        }
+        
+        return status;
     }
-    else {
-        if ( collHandle->state == COLL_OPENED ) {
-            status = gorods_genDataResInColl( queryHandle, collHandle, opts );
-            if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
-                savedStatus = status;
-            }
 
-        }
 
-        if ( collHandle->state == COLL_DATA_OBJ_QUERIED ) {
-            memset( &dataObjMetaInfo, 0, sizeof( dataObjMetaInfo ) );
-            status = gorods_getNextDataObjMetaInfo( collHandle, collEnt );
-
-            if ( status >= 0 ) {
-                return status;
-            }
-            else {
-                if ( status != CAT_NO_ROWS_FOUND ) {
-                    rodsLog( LOG_ERROR,
-                             "rclReadCollection: getNextDataObjMetaInfo error for %s. status = %d",
-                             collHandle->dataObjInp.objPath, status );
-                }
-                /* cleanup */
-                if ( collHandle->dataObjInp.specColl == NULL ) {
-                    clearGenQueryInp( &collHandle->genQueryInp );
-                }
-            }
-
-            status = gorods_genCollResInColl( queryHandle, collHandle, opts );
-            if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
-                savedStatus = status;
-            }
-
-        }
-
-        if ( collHandle->state == COLL_COLL_OBJ_QUERIED ) {
-            memset( &collMetaInfo, 0, sizeof( collMetaInfo ) );
-            status = gorods_getNextCollMetaInfo( collHandle, collEnt );
-            if ( status < 0 ) {
-                if ( status != CAT_NO_ROWS_FOUND ) {
-                    rodsLog( LOG_ERROR,
-                             "rclReadCollection: getNextCollMetaInfo error for %s. status = %d",
-                             collHandle->dataObjInp.objPath, status );
-                }
-                /* cleanup */
-                if ( collHandle->dataObjInp.specColl == NULL ) {
-                    clearGenQueryInp( &collHandle->genQueryInp );
-                }
-                /* Nothing else to do. cleanup */
-                collHandle->state = COLL_CLOSED;
-            }
-
-            if ( savedStatus < 0 ) {
-                return savedStatus;
-            }
-            else {
-                return status;
-            }
-
-        }
-    }
     return CAT_NO_ROWS_FOUND;
 }
 
+int gorods_readCollectionObjs( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
+    int status = 0;
+    int savedStatus = 0;
+
+    queryHandle_t *queryHandle = &collHandle->queryHandle;
+
+    if ( queryHandle == NULL || collHandle == NULL || collEnt == NULL ) {
+        rodsLog( LOG_ERROR,
+                 "rclReadCollection: NULL queryHandle or collHandle input" );
+        return USER__NULL_INPUT_ERR;
+    }
+
+    memset( collEnt, 0, sizeof( collEnt_t ) );
+
+    if ( collHandle->state == COLL_CLOSED ) {
+        return CAT_NO_ROWS_FOUND;
+    }
+
+
+    if ( collHandle->state == COLL_OPENED ) {
+        status = gorods_genDataResInColl( queryHandle, collHandle, opts );
+        if ( status < 0 && status != CAT_NO_ROWS_FOUND ) {
+            rodsLog( LOG_ERROR, "genDataResInColl in readCollection failed with status %d", status );
+        }
+    }
+
+    if ( collHandle->state == COLL_DATA_OBJ_QUERIED ) {
+        status = gorods_getNextDataObjMetaInfo( collHandle, collEnt );
+
+        if ( status >= 0 ) {
+            return status;
+        }
+        else {
+            if ( status != CAT_NO_ROWS_FOUND ) {
+                rodsLog( LOG_ERROR,
+                         "rclReadCollection: getNextDataObjMetaInfo error for %s. status = %d",
+                         collHandle->dataObjInp.objPath, status );
+            }
+            /* cleanup */
+            if ( collHandle->dataObjInp.specColl == NULL ) {
+                clearGenQueryInp( &collHandle->genQueryInp );
+            }
+            /* Nothing else to do. cleanup */
+            collHandle->state = COLL_CLOSED;
+        }
+        return status;
+    }
+    
+    return CAT_NO_ROWS_FOUND;
+}
 
 int gorods_genCollResInColl( queryHandle_t *queryHandle, collHandle_t *collHandle, goRodsQueryOpts_t opts) {
     genQueryOut_t *genQueryOut = NULL;
@@ -2105,8 +2081,8 @@ int gorods_queryCollInColl( queryHandle_t *queryHandle, char *collection,
     addInxIval( &genQueryInp->selectInp, COL_COLL_INFO1, 1 );
     addInxIval( &genQueryInp->selectInp, COL_COLL_INFO2, 1 );
 
-    genQueryInp->maxRows = opts.c_limit;
-    genQueryInp->rowOffset = opts.c_offset;
+    genQueryInp->maxRows = opts.limit;
+    genQueryInp->rowOffset = opts.offset;
     genQueryInp->options = RETURN_TOTAL_ROW_COUNT;
 
     status = ( *queryHandle->genQuery )(
@@ -2147,8 +2123,8 @@ gorods_queryDataObjInColl( queryHandle_t *queryHandle, char *collection,
 
     setQueryInpForData( flags, genQueryInp );
 
-    genQueryInp->maxRows = opts.d_limit;
-    genQueryInp->rowOffset = opts.d_offset;
+    genQueryInp->maxRows = opts.limit;
+    genQueryInp->rowOffset = opts.offset;
     genQueryInp->options = RETURN_TOTAL_ROW_COUNT;
 
     status = ( *queryHandle->genQuery )(

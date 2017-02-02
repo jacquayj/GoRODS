@@ -57,14 +57,14 @@ typedef struct {
 
 
 typedef struct GoRodsQueryOpts {
-    int c_limit;
-    int c_offset;
-    int d_limit;
-    int d_offset;
+    int limit;
+    int offset;
 } goRodsQueryOpts_t;
 
-int gorods_rclReadCollection(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
-int gorods_readCollection( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
+int gorods_rclReadCollectionCols(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
+int gorods_rclReadCollectionObjs(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
+int gorods_readCollectionObjs( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
+int gorods_readCollectionCols( collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts);
 int gorods_genCollResInColl( queryHandle_t *queryHandle, collHandle_t *collHandle, goRodsQueryOpts_t opts);
 int gorods_genDataResInColl( queryHandle_t *queryHandle, collHandle_t *collHandle, goRodsQueryOpts_t opts);
 int gorods_queryCollInColl( queryHandle_t *queryHandle, char *collection,

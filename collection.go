@@ -1085,10 +1085,8 @@ func (col *Collection) Refresh() error {
 }
 
 type CollectionReadOpts struct {
-	ColLimit  int
-	ColOffset int
-	ObjLimit  int
-	ObjOffset int
+	Limit  int
+	Offset int
 }
 
 type CollectionReadInfo struct {
@@ -1102,44 +1100,53 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 		return errInfo, er
 	}
 
-	var colTotal, objTotal int
-
+	var colTotal, objTotal, colCnt int
+	var info CollectionReadInfo
 	var cOpts C.goRodsQueryOpts_t
 
-	cOpts.c_limit = C.int(opts.ColLimit)
-	cOpts.c_offset = C.int(opts.ColOffset)
-	cOpts.d_limit = C.int(opts.ObjLimit)
-	cOpts.d_offset = C.int(opts.ObjOffset)
+	cOpts.limit = C.int(opts.Limit)
+	cOpts.offset = C.int(opts.Offset)
 
 	var colEnt C.collEnt_t
 
 	col.dataObjects = make([]IRodsObj, 0)
 
 	ccon := col.con.GetCcon()
+	for int(C.gorods_rclReadCollectionCols(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
 
-	for int(C.gorods_rclReadCollection(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
+		colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
+		colCnt = int(col.cColHandle.collSqlResult.rowCnt)
 
-		if colEnt.objType == C.DATA_OBJ_T {
-			objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
-
-			col.add(initDataObj(&colEnt, col))
+		if newCol, er := initCollection(&colEnt, col); er == nil {
+			col.add(newCol)
 		} else {
-			colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
-
-			if newCol, er := initCollection(&colEnt, col); er == nil {
-				col.add(newCol)
-			} else {
-				return errInfo, er
-			}
-
+			return errInfo, er
 		}
-
 	}
 
+	newLimit := opts.Limit - colCnt
+	if newLimit == 0 {
+		// We're done, don't grab any objects
+		info = CollectionReadInfo{colTotal, objTotal}
+		col.readInfo = &info
+
+		col.con.ReturnCcon(ccon)
+
+		return info, col.Close()
+	} else {
+		cOpts.limit = C.int(newLimit)
+	}
+
+	for int(C.gorods_rclReadCollectionObjs(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
+
+		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+
+		col.add(initDataObj(&colEnt, col))
+
+	}
 	col.con.ReturnCcon(ccon)
 
-	info := CollectionReadInfo{colTotal, objTotal}
-
+	info = CollectionReadInfo{colTotal, objTotal}
 	col.readInfo = &info
 
 	return info, col.Close()
