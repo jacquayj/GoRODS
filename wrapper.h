@@ -130,7 +130,6 @@ int gorods_general_admin(int userOption, char *arg0, char *arg1, char *arg2, cha
 int gorods_add_user_to_group(char* userName, char* zoneName, char* groupName, rcComm_t *conn, char** err);
 
 int gorods_open_collection(char* path, int trimRepls, collHandle_t* collHandle, rcComm_t* conn, char** err);
-int gorods_read_collection(rcComm_t* conn, collHandle_t* collHandle, collEnt_t** arr, int* size, char** err);
 int gorods_close_collection(collHandle_t* collHandle, char** err);
 int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err);

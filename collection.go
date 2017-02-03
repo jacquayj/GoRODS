@@ -470,6 +470,7 @@ func (col *Collection) ACL() (ACLs, error) {
 	return aclSliceToResponse(&result, col.con)
 }
 
+// Size returns the total size in bytes of all contained data objects and collections, recursively
 func (col *Collection) Size() int64 {
 	result, err := col.con.IQuest("select sum(DATA_SIZE) where COLL_NAME like '"+col.path+"%'", false)
 	if err != nil {
@@ -477,6 +478,22 @@ func (col *Collection) Size() int64 {
 	}
 
 	i, err := strconv.ParseInt(result[0]["DATA_SIZE"], 10, 64)
+
+	if err != nil {
+		return 0
+	}
+
+	return i
+}
+
+// Length returns the total number of data objects and collections contained within the collection, recursively
+func (col *Collection) Length() int {
+	result, err := col.con.IQuest("select count(DATA_ID) where COLL_NAME like '"+col.path+"%'", false)
+	if err != nil {
+		return 0
+	}
+
+	i, err := strconv.Atoi(result[0]["DATA_ID"])
 
 	if err != nil {
 		return 0
@@ -1090,17 +1107,22 @@ type CollectionReadOpts struct {
 }
 
 type CollectionReadInfo struct {
+	ColResultTotal int
+	ObjResultTotal int
+	ResultTotal    int
+
 	ColTotal int
 	ObjTotal int
+	Total    int
 }
 
 func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionReadInfo, error) {
-	errInfo := CollectionReadInfo{0, 0}
+	errInfo := CollectionReadInfo{0, 0, 0, 0, 0, 0}
 	if er := col.Open(); er != nil {
 		return errInfo, er
 	}
 
-	var colTotal, objTotal, colCnt int
+	var colTotal, objTotal, colCnt, objCnt int
 	var info CollectionReadInfo
 	var cOpts C.goRodsQueryOpts_t
 
@@ -1127,7 +1149,7 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 	newLimit := opts.Limit - colCnt
 	if newLimit == 0 {
 		// We're done, don't grab any objects
-		info = CollectionReadInfo{colTotal, objTotal}
+		info = CollectionReadInfo{colCnt, objCnt, (colCnt + objCnt), colTotal, objTotal, (colTotal + objTotal)}
 		col.readInfo = &info
 
 		col.con.ReturnCcon(ccon)
@@ -1140,17 +1162,22 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 	for int(C.gorods_rclReadCollectionObjs(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
 
 		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+		objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
 
 		col.add(initDataObj(&colEnt, col))
 
 	}
 	col.con.ReturnCcon(ccon)
 
-	info = CollectionReadInfo{colTotal, objTotal}
+	info = CollectionReadInfo{colCnt, objCnt, (colCnt + objCnt), colTotal, objTotal, (colTotal + objTotal)}
 	col.readInfo = &info
 
 	return info, col.Close()
 
+}
+
+func (col *Collection) ReadInfo() *CollectionReadInfo {
+	return col.readInfo
 }
 
 // ReadCollection reads data (overwrites) into col.dataObjects field.
@@ -1160,63 +1187,40 @@ func (col *Collection) ReadCollection() error {
 		return er
 	}
 
-	// Init C varaibles
-	var (
-		err     *C.char
-		arr     *C.collEnt_t
-		arrSize C.int
-	)
+	var colTotal, objTotal, colCnt, objCnt int
+	var info CollectionReadInfo
 
-	ccon := col.con.GetCcon()
-
-	// Read data objs from collection
-	C.gorods_read_collection(ccon, &col.cColHandle, &arr, &arrSize, &err)
-
-	col.con.ReturnCcon(ccon)
-
-	// Get result length
-	arrLen := int(arrSize)
-
-	unsafeArr := unsafe.Pointer(arr)
-	defer C.free(unsafeArr)
-
-	// Convert C array to slice, backed by arr *C.collEnt_t
-	slice := (*[1 << 30]C.collEnt_t)(unsafeArr)[:arrLen:arrLen]
+	var colEnt C.collEnt_t
 
 	col.dataObjects = make([]IRodsObj, 0)
 
-	for i := range slice {
-		obj := &slice[i]
+	ccon := col.con.GetCcon()
 
-		isCollection := (obj.objType != C.DATA_OBJ_T)
+	for int(C.rclReadCollection(ccon, &col.cColHandle, &colEnt)) >= 0 {
+
+		isCollection := (colEnt.objType != C.DATA_OBJ_T)
+
+		colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
+		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+		colCnt = int(col.cColHandle.collSqlResult.rowCnt)
+		objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
 
 		if isCollection {
-			if newCol, er := initCollection(obj, col); er == nil {
+			if newCol, er := initCollection(&colEnt, col); er == nil {
 				col.add(newCol)
 			} else {
 				return er
 			}
 		} else {
-			col.add(initDataObj(obj, col))
-
-			// Strings only in DataObj types
-			C.free(unsafe.Pointer(obj.dataName))
-			C.free(unsafe.Pointer(obj.dataId))
-			C.free(unsafe.Pointer(obj.chksum))
-			//C.free(unsafe.Pointer(obj.dataType))
-			C.free(unsafe.Pointer(obj.resource))
-			//C.free(unsafe.Pointer(obj.rescGrp))
-			C.free(unsafe.Pointer(obj.phyPath))
-			C.free(unsafe.Pointer(obj.resc_hier))
+			col.add(initDataObj(&colEnt, col))
 		}
 
-		// String in both object types
-		C.free(unsafe.Pointer(obj.ownerName))
-		C.free(unsafe.Pointer(obj.collName))
-		C.free(unsafe.Pointer(obj.createTime))
-		C.free(unsafe.Pointer(obj.modifyTime))
-
 	}
+
+	col.con.ReturnCcon(ccon)
+
+	info = CollectionReadInfo{colCnt, objCnt, (colCnt + objCnt), colTotal, objTotal, (colTotal + objTotal)}
+	col.readInfo = &info
 
 	return col.Close()
 }

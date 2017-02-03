@@ -1779,57 +1779,6 @@ int gorods_checksum_dataobject(char* path, char** outChksum, rcComm_t* conn, cha
 }
 
 
-
-
-int gorods_read_collection(rcComm_t* conn, collHandle_t* collHandle, collEnt_t** arr, int* size, char** err) {
-
-	int collectionResponseCapacity = 500;
-	*size = 0;
-
-	*arr = gorods_malloc(sizeof(collEnt_t) * collectionResponseCapacity);
-	
-    collEnt_t theCollEnt;
-	collEnt_t* collEnt = &theCollEnt;
-
-	int status;
-
-	while ( (status = rclReadCollection(conn, collHandle, collEnt)) >= 0 ) { 
-
-		// Expand array if needed
-		if ( *size >= collectionResponseCapacity ) {
-			collectionResponseCapacity *= 2;
-
-			*arr = realloc(*arr, sizeof(collEnt_t) * collectionResponseCapacity);
-		}
-		collEnt_t* elem = &((*arr)[*size]);
-
-		// Add element to array
-		memcpy(elem, collEnt, sizeof(collEnt_t));
-		if ( collEnt->objType == DATA_OBJ_T ) { 
-			elem->dataName = strcpy(gorods_malloc(strlen(elem->dataName) + 1), elem->dataName);
-			elem->dataId = strcpy(gorods_malloc(strlen(elem->dataId) + 1), elem->dataId);
-			elem->chksum = strcpy(gorods_malloc(strlen(elem->chksum) + 1), elem->chksum);
-			//elem->dataType = strcpy(gorods_malloc(strlen(elem->dataType) + 1), elem->dataType);
-			elem->resource = strcpy(gorods_malloc(strlen(elem->resource) + 1), elem->resource);
-			//elem->rescGrp = strcpy(gorods_malloc(strlen(elem->rescGrp) + 1), elem->rescGrp);
-			elem->phyPath = strcpy(gorods_malloc(strlen(elem->phyPath) + 1), elem->phyPath);
-            elem->resc_hier = strcpy(gorods_malloc(strlen(elem->resc_hier) + 1), elem->resc_hier);
-        
-        }
-
-		elem->ownerName = strcpy(gorods_malloc(strlen(elem->ownerName) + 1), elem->ownerName);
-		elem->collName = strcpy(gorods_malloc(strlen(elem->collName) + 1), elem->collName);
-		elem->createTime = strcpy(gorods_malloc(strlen(elem->createTime) + 1), elem->createTime);
-		elem->modifyTime = strcpy(gorods_malloc(strlen(elem->modifyTime) + 1), elem->modifyTime);
-
-		(*size)++;
-		
-		//gorodsFreeCollEnt(collEnt); 
-	} 
-
-	return 0;
-}
-
 const char NON_ROOT_COLL_CHECK_STR[] = "<>'/'";
 
 int gorods_rclReadCollectionObjs(rcComm_t *conn, collHandle_t *collHandle, collEnt_t *collEnt, goRodsQueryOpts_t opts) {
