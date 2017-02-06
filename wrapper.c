@@ -1072,7 +1072,7 @@ int gorods_get_dataobject(rcComm_t *conn, char *srcPath, collEnt_t* objData) {
 int gorods_get_dataobject_data(rcComm_t *conn, rodsArguments_t *rodsArgs, genQueryOut_t *genQueryOut, collEnt_t* objData) {
     int i = 0;
     sqlResult_t *dataName = 0, *colName = 0, *replNum = 0, *dataSize = 0, *rescName = 0,
-                 *replStatus = 0, *dataModify = 0, *dataOwnerName = 0, *dataId = 0;
+                 *replStatus = 0, *dataModify = 0, *dataCreate = 0, *dataOwnerName = 0, *dataId = 0;
     sqlResult_t *chksumStr = 0, *dataPath = 0, *dataType = 0,*rescHier;
 
     char *tmpDataId = 0;
@@ -1165,6 +1165,13 @@ int gorods_get_dataobject_data(rcComm_t *conn, rodsArguments_t *rodsArgs, genQue
         return UNMATCHED_KEY_OR_INDEX;
     }
 
+    if ( ( dataCreate = getSqlResultByInx( genQueryOut, COL_D_CREATE_TIME ) ) ==
+            NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_D_CREATE_TIME failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
     if ( ( dataOwnerName = getSqlResultByInx( genQueryOut, COL_D_OWNER_NAME ) ) ==
             NULL ) {
         rodsLog( LOG_ERROR,
@@ -1187,6 +1194,7 @@ int gorods_get_dataobject_data(rcComm_t *conn, rodsArguments_t *rodsArgs, genQue
         objData->ownerName = &dataOwnerName->value[dataOwnerName->len * i];
         objData->replStatus = atoi( &replStatus->value[replStatus->len * i] );
         objData->modifyTime = &dataModify->value[dataModify->len * i];
+        objData->createTime = &dataCreate->value[dataCreate->len * i];
         objData->resc_hier = &rescHier->value[rescHier->len * i];
 
         if ( rodsArgs->veryLongOption == True ) {
