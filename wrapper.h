@@ -135,6 +135,10 @@ int gorods_create_collection(char* path, rcComm_t* conn, char** err);
 int gorods_get_collection_acl(rcComm_t *conn, char *collName, goRodsACLResult_t* result, char* zoneHint, char** err);
 int gorods_get_collection_inheritance(rcComm_t *conn, char *collName, int* enabled, char** err);
 
+int gorods_get_dataobject(rcComm_t *conn, char *srcPath, collEnt_t* objData);
+int gorods_get_dataobject_data(rcComm_t *conn, rodsArguments_t *rodsArgs, genQueryOut_t *genQueryOut, collEnt_t* objData);
+
+
 int gorods_trimrepls_dataobject(rcComm_t *conn, char* objPath, char* ageStr, char* resource, char* keepCopiesStr, char** err);
 int gorods_phymv_dataobject(rcComm_t *conn, char* objPath, char* sourceResource, char* destResource, char** err);
 int gorods_repl_dataobject(rcComm_t *conn, char* objPath, char* resourceName, int backupMode, int createMode, rodsLong_t dataSize, char** err);

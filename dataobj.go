@@ -113,9 +113,9 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	return dataObj
 }
 
-// getDataObj initializes specified data object located at startPath using gorods.connection.
-// Called by Connection.DataObject()
-func getDataObj(startPath string, con *Connection) (*DataObj, error) {
+// getDataObjByParentCollection initializes specified data object located at startPath using gorods.connection.
+// Unused at the moment
+func getDataObjByParentCollection(startPath string, con *Connection) (*DataObj, error) {
 
 	collectionDir := filepath.Dir(startPath)
 	dataObjName := filepath.Base(startPath)
@@ -128,12 +128,46 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 	if col, err := con.Collection(opts); err == nil {
 		if obj := col.FindObj(dataObjName); obj != nil {
 
-			con.OpenedObjs = append(con.OpenedObjs, col)
+			// Need to check cache before appending here
+			//con.OpenedObjs = append(con.OpenedObjs, col)
 
 			return obj, nil
 		} else {
 			return nil, newError(Fatal, -1, fmt.Sprintf("Can't find DataObj within collection %v", collectionDir))
 		}
+	} else {
+		return nil, err
+	}
+
+}
+
+// getDataObj initializes specified data object located at startPath using gorods.connection.
+// Called by Connection.DataObject()
+func getDataObj(startPath string, con *Connection) (*DataObj, error) {
+
+	var cObjData C.collEnt_t
+
+	ccon := con.GetCcon()
+
+	cPath := C.CString(startPath)
+	defer C.free(unsafe.Pointer(cPath))
+
+	if status := C.gorods_get_dataobject(ccon, cPath, &cObjData); status < 0 {
+		con.ReturnCcon(ccon)
+		return nil, newError(Fatal, -1, fmt.Sprintf("Error getting data object at %v", startPath))
+	}
+
+	con.ReturnCcon(ccon)
+
+	collectionDir := filepath.Dir(startPath)
+
+	opts := CollectionOptions{
+		Path:      collectionDir,
+		Recursive: false,
+	}
+
+	if col, err := con.Collection(opts); err == nil {
+		return initDataObj(&cObjData, col), nil
 	} else {
 		return nil, err
 	}

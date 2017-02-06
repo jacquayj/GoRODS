@@ -287,11 +287,13 @@ int gorods_open_dataobject(char* path, char* resourceName, char* replNum, int op
     addKeyVal(&dataObjInp.condInput, RESC_NAME_KW, resourceName); 
     addKeyVal(&dataObjInp.condInput, REPL_NUM_KW, replNum);
 
-	*handle = rcDataObjOpen(conn, &dataObjInp); 
-	if ( *handle < 0 ) { 
+	int thehandle = rcDataObjOpen(conn, &dataObjInp); 
+	if ( thehandle <= 0 ) { 
 		*err = "rcDataObjOpen failed";
-		return *handle;
+		return -1;
 	}
+
+    *handle = thehandle;
 
 	return 0;
 }
@@ -1009,6 +1011,195 @@ void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t*
     }
 }
 
+
+int gorods_get_dataobject(rcComm_t *conn, char *srcPath, collEnt_t* objData) {
+    int status;
+    genQueryOut_t *genQueryOut = NULL;
+    char myColl[MAX_NAME_LEN], myData[MAX_NAME_LEN];
+    char condStr[MAX_NAME_LEN];
+    int queryFlags;
+
+    genQueryInp_t aGenQuery;
+    initCondForLs(&aGenQuery);
+    genQueryInp_t* genQueryInp = &aGenQuery;
+
+    rodsArguments_t args;
+    bzero(&args, sizeof(rodsArguments_t));
+
+    rodsArguments_t* rodsArgs = &args;
+
+    rodsArgs->veryLongOption = 1;
+    rodsArgs->longOption = 0;
+    rodsArgs->accessControl = 0;
+
+    queryFlags = setQueryFlag( rodsArgs );
+    setQueryInpForData( queryFlags, genQueryInp );
+    genQueryInp->maxRows = MAX_SQL_ROWS;
+
+    memset( myColl, 0, MAX_NAME_LEN );
+    memset( myData, 0, MAX_NAME_LEN );
+
+    if ( ( status = splitPathByKey(
+                        srcPath, myColl, MAX_NAME_LEN, myData, MAX_NAME_LEN, '/' ) ) < 0 ) {
+        rodsLogError( LOG_ERROR, status,
+                      "setQueryInpForLong: splitPathByKey for %s error, status = %d",
+                      srcPath, status );
+        return status;
+    }
+
+    snprintf( condStr, MAX_NAME_LEN, "='%s'", myColl );
+    addInxVal( &genQueryInp->sqlCondInp, COL_COLL_NAME, condStr );
+    snprintf( condStr, MAX_NAME_LEN, "='%s'", myData );
+    addInxVal( &genQueryInp->sqlCondInp, COL_DATA_NAME, condStr );
+
+    status = rcGenQuery( conn, genQueryInp, &genQueryOut );
+
+    if ( status < 0 ) {
+        if ( status == CAT_NO_ROWS_FOUND ) {
+            rodsLog( LOG_ERROR, "%s does not exist or user lacks access permission",
+                     srcPath );
+        }
+        else {
+            rodsLogError( LOG_ERROR, status,
+                          "gorods_get_dataobject: rcGenQuery error for %s", srcPath );
+        }
+        return status;
+    }
+
+    return gorods_get_dataobject_data(conn, rodsArgs, genQueryOut, objData);
+}
+
+int gorods_get_dataobject_data(rcComm_t *conn, rodsArguments_t *rodsArgs, genQueryOut_t *genQueryOut, collEnt_t* objData) {
+    int i = 0;
+    sqlResult_t *dataName = 0, *colName = 0, *replNum = 0, *dataSize = 0, *rescName = 0,
+                 *replStatus = 0, *dataModify = 0, *dataOwnerName = 0, *dataId = 0;
+    sqlResult_t *chksumStr = 0, *dataPath = 0, *dataType = 0,*rescHier;
+
+    char *tmpDataId = 0;
+    int queryFlags = 0;
+
+    if ( genQueryOut == NULL ) {
+        return USER__NULL_INPUT_ERR;
+    }
+
+    queryFlags = setQueryFlag( rodsArgs );
+
+    if ( rodsArgs->veryLongOption == True ) {
+        if ( ( chksumStr = getSqlResultByInx( genQueryOut, COL_D_DATA_CHECKSUM ) )
+                == NULL ) {
+            rodsLog( LOG_ERROR,
+                     "printLsLong: getSqlResultByInx for COL_D_DATA_CHECKSUM failed" );
+            return UNMATCHED_KEY_OR_INDEX;
+        }
+
+        if ( ( dataPath = getSqlResultByInx( genQueryOut, COL_D_DATA_PATH ) )
+                == NULL ) {
+            rodsLog( LOG_ERROR,
+                     "printLsLong: getSqlResultByInx for COL_D_DATA_PATH failed" );
+            return UNMATCHED_KEY_OR_INDEX;
+        }
+
+        if ( ( dataType = getSqlResultByInx( genQueryOut, COL_DATA_TYPE_NAME ) ) == NULL ) {
+
+            rodsLog( LOG_ERROR,
+                     "printLsLong: getSqlResultByInx for COL_DATA_TYPE_NAME failed" );
+            return UNMATCHED_KEY_OR_INDEX;
+        }
+    }
+
+    if ( ( dataId = getSqlResultByInx( genQueryOut, COL_D_DATA_ID ) ) == NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_D_DATA_ID failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( dataName = getSqlResultByInx( genQueryOut, COL_DATA_NAME ) ) == NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_DATA_NAME failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( colName = getSqlResultByInx( genQueryOut, COL_COLL_NAME ) ) == NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_COLL_NAME failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( replNum = getSqlResultByInx( genQueryOut, COL_DATA_REPL_NUM ) ) ==
+            NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_DATA_REPL_NUM failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( dataSize = getSqlResultByInx( genQueryOut, COL_DATA_SIZE ) ) == NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_DATA_SIZE failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( rescName = getSqlResultByInx( genQueryOut, COL_D_RESC_NAME ) ) == NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_D_RESC_NAME failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( rescHier = getSqlResultByInx( genQueryOut, COL_D_RESC_HIER ) ) == NULL ) {
+        // If the index is not found then COL_D_RESC_HIER was most likely stripped
+        // from the query input to talk to an older zone.
+        // use resource name instead
+        rescHier = rescName;
+    }
+
+    if ( ( replStatus = getSqlResultByInx( genQueryOut, COL_D_REPL_STATUS ) ) ==
+            NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_D_REPL_STATUS failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( dataModify = getSqlResultByInx( genQueryOut, COL_D_MODIFY_TIME ) ) ==
+            NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_D_MODIFY_TIME failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    if ( ( dataOwnerName = getSqlResultByInx( genQueryOut, COL_D_OWNER_NAME ) ) ==
+            NULL ) {
+        rodsLog( LOG_ERROR,
+                 "printLsLong: getSqlResultByInx for COL_D_OWNER_NAME failed" );
+        return UNMATCHED_KEY_OR_INDEX;
+    }
+
+    queryHandle_t query_handle;
+    rclInitQueryHandle( &query_handle, conn );
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+
+        bzero(objData, sizeof(collEnt_t));
+
+        objData->dataName = &dataName->value[dataName->len * i];
+        objData->collName = &colName->value[colName->len * i];
+        objData->dataId = &dataId->value[dataId->len * i];
+        objData->replNum = atoi( &replNum->value[replNum->len * i] );
+        objData->dataSize = strtoll( &dataSize->value[dataSize->len * i], 0, 0 );
+        objData->resource = &rescName->value[rescName->len * i];
+        objData->ownerName = &dataOwnerName->value[dataOwnerName->len * i];
+        objData->replStatus = atoi( &replStatus->value[replStatus->len * i] );
+        objData->modifyTime = &dataModify->value[dataModify->len * i];
+        objData->resc_hier = &rescHier->value[rescHier->len * i];
+
+        if ( rodsArgs->veryLongOption == True ) {
+            objData->chksum = &chksumStr->value[chksumStr->len * i];
+            objData->phyPath = &dataPath->value[dataPath->len * i];
+            objData->dataType = &dataType->value[dataType->len * i];
+        }
+
+        return 0;
+    }
+
+    return 0;
+}
 
 
 int gorods_get_resources_new(rcComm_t* conn, goRodsStringResult_t* result, char** err) {
