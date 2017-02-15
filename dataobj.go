@@ -69,13 +69,13 @@ func (obj *DataObj) String() string {
 
 // init function called from Collection.ReadCollection()
 // We don't init() here or return errors here because it takes forever. Lazy loading is better in this case.
-func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
+func initDataObj(data *C.collEnt_t, col *Collection, con *Connection) *DataObj {
 
 	dataObj := new(DataObj)
 
 	dataObj.typ = DataObjType
 	dataObj.col = col
-	dataObj.con = dataObj.col.con
+	dataObj.con = con
 	dataObj.offset = 0
 	dataObj.name = C.GoString(data.dataName)
 	dataObj.path = C.GoString(data.collName) + "/" + dataObj.name
@@ -94,7 +94,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 	dataObj.createTime = cTimeToTime(data.createTime)
 	dataObj.modifyTime = cTimeToTime(data.modifyTime)
 
-	if rsrcs, err := col.con.Resources(); err != nil {
+	if rsrcs, err := dataObj.con.Resources(); err != nil {
 		return nil
 	} else {
 		if r := rsrcs.FindByName(C.GoString(data.resource)); r != nil {
@@ -102,7 +102,7 @@ func initDataObj(data *C.collEnt_t, col *Collection) *DataObj {
 		}
 	}
 
-	if usrs, err := col.con.Users(); err != nil {
+	if usrs, err := dataObj.con.Users(); err != nil {
 		return nil
 	} else {
 		if u := usrs.FindByName(dataObj.ownerName, dataObj.con); u != nil {
@@ -167,9 +167,10 @@ func getDataObj(startPath string, con *Connection) (*DataObj, error) {
 	}
 
 	if col, err := con.Collection(opts); err == nil {
-		return initDataObj(&cObjData, col), nil
+		return initDataObj(&cObjData, col, con), nil
 	} else {
-		return nil, err
+		// Couldn't open the parent collection...
+		return initDataObj(&cObjData, nil, con), nil
 	}
 
 }

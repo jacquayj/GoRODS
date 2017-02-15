@@ -70,9 +70,12 @@ func (cli *Client) OpenDataObject(path string, handler func(*DataObj, *Connectio
 
 			handler(obj, con)
 
-			if er := obj.col.Close(); er != nil {
-				return er
+			if obj.col != nil {
+				if er := obj.col.Close(); er != nil {
+					return er
+				}
 			}
+
 			if er := con.Disconnect(); er != nil {
 				return er
 			}

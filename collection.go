@@ -1164,7 +1164,7 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
 		objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
 
-		col.add(initDataObj(&colEnt, col))
+		col.add(initDataObj(&colEnt, col, col.con))
 
 	}
 	col.con.ReturnCcon(ccon)
@@ -1212,7 +1212,7 @@ func (col *Collection) ReadCollection() error {
 				return er
 			}
 		} else {
-			col.add(initDataObj(&colEnt, col))
+			col.add(initDataObj(&colEnt, col, col.con))
 		}
 
 	}
