@@ -2145,6 +2145,10 @@ int gorods_genCollResInColl( queryHandle_t *queryHandle, collHandle_t *collHandl
         rodsLog( LOG_ERROR,
                  "genCollResInColl: query collection error for %s. status = %d",
                  collHandle->dataObjInp.objPath, status );
+    } else {
+        // Set the total result size even if there are no rows in this response
+        collHandle->collSqlResult.totalRowCount = genQueryOut->totalRowCount;
+        collHandle->collSqlResult.rowCnt = genQueryOut->rowCnt;
     }
     freeGenQueryOut( &genQueryOut );
     return status;
@@ -2193,6 +2197,10 @@ int gorods_genDataResInColl( queryHandle_t *queryHandle, collHandle_t *collHandl
         rodsLog( LOG_ERROR,
                  "genDataResInColl: query dataObj error for %s. status = %d",
                  collHandle->dataObjInp.objPath, status );
+    } else {
+        // Set the total result size even if there are no rows in this response
+        collHandle->dataObjSqlResult.totalRowCount = genQueryOut->totalRowCount;
+        collHandle->dataObjSqlResult.rowCnt = genQueryOut->rowCnt;
     }
     freeGenQueryOut( &genQueryOut );
     return status;
@@ -2303,9 +2311,6 @@ int gorods_getNextCollMetaInfo( collHandle_t *collHandle, collEnt_t *outCollEnt 
     if ( collHandle->rowInx >= collSqlResult->rowCnt ) {
         genQueryOut_t *genQueryOut = NULL;
         int continueInx = collSqlResult->continueInx;
-        clearCollSqlResult( collSqlResult );
-
-        // TODO: MESS WITH THIS SECTION TO PREVENT MORE QUEURIES
         return CAT_NO_ROWS_FOUND;
     }
     value = collSqlResult->collName.value;
@@ -2385,9 +2390,7 @@ int gorods_getNextDataObjMetaInfo( collHandle_t *collHandle, collEnt_t *outCollE
     if ( collHandle->rowInx >= dataObjSqlResult->rowCnt ) {
         genQueryOut_t *genQueryOut = NULL;
         int continueInx = dataObjSqlResult->continueInx;
-        clearDataObjSqlResult( dataObjSqlResult );
 
-        // TODO: MESS WITH THIS SECTION TO PREVENT MORE QUEURIES
         return CAT_NO_ROWS_FOUND;
     }
 
