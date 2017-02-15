@@ -1135,10 +1135,6 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 
 	ccon := col.con.GetCcon()
 	for int(C.gorods_rclReadCollectionCols(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
-
-		colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
-		colCnt = int(col.cColHandle.collSqlResult.rowCnt)
-
 		if newCol, er := initCollection(&colEnt, col); er == nil {
 			col.add(newCol)
 		} else {
@@ -1146,7 +1142,18 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 		}
 	}
 
+	colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
+	colCnt = int(col.cColHandle.collSqlResult.rowCnt)
+
+	C.clearCollSqlResult(&col.cColHandle.collSqlResult)
+
 	newLimit := opts.Limit - colCnt
+	newOffset := opts.Offset
+
+	if colCnt == 0 && colTotal > 0 {
+		newOffset = opts.Offset - colTotal
+	}
+
 	if newLimit == 0 {
 		// We're done, don't grab any objects
 		info = CollectionReadInfo{colCnt, objCnt, (colCnt + objCnt), colTotal, objTotal, (colTotal + objTotal)}
@@ -1157,16 +1164,18 @@ func (col *Collection) ReadCollectionOpts(opts CollectionReadOpts) (CollectionRe
 		return info, col.Close()
 	} else {
 		cOpts.limit = C.int(newLimit)
+		cOpts.offset = C.int(newOffset)
 	}
 
 	for int(C.gorods_rclReadCollectionObjs(ccon, &col.cColHandle, &colEnt, cOpts)) >= 0 {
-
-		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
-		objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
-
 		col.add(initDataObj(&colEnt, col, col.con))
-
 	}
+
+	objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+	objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
+
+	C.clearDataObjSqlResult(&col.cColHandle.dataObjSqlResult)
+
 	col.con.ReturnCcon(ccon)
 
 	info = CollectionReadInfo{colCnt, objCnt, (colCnt + objCnt), colTotal, objTotal, (colTotal + objTotal)}
