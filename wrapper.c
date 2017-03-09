@@ -30,7 +30,7 @@ int gorods_connect(rcComm_t** conn, char** err) {
 
     if ( !*conn ) {
         *err = "rcConnect failed";
-        return -1;
+        return errMsg.status;
     }
 
     return 0;
