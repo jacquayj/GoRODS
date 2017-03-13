@@ -1218,7 +1218,13 @@ func (col *Collection) ReadCollection() error {
 
 	itrInx := 0
 	addCnt := 0
+
 	for int(C.rclReadCollection(ccon, &col.cColHandle, &colEnt)) >= 0 {
+
+		if colTotal == 0 && objTotal == 0 {
+			colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
+			objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+		}
 
 		if offset != -1 {
 			if itrInx < offset {
@@ -1235,21 +1241,18 @@ func (col *Collection) ReadCollection() error {
 
 		isCollection := (colEnt.objType != C.DATA_OBJ_T)
 
-		colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
-		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
-		colCnt = int(col.cColHandle.collSqlResult.rowCnt)
-		objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
-
 		if isCollection {
 			if newCol, er := initCollection(&colEnt, col); er == nil {
 				col.add(newCol)
 				addCnt++
+				colCnt++
 			} else {
 				return er
 			}
 		} else {
 			col.add(initDataObj(&colEnt, col, col.con))
 			addCnt++
+			objCnt++
 		}
 
 		itrInx++
