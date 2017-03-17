@@ -8,7 +8,6 @@ import "C"
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
