@@ -283,15 +283,15 @@ func (col *Collection) init() error {
 			return err
 		}
 
-		if col.readOpts == nil {
-			if err := col.ReadCollection(); err != nil {
-				return err
-			}
-		} else {
-			if _, err := col.ReadCollectionOpts(*col.readOpts); err != nil {
-				return err
-			}
+		//if col.readOpts == nil {
+		if err := col.ReadCollection(); err != nil {
+			return err
 		}
+		// } else {
+		// 	if _, err := col.ReadCollectionOpts(*col.readOpts); err != nil {
+		// 		return err
+		// 	}
+		// }
 
 	}
 
@@ -1104,6 +1104,7 @@ func (col *Collection) Refresh() error {
 type CollectionReadOpts struct {
 	Limit  int
 	Offset int
+	Filter func(obj IRodsObj) bool
 }
 
 type CollectionReadInfo struct {
@@ -1196,33 +1197,83 @@ func (col *Collection) ReadCollection() error {
 		return er
 	}
 
-	var colTotal, objTotal, colCnt, objCnt int
+	var colTotal, objTotal, colCnt, objCnt, limit, offset int
 	var info CollectionReadInfo
 
 	var colEnt C.collEnt_t
 
 	col.dataObjects = make([]IRodsObj, 0)
 
+	if col.readOpts != nil {
+		limit = col.readOpts.Limit
+		offset = col.readOpts.Offset
+	} else {
+		limit = -1
+		offset = -1
+	}
+
 	ccon := col.con.GetCcon()
+
+	col.cColHandle.genQueryInp.options = C.RETURN_TOTAL_ROW_COUNT
+
+	itrInx := 0
+	addCnt := 0
 
 	for int(C.rclReadCollection(ccon, &col.cColHandle, &colEnt)) >= 0 {
 
-		isCollection := (colEnt.objType != C.DATA_OBJ_T)
+		var theObj IRodsObj
 
-		colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
-		objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
-		colCnt = int(col.cColHandle.collSqlResult.rowCnt)
-		objCnt = int(col.cColHandle.dataObjSqlResult.rowCnt)
+		isCollection := (colEnt.objType != C.DATA_OBJ_T)
 
 		if isCollection {
 			if newCol, er := initCollection(&colEnt, col); er == nil {
-				col.add(newCol)
+				theObj = newCol
 			} else {
 				return er
 			}
 		} else {
-			col.add(initDataObj(&colEnt, col, col.con))
+			theObj = initDataObj(&colEnt, col, col.con)
 		}
+
+		if col.readOpts.Filter != nil {
+			col.con.ReturnCcon(ccon)
+			if !col.readOpts.Filter(theObj) {
+				ccon = col.con.GetCcon()
+				continue
+			} else {
+				ccon = col.con.GetCcon()
+			}
+
+		}
+
+		if colTotal == 0 && objTotal == 0 {
+			colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
+			objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
+		}
+
+		if offset != -1 {
+			if itrInx < offset {
+				itrInx++
+				continue
+			}
+		}
+
+		if limit != -1 {
+			if addCnt == limit {
+				break
+			}
+		}
+
+		col.add(theObj)
+		addCnt++
+
+		if isCollection {
+			colCnt++
+		} else {
+			objCnt++
+		}
+
+		itrInx++
 
 	}
 
