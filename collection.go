@@ -1104,6 +1104,7 @@ func (col *Collection) Refresh() error {
 type CollectionReadOpts struct {
 	Limit  int
 	Offset int
+	Filter func(obj IRodsObj) bool
 }
 
 type CollectionReadInfo struct {
@@ -1220,6 +1221,31 @@ func (col *Collection) ReadCollection() error {
 
 	for int(C.rclReadCollection(ccon, &col.cColHandle, &colEnt)) >= 0 {
 
+		var theObj IRodsObj
+
+		isCollection := (colEnt.objType != C.DATA_OBJ_T)
+
+		if isCollection {
+			if newCol, er := initCollection(&colEnt, col); er == nil {
+				theObj = newCol
+			} else {
+				return er
+			}
+		} else {
+			theObj = initDataObj(&colEnt, col, col.con)
+		}
+
+		if col.readOpts.Filter != nil {
+			col.con.ReturnCcon(ccon)
+			if !col.readOpts.Filter(theObj) {
+				ccon = col.con.GetCcon()
+				continue
+			} else {
+				ccon = col.con.GetCcon()
+			}
+
+		}
+
 		if colTotal == 0 && objTotal == 0 {
 			colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
 			objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
@@ -1238,19 +1264,12 @@ func (col *Collection) ReadCollection() error {
 			}
 		}
 
-		isCollection := (colEnt.objType != C.DATA_OBJ_T)
+		col.add(theObj)
+		addCnt++
 
 		if isCollection {
-			if newCol, er := initCollection(&colEnt, col); er == nil {
-				col.add(newCol)
-				addCnt++
-				colCnt++
-			} else {
-				return er
-			}
+			colCnt++
 		} else {
-			col.add(initDataObj(&colEnt, col, col.con))
-			addCnt++
 			objCnt++
 		}
 
