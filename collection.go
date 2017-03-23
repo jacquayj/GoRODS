@@ -1235,7 +1235,7 @@ func (col *Collection) ReadCollection() error {
 			theObj = initDataObj(&colEnt, col, col.con)
 		}
 
-		if col.readOpts.Filter != nil {
+		if col.readOpts != nil && col.readOpts.Filter != nil {
 			col.con.ReturnCcon(ccon)
 			if !col.readOpts.Filter(theObj) {
 				ccon = col.con.GetCcon()
