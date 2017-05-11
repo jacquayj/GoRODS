@@ -155,6 +155,10 @@ func (objs IRodsObjs) Each(iterator func(IRodsObj)) error {
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
 
+	if path == "" {
+		return nil
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
