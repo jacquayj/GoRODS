@@ -51,6 +51,11 @@ func (acl *ACL) Group() *Group {
 	return nil
 }
 
+// AccessLevelString gets the string represenation of the AccessLevel
+func (acl *ACL) AccessLevelString() string {
+	return getTypeString(acl.AccessLevel)
+}
+
 // String returns a formatted string describing the ACL struct
 // example: g:designers#tempZone:read
 func (acl *ACL) String() string {
