@@ -345,6 +345,9 @@ func (con *Connection) InitCon() error {
 		}
 	}
 
+	con.cconBuffer = make(chan *C.rcComm_t, 1)
+	con.cconBuffer <- con.ccon
+
 	con.Connected = true
 
 	ipassword = C.CString(con.Options.Password)
@@ -479,9 +482,6 @@ func (con *Connection) InitCon() error {
 		con.PAMToken = C.GoString(opassword)
 	}
 
-	con.cconBuffer = make(chan *C.rcComm_t, 1)
-	con.cconBuffer <- con.ccon
-
 	if status != 0 {
 		return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
@@ -566,22 +566,24 @@ func (con *Connection) SetTicket(t string) error {
 // Disconnect closes connection to iRODS iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
 
-	for _, obj := range con.OpenedObjs {
-		if er := obj.Close(); er != nil {
-			return er
+	if con.Connected {
+		for _, obj := range con.OpenedObjs {
+			if er := obj.Close(); er != nil {
+				return er
+			}
 		}
+
+		//con.OpenedObjs = make(IRodsObjs, 0)
+
+		ccon := con.GetCcon()
+		defer con.ReturnCcon(ccon)
+
+		if status := C.rcDisconnect(ccon); status < 0 {
+			return newError(Fatal, status, fmt.Sprintf("iRODS rcDisconnect Failed"))
+		}
+
+		con.Connected = false
 	}
-
-	//con.OpenedObjs = make(IRodsObjs, 0)
-
-	ccon := con.GetCcon()
-	defer con.ReturnCcon(ccon)
-
-	if status := C.rcDisconnect(ccon); status < 0 {
-		return newError(Fatal, status, fmt.Sprintf("iRODS rcDisconnect Failed"))
-	}
-
-	con.Connected = false
 
 	return nil
 }
