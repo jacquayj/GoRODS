@@ -302,7 +302,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	if err := con.InitCon(); err == nil {
 		return con, nil
 	} else {
-		return nil, err
+		return con, err
 	}
 
 }
@@ -344,6 +344,8 @@ func (con *Connection) InitCon() error {
 			return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	}
+
+	con.Connected = true
 
 	ipassword = C.CString(con.Options.Password)
 	defer C.free(unsafe.Pointer(ipassword))
@@ -480,9 +482,7 @@ func (con *Connection) InitCon() error {
 	con.cconBuffer = make(chan *C.rcComm_t, 1)
 	con.cconBuffer <- con.ccon
 
-	if status == 0 {
-		con.Connected = true
-	} else {
+	if status != 0 {
 		return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
 
