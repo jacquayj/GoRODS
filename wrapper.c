@@ -8,7 +8,7 @@
 void* gorods_malloc(size_t size) {
 	void* mem = malloc(size);
 	if ( mem == NULL ) {
-		printf("GoRods error: Unable to allocate %u bytes\n", size);
+		printf("GoRods error: Unable to allocate %i bytes\n", (int)size);
 		exit(1);
 	}
 
