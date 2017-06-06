@@ -155,6 +155,10 @@ func (objs IRodsObjs) Each(iterator func(IRodsObj)) error {
 // If the collection was not explicitly loaded recursively, only the first level of sub collections will be searched.
 func (objs IRodsObjs) FindRecursive(path string) IRodsObj {
 
+	if path == "" {
+		return nil
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -298,7 +302,7 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 	if err := con.InitCon(); err == nil {
 		return con, nil
 	} else {
-		return nil, err
+		return con, err
 	}
 
 }
@@ -340,6 +344,11 @@ func (con *Connection) InitCon() error {
 			return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	}
+
+	con.cconBuffer = make(chan *C.rcComm_t, 1)
+	con.cconBuffer <- con.ccon
+
+	con.Connected = true
 
 	ipassword = C.CString(con.Options.Password)
 	defer C.free(unsafe.Pointer(ipassword))
@@ -473,12 +482,7 @@ func (con *Connection) InitCon() error {
 		con.PAMToken = C.GoString(opassword)
 	}
 
-	con.cconBuffer = make(chan *C.rcComm_t, 1)
-	con.cconBuffer <- con.ccon
-
-	if status == 0 {
-		con.Connected = true
-	} else {
+	if status != 0 {
 		return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 	}
 
@@ -562,22 +566,24 @@ func (con *Connection) SetTicket(t string) error {
 // Disconnect closes connection to iRODS iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
 
-	for _, obj := range con.OpenedObjs {
-		if er := obj.Close(); er != nil {
-			return er
+	if con.Connected {
+		for _, obj := range con.OpenedObjs {
+			if er := obj.Close(); er != nil {
+				return er
+			}
 		}
+
+		//con.OpenedObjs = make(IRodsObjs, 0)
+
+		ccon := con.GetCcon()
+		defer con.ReturnCcon(ccon)
+
+		if status := C.rcDisconnect(ccon); status < 0 {
+			return newError(Fatal, status, fmt.Sprintf("iRODS rcDisconnect Failed"))
+		}
+
+		con.Connected = false
 	}
-
-	//con.OpenedObjs = make(IRodsObjs, 0)
-
-	ccon := con.GetCcon()
-	defer con.ReturnCcon(ccon)
-
-	if status := C.rcDisconnect(ccon); status < 0 {
-		return newError(Fatal, status, fmt.Sprintf("iRODS rcDisconnect Failed"))
-	}
-
-	con.Connected = false
 
 	return nil
 }

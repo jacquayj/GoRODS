@@ -331,6 +331,21 @@ func (col *Collection) DataObjs() (response IRodsObjs, err error) {
 }
 
 // EachDataObj is an iterator for data objects
+func (col *Collection) Each(ittr func(obj IRodsObj) error) error {
+	if objs, err := col.All(); err == nil {
+		for i := range objs {
+			if aErr := ittr(objs[i]); aErr != nil {
+				return aErr
+			}
+		}
+
+		return nil
+	} else {
+		return err
+	}
+}
+
+// EachDataObj is an iterator for data objects
 func (col *Collection) EachDataObj(ittr func(obj *DataObj)) error {
 	if objs, err := col.DataObjs(); err == nil {
 		for _, obj := range objs {
@@ -565,6 +580,24 @@ func (col *Collection) ModifyTime() time.Time {
 
 // Col returns the *Collection of the collection
 func (col *Collection) Col() *Collection {
+
+	// This code could be in setupCollection
+	if col.col == nil {
+		pathSplit := strings.Split(col.Path(), "/")
+
+		parentColPath := strings.Join(pathSplit[:len(pathSplit)-1], "/")
+
+		if parentColPath == "" {
+			parentColPath = "/"
+		}
+
+		col.col, _ = col.con.Collection(CollectionOptions{
+			Path:      parentColPath,
+			SkipCache: true,
+		})
+
+	}
+
 	return col.col
 }
 
