@@ -8,7 +8,6 @@ import "C"
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -332,6 +331,21 @@ func (col *Collection) DataObjs() (response IRodsObjs, err error) {
 }
 
 // EachDataObj is an iterator for data objects
+func (col *Collection) Each(ittr func(obj IRodsObj) error) error {
+	if objs, err := col.All(); err == nil {
+		for i := range objs {
+			if aErr := ittr(objs[i]); aErr != nil {
+				return aErr
+			}
+		}
+
+		return nil
+	} else {
+		return err
+	}
+}
+
+// EachDataObj is an iterator for data objects
 func (col *Collection) EachDataObj(ittr func(obj *DataObj)) error {
 	if objs, err := col.DataObjs(); err == nil {
 		for _, obj := range objs {
@@ -566,6 +580,24 @@ func (col *Collection) ModifyTime() time.Time {
 
 // Col returns the *Collection of the collection
 func (col *Collection) Col() *Collection {
+
+	// This code could be in setupCollection
+	if col.col == nil {
+		pathSplit := strings.Split(col.Path(), "/")
+
+		parentColPath := strings.Join(pathSplit[:len(pathSplit)-1], "/")
+
+		if parentColPath == "" {
+			parentColPath = "/"
+		}
+
+		col.col, _ = col.con.Collection(CollectionOptions{
+			Path:      parentColPath,
+			SkipCache: true,
+		})
+
+	}
+
 	return col.col
 }
 
@@ -1105,6 +1137,7 @@ func (col *Collection) Refresh() error {
 type CollectionReadOpts struct {
 	Limit  int
 	Offset int
+	Filter func(obj IRodsObj) bool
 }
 
 type CollectionReadInfo struct {
@@ -1221,6 +1254,31 @@ func (col *Collection) ReadCollection() error {
 
 	for int(C.rclReadCollection(ccon, &col.cColHandle, &colEnt)) >= 0 {
 
+		var theObj IRodsObj
+
+		isCollection := (colEnt.objType != C.DATA_OBJ_T)
+
+		if isCollection {
+			if newCol, er := initCollection(&colEnt, col); er == nil {
+				theObj = newCol
+			} else {
+				return er
+			}
+		} else {
+			theObj = initDataObj(&colEnt, col, col.con)
+		}
+
+		if col.readOpts != nil && col.readOpts.Filter != nil {
+			col.con.ReturnCcon(ccon)
+			if !col.readOpts.Filter(theObj) {
+				ccon = col.con.GetCcon()
+				continue
+			} else {
+				ccon = col.con.GetCcon()
+			}
+
+		}
+
 		if colTotal == 0 && objTotal == 0 {
 			colTotal = int(col.cColHandle.collSqlResult.totalRowCount)
 			objTotal = int(col.cColHandle.dataObjSqlResult.totalRowCount)
@@ -1239,19 +1297,12 @@ func (col *Collection) ReadCollection() error {
 			}
 		}
 
-		isCollection := (colEnt.objType != C.DATA_OBJ_T)
+		col.add(theObj)
+		addCnt++
 
 		if isCollection {
-			if newCol, er := initCollection(&colEnt, col); er == nil {
-				col.add(newCol)
-				addCnt++
-				colCnt++
-			} else {
-				return er
-			}
+			colCnt++
 		} else {
-			col.add(initDataObj(&colEnt, col, col.con))
-			addCnt++
 			objCnt++
 		}
 

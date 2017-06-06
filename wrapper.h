@@ -8,6 +8,7 @@
 #include "miscUtil.h"
 #include "rodsPath.h"
 #include "rcConnect.h"
+#include "sslSockComm.h"
 #include "dataObjOpen.h"
 #include "dataObjRead.h"
 #include "dataObjChksum.h"

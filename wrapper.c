@@ -8,7 +8,7 @@
 void* gorods_malloc(size_t size) {
 	void* mem = malloc(size);
 	if ( mem == NULL ) {
-		printf("GoRods error: Unable to allocate %i bytes\n", size);
+		printf("GoRods error: Unable to allocate %i bytes\n", (int)size);
 		exit(1);
 	}
 
@@ -2815,7 +2815,7 @@ void getPathGenQueryResults(int status, genQueryOut_t *genQueryOut, char *descri
 		for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
 
 			// This would be dataobjs + collection for dataobj
-			if ( descriptions[0] == "collection" ) {
+			if ( strcmp(descriptions[0], "collection") == 0 ) {
 				char *tResult;
 				tResult = genQueryOut->sqlResult[0].value;
 				tResult += i * genQueryOut->sqlResult[0].len;
@@ -2959,15 +2959,15 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 
 			if ( *descriptions[j] != '\0' ) {
 
-				if ( descriptions[j] == "attribute" ) {
+				if ( strcmp(descriptions[j], "attribute") == 0 ) {
 					lastItem->name = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
 				}
 
-				if ( descriptions[j] == "value" ) {
+				if ( strcmp(descriptions[j], "value") == 0 ) {
 					lastItem->value = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
 				}
 
-				if ( descriptions[j] == "units" ) {
+				if ( strcmp(descriptions[j], "units") == 0 ) {
 					lastItem->units = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
 				}
 			}
