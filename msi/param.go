@@ -3,6 +3,7 @@ package msi
 /*
 #include <stdlib.h>
 #include "call_microservice.h"
+#include "rcMisc.h"
 */
 import "C"
 
@@ -60,6 +61,18 @@ func (param *Param) Bytes() []byte {
 	}
 
 	return bytes
+}
+
+func (param *Param) SetKVP(data map[string]string) *Param {
+	if param.rodsType == KeyValPair_MS_T {
+		kvp := (*C.keyValPair_t)(param.ptr.inOutStruct)
+
+		for key, value := range data {
+			C.addKeyVal(kvp, C.CString(key), C.CString(value))
+		}
+
+	}
+	return param
 }
 
 func (param *Param) SetInt(val int) *Param {
