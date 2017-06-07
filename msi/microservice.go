@@ -7,7 +7,7 @@ import "C"
 
 import (
 	"fmt"
-	"log"
+	//"log"
 	"unsafe"
 )
 
