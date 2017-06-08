@@ -34,6 +34,11 @@ func NewParam(paramType ParamType) *Param {
 	return p
 }
 
+// Ptr returns an unsafe.Pointer of the underlying *C.msParam_t
+func (param *Param) Ptr() unsafe.Pointer {
+	return unsafe.Pointer(param.ptr)
+}
+
 // String converts STR_MS_T parameters to golang strings
 func (param *Param) String() string {
 
@@ -42,6 +47,8 @@ func (param *Param) String() string {
 	switch param.rodsType {
 	case STR_MS_T:
 		cString = (*C.char)(param.ptr.inOutStruct)
+	case KeyValPair_MS_T:
+		cString = C.GetKVPStr(param.ptr)
 	default:
 		return (string(param.rodsType) + ".String() not supported")
 	}

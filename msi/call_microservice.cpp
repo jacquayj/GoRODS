@@ -57,6 +57,24 @@ msParam_t* NewParam(char* type) {
 	return param;
 }
 
+char* GetKVPStr(msParam_t* param) {
+	char* str = (char*)malloc(sizeof(char) * MAX_NAME_LEN);
+
+	keyValPair_t* kvp = (keyValPair_t*)param->inOutStruct;
+
+	int i;
+	for ( i = 0; i < kvp->len; i++ ) {
+
+		strcat(str, kvp->keyWord[i]);
+		strcat(str, " = ");
+		strcat(str, kvp->value[i]);
+		strcat(str, "\n");
+	}
+
+	return str;
+
+}
+
 void ConvertParam(char* type, msParam_t** param) {
 	if ( !(*param) ) {
 		*param = (msParam_t*)malloc(sizeof(msParam_t));

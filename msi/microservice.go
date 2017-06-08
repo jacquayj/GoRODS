@@ -2,7 +2,7 @@ package msi
 
 // #cgo CFLAGS: -I/usr/include/irods
 // #cgo CXXFLAGS: -I/usr/include/irods -I/opt/irods-externals/boost1.60.0-0/include -I/opt/irods-externals/clang3.8-0/include/c++/v1 -nostdinc++ -std=c++14
-// #cgo LDFLAGS: -lirods_server -lirods_common -lpthread -lc++ -lc++abi
+// #cgo LDFLAGS: -Wl,-rpath,"/opt/irods-externals/boost1.60.0-0/lib" -Wl,-rpath,"/opt/irods-externals/clang3.8-0/lib" -lirods_server -lirods_common -lpthread -lc++ -lc++abi
 /*
 #include <stdlib.h>
 #include "call_microservice.h"
@@ -23,7 +23,7 @@ func Configure(ruleExecInfo unsafe.Pointer) {
 	rei = ruleExecInfo
 }
 
-// Call invokes a microservice by name. The variadic arguments can be *msi.Param, 
+// Call invokes a microservice by name. The variadic arguments can be *msi.Param,
 // string, int, or int64.
 func Call(msiName string, params ...interface{}) error {
 	if rei == nil {
