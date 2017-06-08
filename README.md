@@ -18,7 +18,8 @@ $ go get github.com/jjacquay712/GoRODS
 
 ### Docs
 
-https://godoc.org/github.com/jjacquay712/GoRODS
+https://godoc.org/github.com/jjacquay712/GoRODS - iRODS client binding
+https://godoc.org/github.com/jjacquay712/GoRODS/msi - iRODS microservice binding
 
 ### Usage Guide and Examples
 
