@@ -1,5 +1,6 @@
 package msi
 
+// Types avaliable for use in msi.NewParam()
 const (
 	STR_MS_T                    = "STR_PI"
 	INT_MS_T                    = "INT_PI"
