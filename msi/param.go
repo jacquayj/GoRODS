@@ -49,6 +49,7 @@ func (param *Param) String() string {
 	return C.GoString(cString)
 }
 
+// Type returns the ParamType of the given *Param
 func (param *Param) Type() ParamType {
 	return param.rodsType
 }
@@ -127,6 +128,10 @@ func (param *Param) SetDataObjInp(input map[string]interface{}) *Param {
 	return param
 }
 
+// ConvertTo rebuilds the underlying data of msParam_t*, to the given ParamType.
+// This is useful for setting the types of output parameters, since they are blank
+// when passed to the microservice. If msParam_t* is nil, it is set to a newly
+// allocated structure.
 func (param *Param) ConvertTo(t ParamType) *Param {
 	cType := C.CString(string(t))
 

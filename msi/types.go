@@ -2,6 +2,7 @@ package msi
 
 type ParamType string
 
+// String returns the string value of the ParamType
 func (t ParamType) String() string {
 	if t == UNDEFINED_T {
 		return "UNDEFINED_PI"
