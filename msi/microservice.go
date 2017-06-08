@@ -1,3 +1,6 @@
+// Package msi is package that contains utilities for use in microservices written in Golang.
+// GoRODS/msi provides a binding to the msParam_t type, and its various subtypes. In addition,
+// it provides an interface for calling other microservices.
 package msi
 
 // #cgo CFLAGS: -I/usr/include/irods
