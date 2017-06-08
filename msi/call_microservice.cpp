@@ -52,6 +52,20 @@ msParam_t** NewParamList(int len) {
 msParam_t* NewParam(char* type) {
 	msParam_t* param = (msParam_t*)malloc(sizeof(msParam_t));
 
+	SetupParam(type, param);
+
+	return param;
+}
+
+void ConvertParam(char* type, msParam_t** param) {
+	if ( !(*param) ) {
+		*param = (msParam_t*)malloc(sizeof(msParam_t));
+	}	
+
+	SetupParam(type, *param);
+}
+
+void SetupParam(char* type, msParam_t* param) {
 	if ( strcmp(type, KeyValPair_MS_T) == 0 ) {
 		keyValPair_t* data = (keyValPair_t*)malloc(sizeof(*data));
 		memset(data, 0, sizeof(*data));
@@ -70,8 +84,6 @@ msParam_t* NewParam(char* type) {
 	} else {
 		fillMsParam(param, NULL, type, NULL, NULL);
 	}
-
-	return param;
 }
 
 void FreeMsParam(msParam_t* msParam) {

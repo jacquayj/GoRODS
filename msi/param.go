@@ -14,15 +14,15 @@ import (
 
 type Param struct {
 	ptr      *C.msParam_t
-	rodsType string
+	rodsType ParamType
 }
 
-func NewParam(paramType string) *Param {
+func NewParam(paramType ParamType) *Param {
 	p := new(Param)
 
 	p.rodsType = paramType
 
-	cTypeStr := C.CString(paramType)
+	cTypeStr := C.CString(string(paramType))
 	defer C.free(unsafe.Pointer(cTypeStr))
 
 	p.ptr = C.NewParam(cTypeStr)
@@ -40,10 +40,14 @@ func (param *Param) String() string {
 	case STR_MS_T:
 		cString = (*C.char)(param.ptr.inOutStruct)
 	default:
-		return (param.rodsType + ".String() not supported")
+		return (string(param.rodsType) + ".String() not supported")
 	}
 
 	return C.GoString(cString)
+}
+
+func (param *Param) Type() ParamType {
+	return param.rodsType
 }
 
 func (param *Param) Bytes() []byte {
@@ -114,6 +118,15 @@ func (param *Param) SetDataObjInp(input map[string]interface{}) *Param {
 	return param
 }
 
+func (param *Param) ConvertTo(t ParamType) *Param {
+	cType := C.CString(string(t))
+
+	C.ConvertParam(cType, &param.ptr)
+	param.rodsType = t
+
+	return param
+}
+
 func paramDestructor(param *Param) {
 	C.FreeMsParam(param.ptr)
 }
@@ -121,8 +134,10 @@ func paramDestructor(param *Param) {
 func ToParam(gParam unsafe.Pointer) *Param {
 	param := (*C.msParam_t)(gParam)
 
+	typeStr := C.GoString(C.GetMSParamType(param))
+
 	// Go won't let me access param->type directly
-	typ := C.GoString(C.GetMSParamType(param))
+	typ := ParamType(typeStr)
 
 	return &Param{
 		param,

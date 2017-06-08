@@ -13,3 +13,5 @@ msParam_t* NewParam(char* type);
 void SetMsParamListItem(msParam_t**, int, msParam_t*);
 void FreeMsParam(msParam_t* msParam);
 char* GetMSParamType(msParam_t*);
+void ConvertParam(char*, msParam_t**);
+void SetupParam(char*, msParam_t*);
