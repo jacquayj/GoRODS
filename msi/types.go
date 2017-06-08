@@ -10,6 +10,7 @@ func (t ParamType) String() string {
 	return string(t)
 }
 
+// Types avaliable for use in msi.NewParam()
 const (
 	UNDEFINED_T                 ParamType = ""
 	STR_MS_T                              = "STR_PI"

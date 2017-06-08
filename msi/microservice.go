@@ -16,10 +16,15 @@ import (
 
 var rei unsafe.Pointer
 
+// Configure accepts a ruleExecInfo_t*, cast as an unsafe.Pointer.
+// This is a requirement for passing C types between packages.
+// You must run this function prior to executing microservices with msi.Call
 func Configure(ruleExecInfo unsafe.Pointer) {
 	rei = ruleExecInfo
 }
 
+// Call invokes a microservice by name. The variadic arguments can be *msi.Param, 
+// string, int, or int64.
 func Call(msiName string, params ...interface{}) error {
 	if rei == nil {
 		return fmt.Errorf("Unable to call %v, ruleExecInfo is nil, please set using msi.Configure", msiName)

@@ -12,11 +12,13 @@ import (
 	"unsafe"
 )
 
+// Param is the golang abstraction for *C.msParam_t types
 type Param struct {
 	ptr      *C.msParam_t
 	rodsType ParamType
 }
 
+// NewParam creates a new *Param, with the provided type string
 func NewParam(paramType ParamType) *Param {
 	p := new(Param)
 
@@ -32,6 +34,7 @@ func NewParam(paramType ParamType) *Param {
 	return p
 }
 
+// String converts STR_MS_T parameters to golang strings
 func (param *Param) String() string {
 
 	var cString *C.char
@@ -50,6 +53,7 @@ func (param *Param) Type() ParamType {
 	return param.rodsType
 }
 
+// Bytes returns the []byte of BUF_LEN_MS_T type parameters
 func (param *Param) Bytes() []byte {
 	var bytes []byte
 
@@ -67,6 +71,7 @@ func (param *Param) Bytes() []byte {
 	return bytes
 }
 
+// SetKVP adds key-value pairs to the underlying KeyValPair_MS_T parameter
 func (param *Param) SetKVP(data map[string]string) *Param {
 	if param.rodsType == KeyValPair_MS_T {
 		kvp := (*C.keyValPair_t)(param.ptr.inOutStruct)
@@ -79,6 +84,7 @@ func (param *Param) SetKVP(data map[string]string) *Param {
 	return param
 }
 
+// SetInt sets the integer value of the underlying INT_MS_T parameter
 func (param *Param) SetInt(val int) *Param {
 	if param.rodsType == INT_MS_T {
 		*((*C.int)(param.ptr.inOutStruct)) = C.int(val)
@@ -86,6 +92,7 @@ func (param *Param) SetInt(val int) *Param {
 	return param
 }
 
+// SetString sets the string value of the underlying STR_MS_T parameter
 func (param *Param) SetString(val string) *Param {
 	if param.rodsType == STR_MS_T {
 		param.ptr.inOutStruct = unsafe.Pointer(C.CString(val))
@@ -93,6 +100,8 @@ func (param *Param) SetString(val string) *Param {
 	return param
 }
 
+// SetDataObjInp sets the underlying DataObjInp_MS_T struct fields from a map
+// Valid keys and values are: {"objPath": string, "createMode": int, "openFlags": int}
 func (param *Param) SetDataObjInp(input map[string]interface{}) *Param {
 	if param.rodsType == DataObjInp_MS_T {
 		var cInput *C.dataObjInp_t = (*C.dataObjInp_t)(param.ptr.inOutStruct)
@@ -131,6 +140,7 @@ func paramDestructor(param *Param) {
 	C.FreeMsParam(param.ptr)
 }
 
+// ToParam creates a new *msi.Param from an existing *C.msParam_t
 func ToParam(gParam unsafe.Pointer) *Param {
 	param := (*C.msParam_t)(gParam)
 

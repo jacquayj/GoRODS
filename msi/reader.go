@@ -1,14 +1,17 @@
 package msi
 
 import (
-	//"fmt"
 	"io"
 )
 
+// ObjReader provides a golang io.Reader interface for iRODS 
+// data object, identified by the INT_MS_T object reference
 type ObjReader struct {
 	objHandle *Param
 }
 
+// NewObjReader accepts an iRODS data object path string, opens a reference to the 
+// object using msiDataObjOpen, and returns an *ObjReader which satisfies the io.Reader interface.
 func NewObjReader(irodsPath string) (*ObjReader, error) {
 	reader := new(ObjReader)
 
@@ -24,12 +27,15 @@ func NewObjReader(irodsPath string) (*ObjReader, error) {
 	return reader, nil
 }
 
+// Close calls msiDataObjClose on the opened data object handle.
 func (rdr *ObjReader) Close() error {
 	closeOut := NewParam(INT_MS_T)
 
 	return Call("msiDataObjClose", rdr.objHandle, closeOut)
 }
 
+// Read reads []bytes from data objects in iRODS. 
+// It satisfies the io.Reader interface.
 func (rdr *ObjReader) Read(data []byte) (n int, err error) {
 	length := len(data)
 
