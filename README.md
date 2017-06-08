@@ -18,15 +18,15 @@ $ go get github.com/jjacquay712/GoRODS
 
 ### Docs
 
-iRODS client binding - https://godoc.org/github.com/jjacquay712/GoRODS
+[iRODS client binding](https://godoc.org/github.com/jjacquay712/GoRODS)
 
-iRODS microservice binding - https://godoc.org/github.com/jjacquay712/GoRODS/msi
+[iRODS microservice binding](https://godoc.org/github.com/jjacquay712/GoRODS/msi)
 
 ### Usage Guide and Examples
 
-iRODS client binding - https://github.com/jjacquay712/GoRODS/blob/master/HOWTO.md
+[iRODS client binding](https://github.com/jjacquay712/GoRODS/blob/master/HOWTO.md)
 
-iRODS microservice binding - https://github.com/jjacquay712/irods-ugm-2017
+[iRODS microservice binding](https://github.com/jjacquay712/irods-ugm-2017)
 
 ## Basic Usage
 
