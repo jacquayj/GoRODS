@@ -79,6 +79,17 @@ func (param *Param) Bytes() []byte {
 	return bytes
 }
 
+//
+func (param *Param) SetBytes(bytes []byte) *Param {
+
+	if param.rodsType == BUF_LEN_MS_T {
+		param.ptr.inpOutBuf.buf = unsafe.Pointer(&bytes[0])
+		param.ptr.inpOutBuf.len = C.int(len(bytes))
+	}
+
+	return param
+}
+
 // SetKVP adds key-value pairs to the underlying KeyValPair_MS_T parameter
 func (param *Param) SetKVP(data map[string]string) *Param {
 	if param.rodsType == KeyValPair_MS_T {
@@ -90,6 +101,14 @@ func (param *Param) SetKVP(data map[string]string) *Param {
 
 	}
 	return param
+}
+
+//
+func (param *Param) Int() int {
+	if param.rodsType == INT_MS_T {
+		return int(*((*C.int)(param.ptr.inOutStruct)))
+	}
+	return -1
 }
 
 // SetInt sets the integer value of the underlying INT_MS_T parameter

@@ -1,16 +1,17 @@
 package msi
 
 import (
+	"fmt"
 	"io"
 )
 
-// ObjReader provides a golang io.Reader interface for iRODS 
+// ObjReader provides a golang io.Reader interface for iRODS
 // data object, identified by the INT_MS_T object reference
 type ObjReader struct {
 	objHandle *Param
 }
 
-// NewObjReader accepts an iRODS data object path string, opens a reference to the 
+// NewObjReader accepts an iRODS data object path string, opens a reference to the
 // object using msiDataObjOpen, and returns an *ObjReader which satisfies the io.Reader interface.
 func NewObjReader(irodsPath string) (*ObjReader, error) {
 	reader := new(ObjReader)
@@ -27,6 +28,16 @@ func NewObjReader(irodsPath string) (*ObjReader, error) {
 	return reader, nil
 }
 
+//
+//
+func NewObjReaderFromDesc(desc *Param) *ObjReader {
+	reader := new(ObjReader)
+
+	reader.objHandle = desc
+
+	return reader
+}
+
 // Close calls msiDataObjClose on the opened data object handle.
 func (rdr *ObjReader) Close() error {
 	closeOut := NewParam(INT_MS_T)
@@ -34,7 +45,7 @@ func (rdr *ObjReader) Close() error {
 	return Call("msiDataObjClose", rdr.objHandle, closeOut)
 }
 
-// Read reads []bytes from data objects in iRODS. 
+// Read reads []bytes from data objects in iRODS.
 // It satisfies the io.Reader interface.
 func (rdr *ObjReader) Read(data []byte) (n int, err error) {
 	length := len(data)
@@ -60,4 +71,23 @@ func (rdr *ObjReader) Read(data []byte) (n int, err error) {
 
 	return
 
+}
+
+func (rdr *ObjReader) Write(data []byte) (n int, err error) {
+	length := len(data)
+
+	bytesWritten := NewParam(INT_MS_T)
+	writeData := NewParam(BUF_LEN_MS_T).SetBytes(data)
+
+	if err = Call("msiDataObjWrite", rdr.objHandle, writeData, bytesWritten); err != nil {
+		return
+	}
+
+	n = bytesWritten.Int()
+
+	if n < length {
+		err = fmt.Errorf("Byte length mismatch, %v bytes provided but only %v written", length, n)
+	}
+
+	return
 }
