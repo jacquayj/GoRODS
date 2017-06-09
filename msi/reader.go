@@ -28,8 +28,7 @@ func NewObjReader(irodsPath string) (*ObjReader, error) {
 	return reader, nil
 }
 
-//
-//
+// NewObjReaderFromDesc creates a new *ObjReader from an existing descriptor
 func NewObjReaderFromDesc(desc *Param) *ObjReader {
 	reader := new(ObjReader)
 
@@ -73,6 +72,8 @@ func (rdr *ObjReader) Read(data []byte) (n int, err error) {
 
 }
 
+// Write writes []bytes from data slice.
+// It satisfies the io.Writer interface.
 func (rdr *ObjReader) Write(data []byte) (n int, err error) {
 	length := len(data)
 

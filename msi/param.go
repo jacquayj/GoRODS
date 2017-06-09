@@ -79,7 +79,7 @@ func (param *Param) Bytes() []byte {
 	return bytes
 }
 
-//
+// SetBytes sets the underlying BUF_LEN_MS_T struct to the provided byte slice
 func (param *Param) SetBytes(bytes []byte) *Param {
 
 	if param.rodsType == BUF_LEN_MS_T {
@@ -106,7 +106,7 @@ func (param *Param) SetKVP(data map[string]string) *Param {
 	return param
 }
 
-//
+// Int returns the integer value of the underlying INT_MS_T parameter
 func (param *Param) Int() int {
 	if param.rodsType == INT_MS_T {
 		return int(*((*C.int)(param.ptr.inOutStruct)))
