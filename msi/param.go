@@ -83,8 +83,11 @@ func (param *Param) Bytes() []byte {
 func (param *Param) SetBytes(bytes []byte) *Param {
 
 	if param.rodsType == BUF_LEN_MS_T {
-		param.ptr.inpOutBuf.buf = unsafe.Pointer(&bytes[0])
-		param.ptr.inpOutBuf.len = C.int(len(bytes))
+		length := C.int(len(bytes))
+
+		cBuff := C.NewBytesBuff(length, unsafe.Pointer(&bytes[0]))
+
+		C.fillBufLenInMsParam(param.ptr, length, cBuff)
 	}
 
 	return param

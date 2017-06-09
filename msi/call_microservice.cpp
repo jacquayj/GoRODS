@@ -136,4 +136,17 @@ char* GetMSParamType(msParam_t* param) {
 	return param->type;
 }
 
+bytesBuf_t* NewBytesBuff(int length, void* data) {
+	bytesBuf_t* newBuff = (bytesBuf_t*)malloc(sizeof(bytesBuf_t));
+
+	void* duplicated = malloc(length);
+
+	memcpy(duplicated, data, length);
+
+	newBuff->len = length;
+	newBuff->buf = duplicated;
+
+	return newBuff;
+}
+
 }
