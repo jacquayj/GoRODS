@@ -67,3 +67,10 @@ const (
 	GenArray_MS_T                         = "GenArray_PI"
 	DataObjInfo_MS_T                      = "DataObjInfo_PI"
 )
+
+// iRODS constants for use in microservice return value
+const (
+	SUCCESS                 = 0
+	SYS_INTERNAL_ERR        = -154000
+	SYS_INVALID_INPUT_PARAM = -130000
+)
