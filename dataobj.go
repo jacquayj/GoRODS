@@ -934,9 +934,6 @@ func (obj *DataObj) DeleteMeta(attr string) (*MetaCollection, error) {
 
 // Meta returns collection of Meta AVU triple structs of the data object
 func (obj *DataObj) Meta() (*MetaCollection, error) {
-	if er := obj.init(); er != nil {
-		return nil, er
-	}
 
 	if obj.metaCol == nil {
 		if mc, err := newMetaCollection(obj); err == nil {
