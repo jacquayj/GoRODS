@@ -73,6 +73,7 @@ type IRodsObj interface {
 	IsDir() bool
 	Sys() interface{}
 
+	Owner() *User
 	OwnerName() string
 	CreateTime() time.Time
 	ModifyTime() time.Time
