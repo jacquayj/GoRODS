@@ -2,9 +2,9 @@
 
 1. Follow directions at https://packages.irods.org/ to install new repositories to your applicable distro
 
-2. Install all external packages (irods-externals*) and irods-runtime, irods-devel. 
+2. Install all external packages (irods-externals*) and irods-runtime, irods-devel, openssl-devel. 
 ```
-$ sudo yum install irods-externals* irods-runtime irods-devel
+$ sudo yum install irods-externals* irods-runtime irods-devel openssl-devel
 ```
 
 3. Create/edit ~/.irods/irods_environment.json and specify "irods_plugins_home":
