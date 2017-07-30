@@ -293,6 +293,11 @@ func (obj *DataObj) GrantAccess(userOrGroup AccessObject, accessLevel int, recur
 	return chmod(obj, userOrGroup.Name(), accessLevel, false, true)
 }
 
+// Handle returns the internal handle index
+func (obj *DataObj) Handle() int {
+	return int(obj.chandle)
+}
+
 // Type gets the type (DataObjType), used in interfaces
 func (obj *DataObj) Type() int {
 	return obj.typ
