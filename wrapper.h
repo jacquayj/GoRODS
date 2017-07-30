@@ -77,6 +77,7 @@ int gorods_queryDataObjInColl( queryHandle_t *queryHandle, char *collection,
 int gorods_getNextCollMetaInfo( collHandle_t *collHandle, collEnt_t *outCollEnt );
 int gorods_getNextDataObjMetaInfo( collHandle_t *collHandle, collEnt_t *outCollEnt );
 
+int gorods_phys_path_reg(rcComm_t*, char*, char*, int, int, int, char*, char*);
 
 void display_mallinfo(void);
 void* gorods_malloc(size_t size);
