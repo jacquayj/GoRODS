@@ -147,6 +147,40 @@ int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
 }
 
 
+int gorods_phys_path_reg(rcComm_t* ccon, char* physPath, char* rodsPath, int force, int collection, int replica, char* resourceName, char* excludeFiles) {
+
+    dataObjInp_t dataObjOprInp;
+    memset(&dataObjOprInp, 0, sizeof(dataObjInp_t));
+
+    addKeyVal(&dataObjOprInp.condInput, DATA_TYPE_KW, "generic");
+
+    if ( force > 0 ) {
+        addKeyVal(&dataObjOprInp.condInput, FORCE_FLAG_KW, "");
+    }
+
+    if ( collection > 0 ) {
+        addKeyVal(&dataObjOprInp.condInput, COLLECTION_KW, "");
+    }
+
+    if ( replica > 0 ) {
+        addKeyVal(&dataObjOprInp.condInput, REG_REPL_KW, "");
+    }
+
+    if ( excludeFiles != NULL && excludeFiles[0] != '\0' ) {
+        addKeyVal(&dataObjOprInp.condInput, EXCLUDE_FILE_KW, excludeFiles);
+    }
+
+    if ( resourceName != NULL && resourceName[0] != '\0' ) {
+        addKeyVal(&dataObjOprInp.condInput, DEST_RESC_NAME_KW, resourceName);
+    }
+
+    addKeyVal(&dataObjOprInp.condInput, FILE_PATH_KW, physPath);
+    rstrcpy(dataObjOprInp.objPath, rodsPath, MAX_NAME_LEN);
+
+
+    return rcPhyPathReg(ccon, &dataObjOprInp);
+}
+
 
 int gorods_open_collection(char* path, int trimRepls, collHandle_t* collHandle, rcComm_t* conn, char** err) {
 
@@ -3118,7 +3152,7 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 
 	while ( status == 0 && cont > 0 ) {
 
-		genQueryInp.continueInx = genQueryOut->continueInx;
+		genQueryInp.continueInx = cont;
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         cont = genQueryOut->continueInx;
 
@@ -3363,7 +3397,7 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 
 	while ( status == 0 && cont > 0 ) {
 
-		genQueryInp.continueInx = genQueryOut->continueInx;
+		genQueryInp.continueInx = cont;
 
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         cont = genQueryOut->continueInx;
