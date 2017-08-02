@@ -3152,7 +3152,7 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 
 	while ( status == 0 && cont > 0 ) {
 
-		genQueryInp.continueInx = genQueryOut->continueInx;
+		genQueryInp.continueInx = cont;
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         cont = genQueryOut->continueInx;
 
@@ -3397,7 +3397,7 @@ int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcCom
 
 	while ( status == 0 && cont > 0 ) {
 
-		genQueryInp.continueInx = genQueryOut->continueInx;
+		genQueryInp.continueInx = cont;
 
 		status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         cont = genQueryOut->continueInx;
