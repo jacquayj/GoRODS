@@ -564,6 +564,85 @@ func (con *Connection) SetTicket(t string) error {
 	return nil
 }
 
+type RegOptions struct {
+	PhysicalFilePath string
+	RodsPath         string
+	Force            bool
+	Replica          bool
+	Resource         interface{}
+	ExcludeFiles     string
+}
+
+// RegPhysObj is equivalent to the ireg icommand
+func (con *Connection) RegPhysObj(opts RegOptions) error {
+	var (
+		cPhysPath     *C.char
+		cRodsPath     *C.char
+		cForce        C.int
+		cCollection   C.int
+		cReplica      C.int
+		cResourceName *C.char
+		cExcludeFiles *C.char
+	)
+
+	if opts.PhysicalFilePath == "" || opts.RodsPath == "" {
+		return newError(Fatal, -1, fmt.Sprintf("opts.PhysicalFilePath or opts.RodsPath not set"))
+	}
+
+	if physFile, err := os.Stat(opts.PhysicalFilePath); err == nil {
+		if physFile.Mode().IsDir() {
+			cCollection = C.int(1)
+		} else {
+			cCollection = C.int(0)
+		}
+	} else {
+		return newError(Fatal, -1, fmt.Sprintf("opts.PhysicalFilePath doesn't exist or we don't have the correct permissions to access"))
+	}
+
+	cPhysPath = C.CString(opts.PhysicalFilePath)
+	cRodsPath = C.CString(opts.RodsPath)
+	cExcludeFiles = C.CString(opts.ExcludeFiles)
+
+	if opts.Resource != nil {
+		switch v := opts.Resource.(type) {
+		case string:
+			cResourceName = C.CString(v)
+		case *Resource:
+			cResourceName = C.CString(v.Name())
+		default:
+			return newError(Fatal, -1, fmt.Sprintf("opts.Resource type unexpected"))
+		}
+	}
+
+	defer func() {
+		C.free(unsafe.Pointer(cPhysPath))
+		C.free(unsafe.Pointer(cRodsPath))
+		C.free(unsafe.Pointer(cExcludeFiles))
+		C.free(unsafe.Pointer(cResourceName))
+	}()
+
+	if opts.Force {
+		cForce = C.int(1)
+	} else {
+		cForce = C.int(0)
+	}
+
+	if opts.Replica {
+		cReplica = C.int(1)
+	} else {
+		cReplica = C.int(0)
+	}
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_phys_path_reg(ccon, cPhysPath, cRodsPath, cForce, cCollection, cReplica, cResourceName, cExcludeFiles); status < 0 {
+		return newError(Fatal, status, fmt.Sprintf("iRODS rcDisconnect Failed"))
+	}
+
+	return nil
+}
+
 // Disconnect closes connection to iRODS iCAT server, returns error on failure or nil on success
 func (con *Connection) Disconnect() error {
 
