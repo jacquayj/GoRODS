@@ -447,8 +447,8 @@ func (obj *DataObj) Rm(recursive bool, force bool) error {
 	return nil
 }
 
-// rmTrash is used internally by GoRODS to delete items in the trash permanently. The data object's path should be in the trash collection.
-func (obj *DataObj) rmTrash() error {
+// RmTrash is used (sometimes internally) by GoRODS to delete items in the trash permanently. The data object's path should be in the trash collection.
+func (obj *DataObj) RmTrash() error {
 	var errMsg *C.char
 
 	path := C.CString(obj.path)
@@ -459,7 +459,7 @@ func (obj *DataObj) rmTrash() error {
 	defer obj.con.ReturnCcon(ccon)
 
 	if status := C.gorods_rm(path, C.int(0), C.int(1), C.int(1), C.int(1), ccon, &errMsg); status != 0 {
-		return newError(Fatal, status, fmt.Sprintf("iRODS rm DataObject Failed: %v", C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS RmTrash DataObject Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
