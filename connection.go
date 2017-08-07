@@ -94,6 +94,8 @@ type IRodsObj interface {
 	// irm {-r} {-f}
 	Rm(bool, bool) error
 
+	rmTrash() error
+
 	Chmod(string, int, bool) error
 	GrantAccess(AccessObject, int, bool) error
 
@@ -559,6 +561,43 @@ func (con *Connection) SetTicket(t string) error {
 
 	if status = C.gorods_set_session_ticket(ccon, ticket, &errMsg); status != 0 {
 		return newError(Fatal, status, fmt.Sprintf("iRODS Set Ticket Failed: %v", C.GoString(errMsg)))
+	}
+
+	return nil
+}
+
+// EmptyTrash
+func (con *Connection) EmptyTrash() error {
+	var (
+		user string
+		zone string
+	)
+
+	if z, zErr := con.LocalZone(); zErr == nil {
+		zone = z.Name()
+	} else {
+		return zErr
+	}
+
+	if con.Options.Username != "" {
+		user = con.Options.Username
+	} else {
+		return fmt.Errorf("Empty trash for environment based connections not implemented yet")
+	}
+
+	trashColPath := "/" + zone + "/trash/home/" + user
+
+	if trashCol, cErr := con.Collection(CollectionOptions{
+		Path:      trashColPath,
+		Recursive: false,
+		GetRepls:  false,
+		SkipCache: true,
+	}); cErr == nil {
+		return trashCol.Each(func(obj IRodsObj) error {
+			return obj.rmTrash()
+		})
+	} else {
+		return cErr
 	}
 
 	return nil

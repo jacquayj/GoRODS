@@ -640,8 +640,26 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 	ccon := col.con.GetCcon()
 	defer col.con.ReturnCcon(ccon)
 
-	if status := C.gorods_rm(path, 1, cRecursive, cForce, ccon, &errMsg); status != 0 {
+	if status := C.gorods_rm(path, C.int(1), cRecursive, cForce, C.int(0), ccon, &errMsg); status != 0 {
 		return newError(Fatal, status, fmt.Sprintf("iRODS Rm Collection Failed: %v", C.GoString(errMsg)))
+	}
+
+	return nil
+}
+
+// rmTrash is used internally by GoRODS to delete items in the trash permanently. The collection's path should be in the trash collection.
+func (col *Collection) rmTrash() error {
+	var errMsg *C.char
+
+	path := C.CString(col.path)
+
+	defer C.free(unsafe.Pointer(path))
+
+	ccon := col.con.GetCcon()
+	defer col.con.ReturnCcon(ccon)
+
+	if status := C.gorods_rm(path, C.int(1), C.int(1), C.int(1), C.int(1), ccon, &errMsg); status != 0 {
+		return newError(Fatal, status, fmt.Sprintf("iRODS rmTrash Collection Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
