@@ -3010,7 +3010,7 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 
 }
 
-int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* conn, char** err) {
+int gorods_rm(char* path, int isCollection, int recursive, int force, int trash, rcComm_t* conn, char** err) {
 
 	if ( isCollection > 0 ) {
 		collInp_t collInp;
@@ -3026,6 +3026,10 @@ int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* 
 			*err = "Recursive flag must be used on collections\n";
 			return USER__NULL_INPUT_ERR;
 		}
+
+        if ( trash > 0 ) {
+            addKeyVal(&collInp.condInput, RMTRASH_KW, "");
+        }
 
 		rstrcpy(collInp.collName, path, MAX_NAME_LEN);
 		
@@ -3044,6 +3048,10 @@ int gorods_rm(char* path, int isCollection, int recursive, int force, rcComm_t* 
 		if ( recursive > 0 ) {
 			addKeyVal(&dataObjInp.condInput, RECURSIVE_OPR__KW, "");
 		}
+
+        if ( trash > 0 ) {
+            addKeyVal(&dataObjInp.condInput, RMTRASH_KW, "");
+        }
 
 		dataObjInp.openFlags = O_RDONLY;
         dataObjInp.numThreads = conn->transStat.numThreads;
