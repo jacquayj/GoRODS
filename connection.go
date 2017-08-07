@@ -94,7 +94,7 @@ type IRodsObj interface {
 	// irm {-r} {-f}
 	Rm(bool, bool) error
 
-	rmTrash() error
+	RmTrash() error
 
 	Chmod(string, int, bool) error
 	GrantAccess(AccessObject, int, bool) error
@@ -594,7 +594,7 @@ func (con *Connection) EmptyTrash() error {
 		SkipCache: true,
 	}); cErr == nil {
 		return trashCol.Each(func(obj IRodsObj) error {
-			return obj.rmTrash()
+			return obj.RmTrash()
 		})
 	} else {
 		return cErr

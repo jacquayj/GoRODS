@@ -647,8 +647,8 @@ func (col *Collection) Rm(recursive bool, force bool) error {
 	return nil
 }
 
-// rmTrash is used internally by GoRODS to delete items in the trash permanently. The collection's path should be in the trash collection.
-func (col *Collection) rmTrash() error {
+// RmTrash is used (sometimes internally) by GoRODS to delete items in the trash permanently. The collection's path should be in the trash collection.
+func (col *Collection) RmTrash() error {
 	var errMsg *C.char
 
 	path := C.CString(col.path)
@@ -659,7 +659,7 @@ func (col *Collection) rmTrash() error {
 	defer col.con.ReturnCcon(ccon)
 
 	if status := C.gorods_rm(path, C.int(1), C.int(1), C.int(1), C.int(1), ccon, &errMsg); status != 0 {
-		return newError(Fatal, status, fmt.Sprintf("iRODS rmTrash Collection Failed: %v", C.GoString(errMsg)))
+		return newError(Fatal, status, fmt.Sprintf("iRODS RmTrash Collection Failed: %v", C.GoString(errMsg)))
 	}
 
 	return nil
