@@ -78,6 +78,8 @@ type IRodsObj interface {
 	CreateTime() time.Time
 	ModifyTime() time.Time
 
+	Rename(string) error
+
 	CopyTo(interface{}) error
 	MoveTo(interface{}) error
 	DownloadTo(string) error
