@@ -211,7 +211,7 @@ func (usr *User) RefreshGroups() error {
 }
 
 // FindByName searches the slice for a user by name.
-// If no match is found, a new group with that name is created and returned.
+// If no match is found, a new user with that name is created and returned.
 // This was designed to resolve issues of casting resources for DataObjects and Collections, even though the cache was empty due to permissions.
 func (usrs Users) FindByName(name string, con *Connection) *User {
 	for _, usr := range usrs {

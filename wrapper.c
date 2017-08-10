@@ -15,7 +15,7 @@ void* gorods_malloc(size_t size) {
 	return mem;
 }
 
-int gorods_connect(rcComm_t** conn, char** err) {
+int gorods_connect(rcComm_t** conn, char** host, int* port, char** username, char** zone, char** err) {
     rodsEnv myEnv;
     int status;
 
@@ -24,6 +24,11 @@ int gorods_connect(rcComm_t** conn, char** err) {
         *err = "getRodsEnv failed";
         return status;
     }
+
+    *host = &(myEnv.rodsHost[0]);
+    *port = myEnv.rodsPort;
+    *username = &(myEnv.rodsUserName[0]);
+    *zone = &(myEnv.rodsZone[0]);
 
     rErrMsg_t errMsg;
     *conn = rcConnect(myEnv.rodsHost, myEnv.rodsPort, myEnv.rodsUserName, myEnv.rodsZone, 1, &errMsg);
@@ -143,6 +148,104 @@ int gorods_set_session_ticket(rcComm_t *myConn, char *ticket, char** err) {
         sprintf(*err, "set ticket error %d \n", status);
     }
 
+    return status;
+}
+
+int gorods_iuserinfo(rcComm_t *myConn, char *name, userInfo_t* outInfo, char** err) {
+    genQueryInp_t genQueryInp;
+    genQueryOut_t *genQueryOut;
+    int i1a[20];
+    int i1b[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int i2a[20];
+    char *condVal[10];
+    char v1[BIG_STR];
+    int i, j, status;
+
+    char *columnNames[] = {"name", "id", "type", "zone", "info", "comment", "create time", "modify time"};
+
+    memset(&genQueryInp, 0, sizeof(genQueryInp_t));
+    memset(outInfo, 0, sizeof(userInfo_t));
+
+    i = 0;
+    i1a[i++] = COL_USER_NAME;
+    i1a[i++] = COL_USER_ID;
+    i1a[i++] = COL_USER_TYPE;
+    i1a[i++] = COL_USER_ZONE;
+    i1a[i++] = COL_USER_INFO;
+    i1a[i++] = COL_USER_COMMENT;
+    i1a[i++] = COL_USER_CREATE_TIME;
+    i1a[i++] = COL_USER_MODIFY_TIME;
+    genQueryInp.selectInp.inx = i1a;
+    genQueryInp.selectInp.value = i1b;
+    genQueryInp.selectInp.len = i;
+
+    i2a[0] = COL_USER_NAME;
+    snprintf(v1, BIG_STR, "='%s'", name);
+    condVal[0] = v1;
+
+    genQueryInp.sqlCondInp.inx = i2a;
+    genQueryInp.sqlCondInp.value = condVal;
+    genQueryInp.sqlCondInp.len = 1;
+
+    genQueryInp.condInput.len = 0;
+
+    genQueryInp.maxRows = 2;
+    genQueryInp.continueInx = 0;
+
+    status = rcGenQuery(myConn, &genQueryInp, &genQueryOut);
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        freeGenQueryOut(&genQueryOut);
+
+        i1a[0] = COL_USER_COMMENT;
+        genQueryInp.selectInp.len = 1;
+
+        status = rcGenQuery(myConn, &genQueryInp, &genQueryOut);
+        if ( status == 0 ) {
+            *err = "None";
+            freeGenQueryOut(&genQueryOut);
+            return -1;
+        }
+        if ( status == CAT_NO_ROWS_FOUND ) {
+            *err = "User does not exist";
+            freeGenQueryOut(&genQueryOut);
+            return status;
+        }
+    }
+
+    if ( status != 0 ) {
+        *err = "Error in rcGenQuery";
+        return status;
+    }
+
+
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            char *tResult;
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+
+            if ( strcmp( columnNames[j], "name" ) == 0 ) {
+                strcpy(outInfo->userName, tResult);
+            } else if ( strcmp( columnNames[j], "id" ) == 0 ) {
+                // Convert to string
+            } else if ( strcmp( columnNames[j], "type" ) == 0 ) {
+                strcpy(outInfo->userType, tResult);
+            } else if ( strcmp( columnNames[j], "zone" ) == 0 ) {
+                strcpy(outInfo->rodsZone, tResult);
+            } else if ( strcmp( columnNames[j], "info" ) == 0 ) {
+                strcpy(outInfo->userOtherInfo.userInfo, tResult);
+            } else if ( strcmp( columnNames[j], "comment" ) == 0 ) {
+                strcpy(outInfo->userOtherInfo.userComments, tResult);
+            } else if ( strcmp( columnNames[j], "create time" ) == 0 ) {
+                strcpy(outInfo->userOtherInfo.userCreate, tResult);
+            } else if ( strcmp( columnNames[j], "modify time" ) == 0 ) {
+                strcpy(outInfo->userOtherInfo.userModify, tResult);
+            }
+        }
+    }
+
+    freeGenQueryOut(&genQueryOut);
+    
     return status;
 }
 
