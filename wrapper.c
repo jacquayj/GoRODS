@@ -611,7 +611,7 @@ int gorods_get_user_groups(rcComm_t *conn, char* name, goRodsStringResult_t* res
     freeGenQueryOut(&genQueryOut);
 
     while ( status == 0 && cont > 0 ) {
-        genQueryInp.continueInx = genQueryOut->continueInx;
+        genQueryInp.continueInx = cont;
         
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         cont = genQueryOut->continueInx;
@@ -774,7 +774,10 @@ int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupNa
     genQueryInp.continueInx = 0;
     genQueryInp.condInput.len = 0;
 
+    int cont;
     status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
+
     if ( status == CAT_NO_ROWS_FOUND ) {
         freeGenQueryOut(&genQueryOut);
         *err = "No rows found";
@@ -783,15 +786,18 @@ int gorods_get_group(rcComm_t *conn, goRodsStringResult_t* result, char* groupNa
 
     gorods_build_group_user_result(genQueryOut, result);
 
-    while ( status == 0 && genQueryOut->continueInx > 0 ) {
-        genQueryInp.continueInx = genQueryOut->continueInx;
+    freeGenQueryOut(&genQueryOut);
+
+    while ( status == 0 && cont > 0 ) {
+        genQueryInp.continueInx = cont;
         status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
         if ( status == 0 ) {
             gorods_build_group_user_result(genQueryOut, result);
         }
+        
+        freeGenQueryOut(&genQueryOut);
     }
-
-    freeGenQueryOut(&genQueryOut);
 
     return 0;
 }
@@ -1443,7 +1449,8 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
 
     while ( i == 0 && cont > 0 ) {
 
-        genQueryInp.continueInx = genQueryOut->continueInx;
+        genQueryInp.continueInx = cont;
+
         i = rcGenQuery(conn, &genQueryInp, &genQueryOut);
         cont = genQueryOut->continueInx;
         
