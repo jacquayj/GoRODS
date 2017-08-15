@@ -56,11 +56,11 @@ func (ms Metas) String() string {
 // MetaCollection is a collection of metadata AVU triples for a single data object
 type MetaCollection struct {
 	Metas Metas
-	Obj   IRodsObj
+	Obj   MetaObj
 	Con   *Connection
 }
 
-func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
+func newMetaCollection(obj MetaObj) (*MetaCollection, error) {
 
 	result := new(MetaCollection)
 	result.Obj = obj
@@ -73,6 +73,7 @@ func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
 	return result, nil
 }
 
+// FIX ME: Won't return correct "-u" string
 func (m *Meta) getTypeRodsString() string {
 	return getTypeString(m.Parent.Obj.Type())
 }
@@ -209,7 +210,8 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	switch mc.Obj.Type() {
 	case DataObjType:
-		cwdGo := mc.Obj.Col().Path()
+
+		cwdGo := (mc.Obj.(*DataObj)).Col().Path()
 		cwd := C.CString(cwdGo)
 
 		defer C.free(unsafe.Pointer(cwd))
@@ -239,7 +241,9 @@ func (mc *MetaCollection) ReadMeta() error {
 	case ResourceGroupType:
 
 	case UserType:
-
+		// IMPLEMENT ME
+	case GroupType:
+		// IMPLEMENT ME
 	default:
 		return newError(Fatal, -1, "unrecognized meta type constant")
 	}

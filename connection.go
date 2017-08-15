@@ -57,6 +57,13 @@ const (
 	PasswordAuth
 )
 
+type MetaObj interface {
+	Type() int
+	Con() *Connection
+	Name() string
+	Path() string
+}
+
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
 	Type() int

@@ -58,6 +58,11 @@ func (grp *Group) Name() string {
 	return grp.name
 }
 
+// Path returns the name of the group. Used in gorods.MetaObj interface.
+func (grp *Group) Path() string {
+	return grp.name
+}
+
 // Zone returns the *Zone struct that this group belongs to.
 func (grp *Group) Zone() *Zone {
 	return grp.zone
@@ -104,8 +109,8 @@ func (grp *Group) Info() (string, error) {
 }
 
 // Type returns GroupType, used in iRODSObject interfaces
-func (grp *Group) Type() (int, error) {
-	return grp.typ, nil
+func (grp *Group) Type() int {
+	return grp.typ
 }
 
 // Con returns the *Connection used to fetch group info

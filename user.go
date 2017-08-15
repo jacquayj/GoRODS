@@ -63,6 +63,11 @@ func (usr *User) Name() string {
 	return usr.name
 }
 
+// Path returns the users name. Used in gorods.MetaObj interface.
+func (usr *User) Path() string {
+	return usr.name
+}
+
 // Zone returns the *Zone to which the user belongs.
 func (usr *User) Zone() *Zone {
 	return usr.zone
@@ -109,11 +114,11 @@ func (usr *User) Id() (int, error) {
 }
 
 // Type loads data from iRODS if needed, and returns the user's typ attribute.
-func (usr *User) Type() (int, error) {
+func (usr *User) Type() int {
 	if err := usr.init(); err != nil {
-		return usr.typ, err
+		return UnknownType
 	}
-	return usr.typ, nil
+	return usr.typ
 }
 
 // Con returns the connection used to initalize the user
