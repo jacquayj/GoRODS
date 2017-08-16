@@ -23,6 +23,51 @@ func timeStringToTime(ts string) time.Time {
 	return time.Unix(unixStamp, 0)
 }
 
+func GetShortTypeString(typ int) string {
+	switch typ {
+	case DataObjType:
+		return "d"
+	case CollectionType:
+		return "C"
+	case ZoneType:
+		return "Z"
+	case ResourceType:
+		return "R"
+	case UserType:
+		return "u"
+	case AdminType:
+		return "u"
+	case GroupAdminType:
+		return "u"
+	case GroupType:
+		return "u"
+	case UnknownType:
+		return "?"
+	// case Null:
+	// 	return "null"
+	// case Read:
+	// 	return "read"
+	// case Write:
+	// 	return "write"
+	// case Own:
+	// 	return "own"
+	// case Inherit:
+	// 	return "inherit"
+	// case NoInherit:
+	// 	return "noinherit"
+	// case Local:
+	// 	return "local"
+	// case Remote:
+	// 	return "remote"
+	// case Cache:
+	// 	return "cache"
+	// case Archive:
+	// 	return "archive"
+	default:
+		panic(newError(Fatal, -1, "unrecognized type constant"))
+	}
+}
+
 func GetTypeString(typ int) string {
 	return getTypeString(typ)
 }

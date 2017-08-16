@@ -57,6 +57,13 @@ const (
 	PasswordAuth
 )
 
+type MetaObj interface {
+	Type() int
+	Con() *Connection
+	Name() string
+	Path() string
+}
+
 // IRodsObj is a generic interface used to detect the object type and access common fields
 type IRodsObj interface {
 	Type() int
@@ -312,6 +319,34 @@ func NewConnection(opts *ConnectionOptions) (*Connection, error) {
 
 }
 
+func (con *Connection) UserInfo() (map[string]string, error) {
+
+	var cUsrInfo C.userInfo_t
+	var cErr *C.char
+
+	cName := C.CString(con.Options.Username)
+	defer C.free(unsafe.Pointer(cName))
+
+	ccon := con.GetCcon()
+	defer con.ReturnCcon(ccon)
+
+	if status := C.gorods_iuserinfo(ccon, cName, &cUsrInfo, &cErr); status < 0 {
+		return nil, newError(Fatal, status, fmt.Sprintf("iRODS gorods_iuserinfo Failed: %v", C.GoString(cErr)))
+	}
+
+	response := make(map[string]string)
+
+	response["username"] = C.GoString(&cUsrInfo.userName[0])
+	response["zone"] = C.GoString(&cUsrInfo.rodsZone[0])
+	response["type"] = C.GoString(&cUsrInfo.userType[0])
+	response["info"] = C.GoString(&cUsrInfo.userOtherInfo.userInfo[0])
+	response["comments"] = C.GoString(&cUsrInfo.userOtherInfo.userComments[0])
+	response["create"] = C.GoString(&cUsrInfo.userOtherInfo.userCreate[0])
+	response["modify"] = C.GoString(&cUsrInfo.userOtherInfo.userModify[0])
+
+	return response, nil
+}
+
 func (con *Connection) InitCon() error {
 
 	if con.Connected {
@@ -345,9 +380,18 @@ func (con *Connection) InitCon() error {
 			return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
 	} else {
-		if status = C.gorods_connect(&con.ccon, &errMsg); status != 0 {
+
+		var cHost, cUsername, cZone *C.char
+		var cPort C.int
+
+		if status = C.gorods_connect(&con.ccon, &cHost, &cPort, &cUsername, &cZone, &errMsg); status != 0 {
 			return newError(Fatal, status, fmt.Sprintf("iRODS Connect Failed: %v", C.GoString(errMsg)))
 		}
+
+		con.Options.Host = C.GoString(cHost)
+		con.Options.Port = int(cPort)
+		con.Options.Username = C.GoString(cUsername)
+		con.Options.Zone = C.GoString(cZone)
 	}
 
 	con.cconBuffer = make(chan *C.rcComm_t, 1)
@@ -967,9 +1011,16 @@ func (con *Connection) init() error {
 	if !con.Init {
 		con.Init = true
 
+		info, iErr := con.UserInfo()
+		if iErr != nil {
+			return iErr
+		}
+
 		// user must be rodsadmin
-		if err := con.RefreshZones(); err != nil {
-			//return err
+		if info["type"] == "rodsadmin" {
+			if err := con.RefreshZones(); err != nil {
+				return err
+			}
 		}
 
 		if err := con.RefreshResources(); err != nil {
@@ -977,8 +1028,10 @@ func (con *Connection) init() error {
 		}
 
 		// user must be rodsadmin
-		if err := con.RefreshUsers(); err != nil {
-			//return err
+		if info["type"] == "rodsadmin" {
+			if err := con.RefreshUsers(); err != nil {
+				return err
+			}
 		}
 
 		if err := con.RefreshGroups(); err != nil {

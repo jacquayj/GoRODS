@@ -56,11 +56,11 @@ func (ms Metas) String() string {
 // MetaCollection is a collection of metadata AVU triples for a single data object
 type MetaCollection struct {
 	Metas Metas
-	Obj   IRodsObj
+	Obj   MetaObj
 	Con   *Connection
 }
 
-func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
+func newMetaCollection(obj MetaObj) (*MetaCollection, error) {
 
 	result := new(MetaCollection)
 	result.Obj = obj
@@ -74,7 +74,7 @@ func newMetaCollection(obj IRodsObj) (*MetaCollection, error) {
 }
 
 func (m *Meta) getTypeRodsString() string {
-	return getTypeString(m.Parent.Obj.Type())
+	return GetShortTypeString(m.Parent.Obj.Type())
 }
 
 // SetValue will modify metadata AVU value only
@@ -204,12 +204,13 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	defer C.free(unsafe.Pointer(name))
 
-	ccon := mc.Con.GetCcon()
-	defer mc.Con.ReturnCcon(ccon)
-
 	switch mc.Obj.Type() {
 	case DataObjType:
-		cwdGo := mc.Obj.Col().Path()
+
+		ccon := mc.Con.GetCcon()
+		defer mc.Con.ReturnCcon(ccon)
+
+		cwdGo := (mc.Obj.(*DataObj)).Col().Path()
 		cwd := C.CString(cwdGo)
 
 		defer C.free(unsafe.Pointer(cwd))
@@ -222,6 +223,10 @@ func (mc *MetaCollection) ReadMeta() error {
 			}
 		}
 	case CollectionType:
+
+		ccon := mc.Con.GetCcon()
+		defer mc.Con.ReturnCcon(ccon)
+
 		cwdGo := filepath.Dir(mc.Obj.Path())
 		cwd := C.CString(cwdGo)
 
@@ -238,7 +243,28 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	case ResourceGroupType:
 
-	case UserType:
+	case UserType, GroupType, AdminType, GroupAdminType:
+
+		gZone, zErr := mc.Con.LocalZone()
+		if zErr != nil {
+			return zErr
+		}
+
+		ccon := mc.Con.GetCcon()
+		defer mc.Con.ReturnCcon(ccon)
+
+		zone := C.CString(gZone.Name())
+		name := C.CString(mc.Obj.Name())
+		defer C.free(unsafe.Pointer(name))
+		defer C.free(unsafe.Pointer(zone))
+
+		if status := C.gorods_meta_user(name, zone, &metaResult, ccon, &err); status != 0 {
+			if status == C.CAT_NO_ROWS_FOUND {
+				return nil
+			} else {
+				return newError(Fatal, status, fmt.Sprintf("iRODS Get Meta Failed: %v, %v, %v", C.GoString(name), C.GoString(err), status))
+			}
+		}
 
 	default:
 		return newError(Fatal, -1, "unrecognized meta type constant")

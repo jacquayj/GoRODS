@@ -19,7 +19,7 @@ type AccessObject interface {
 	CreateTime() (time.Time, error)
 	ModifyTime() (time.Time, error)
 	Id() (int, error)
-	Type() (int, error)
+	Type() int
 	Con() *Connection
 }
 

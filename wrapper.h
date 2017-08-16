@@ -81,9 +81,11 @@ int gorods_phys_path_reg(rcComm_t*, char*, char*, int, int, int, char*, char*);
 
 void display_mallinfo(void);
 void* gorods_malloc(size_t size);
-int gorods_connect(rcComm_t** conn, char** err);
+int gorods_connect(rcComm_t** conn, char** host, int* port, char** username, char** zone, char** err);
 int gorods_connect_env(rcComm_t** conn, char* host, int port, char* username, char* zone, char** err);
 int gorods_clientLoginPam(rcComm_t* conn, char* password, int ttl, char** pamPass, char** err) ;
+
+int gorods_iuserinfo(rcComm_t *myConn, char *name, userInfo_t* outInfo, char** err);
 
 int gorods_get_groups(rcComm_t *conn, goRodsStringResult_t* result, char** err);
 void gorods_build_group_result(genQueryOut_t *genQueryOut, goRodsStringResult_t* result);
@@ -167,6 +169,7 @@ void setGoRodsMeta(genQueryOut_t *genQueryOut, char *descriptions[], goRodsMetaR
 void freeGoRodsMetaResult(goRodsMetaResult_t* result);
 goRodsMeta_t* expandGoRodsMetaResult(goRodsMetaResult_t* result, int length);
 
+int gorods_meta_user(char *name, char *zone, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
 int gorods_meta_dataobj(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
 int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rcComm_t* conn, char** err);
 int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* na, char* nv, char* nu, rcComm_t* conn, char** err);
