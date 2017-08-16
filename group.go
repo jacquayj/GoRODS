@@ -110,7 +110,7 @@ func (grp *Group) Info() (string, error) {
 	return grp.info, nil
 }
 
-// Type returns GroupType, used in iRODSObject interfaces
+// Type returns GroupType, used in AccessObject and MetaObj interfaces
 func (grp *Group) Type() int {
 	return grp.typ
 }
@@ -424,7 +424,7 @@ func (grp *Group) DeleteMeta(attr string) (*MetaCollection, error) {
 	}
 }
 
-// Meta returns collection of Meta AVU triple structs of the user object
+// Meta returns collection of Meta AVU triple structs of the group object
 func (grp *Group) Meta() (*MetaCollection, error) {
 
 	if grp.metaCol == nil {

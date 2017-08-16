@@ -115,7 +115,7 @@ func (usr *User) Id() (int, error) {
 	return usr.id, nil
 }
 
-// Type loads data from iRODS if needed, and returns the user's typ attribute.
+// Type loads data from iRODS if needed, and returns the user's typ attribute. Used in AccessObject and MetaObj interfaces.
 func (usr *User) Type() int {
 	if err := usr.init(); err != nil {
 		return UnknownType
