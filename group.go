@@ -402,6 +402,15 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	return newError(Fatal, -1, fmt.Sprintf("iRODS RemoveUser Failed: unknown type passed"))
 }
 
+// Attribute gets slice of Meta AVU triples, matching by Attribute name for Group
+func (grp *Group) Attribute(attrName string) (Metas, error) {
+	if meta, err := grp.Meta(); err == nil {
+		return meta.Get(attrName)
+	} else {
+		return nil, err
+	}
+}
+
 // AddMeta adds a single Meta triple struct
 func (grp *Group) AddMeta(m Meta) (nm *Meta, err error) {
 	var mc *MetaCollection

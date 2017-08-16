@@ -62,6 +62,11 @@ type MetaObj interface {
 	Con() *Connection
 	Name() string
 	Path() string
+
+	Meta() (*MetaCollection, error)
+	Attribute(string) (Metas, error)
+	AddMeta(Meta) (*Meta, error)
+	DeleteMeta(string) (*MetaCollection, error)
 }
 
 // IRodsObj is a generic interface used to detect the object type and access common fields
