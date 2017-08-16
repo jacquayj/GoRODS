@@ -407,6 +407,15 @@ func (usr *User) ChangePassword(newPass string) error {
 	return nil
 }
 
+// Attribute gets slice of Meta AVU triples, matching by Attribute name for User
+func (usr *User) Attribute(attrName string) (Metas, error) {
+	if meta, err := usr.Meta(); err == nil {
+		return meta.Get(attrName)
+	} else {
+		return nil, err
+	}
+}
+
 // AddMeta adds a single Meta triple struct
 func (usr *User) AddMeta(m Meta) (nm *Meta, err error) {
 	var mc *MetaCollection
