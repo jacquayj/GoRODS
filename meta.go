@@ -73,9 +73,8 @@ func newMetaCollection(obj MetaObj) (*MetaCollection, error) {
 	return result, nil
 }
 
-// FIX ME: Won't return correct "-u" string
 func (m *Meta) getTypeRodsString() string {
-	return getTypeString(m.Parent.Obj.Type())
+	return GetShortTypeString(m.Parent.Obj.Type())
 }
 
 // SetValue will modify metadata AVU value only
@@ -205,11 +204,11 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	defer C.free(unsafe.Pointer(name))
 
-	ccon := mc.Con.GetCcon()
-	defer mc.Con.ReturnCcon(ccon)
-
 	switch mc.Obj.Type() {
 	case DataObjType:
+
+		ccon := mc.Con.GetCcon()
+		defer mc.Con.ReturnCcon(ccon)
 
 		cwdGo := (mc.Obj.(*DataObj)).Col().Path()
 		cwd := C.CString(cwdGo)
@@ -224,6 +223,10 @@ func (mc *MetaCollection) ReadMeta() error {
 			}
 		}
 	case CollectionType:
+
+		ccon := mc.Con.GetCcon()
+		defer mc.Con.ReturnCcon(ccon)
+
 		cwdGo := filepath.Dir(mc.Obj.Path())
 		cwd := C.CString(cwdGo)
 
@@ -240,10 +243,29 @@ func (mc *MetaCollection) ReadMeta() error {
 
 	case ResourceGroupType:
 
-	case UserType:
-		// IMPLEMENT ME
-	case GroupType:
-		// IMPLEMENT ME
+	case UserType, GroupType, AdminType, GroupAdminType:
+
+		gZone, zErr := mc.Con.LocalZone()
+		if zErr != nil {
+			return zErr
+		}
+
+		ccon := mc.Con.GetCcon()
+		defer mc.Con.ReturnCcon(ccon)
+
+		zone := C.CString(gZone.Name())
+		name := C.CString(mc.Obj.Name())
+		defer C.free(unsafe.Pointer(name))
+		defer C.free(unsafe.Pointer(zone))
+
+		if status := C.gorods_meta_user(name, zone, &metaResult, ccon, &err); status != 0 {
+			if status == C.CAT_NO_ROWS_FOUND {
+				return nil
+			} else {
+				return newError(Fatal, status, fmt.Sprintf("iRODS Get Meta Failed: %v, %v, %v", C.GoString(name), C.GoString(err), status))
+			}
+		}
+
 	default:
 		return newError(Fatal, -1, "unrecognized meta type constant")
 	}

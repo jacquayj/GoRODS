@@ -30,6 +30,8 @@ type User struct {
 
 	groups Groups
 	con    *Connection
+
+	metaCol *MetaCollection
 }
 
 // Users is a slice of *User
@@ -403,6 +405,42 @@ func (usr *User) ChangePassword(newPass string) error {
 	}
 
 	return nil
+}
+
+// AddMeta adds a single Meta triple struct
+func (usr *User) AddMeta(m Meta) (nm *Meta, err error) {
+	var mc *MetaCollection
+
+	if mc, err = usr.Meta(); err != nil {
+		return
+	}
+
+	nm, err = mc.Add(m)
+
+	return
+}
+
+// DeleteMeta deletes a single Meta triple struct, identified by Attribute field
+func (usr *User) DeleteMeta(attr string) (*MetaCollection, error) {
+	if mc, err := usr.Meta(); err == nil {
+		return mc, mc.Delete(attr)
+	} else {
+		return nil, err
+	}
+}
+
+// Meta returns collection of Meta AVU triple structs of the user object
+func (usr *User) Meta() (*MetaCollection, error) {
+
+	if usr.metaCol == nil {
+		if mc, err := newMetaCollection(usr); err == nil {
+			usr.metaCol = mc
+		} else {
+			return nil, err
+		}
+	}
+
+	return usr.metaCol, nil
 }
 
 func deleteUser(userName string, zone *Zone, con *Connection) error {

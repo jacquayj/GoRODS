@@ -30,6 +30,8 @@ type Group struct {
 
 	users Users
 	con   *Connection
+
+	metaCol *MetaCollection
 }
 
 // Groups is a slice of *Group structs.
@@ -398,6 +400,42 @@ func (grp *Group) RemoveUser(usr interface{}) error {
 	}
 
 	return newError(Fatal, -1, fmt.Sprintf("iRODS RemoveUser Failed: unknown type passed"))
+}
+
+// AddMeta adds a single Meta triple struct
+func (grp *Group) AddMeta(m Meta) (nm *Meta, err error) {
+	var mc *MetaCollection
+
+	if mc, err = grp.Meta(); err != nil {
+		return
+	}
+
+	nm, err = mc.Add(m)
+
+	return
+}
+
+// DeleteMeta deletes a single Meta triple struct, identified by Attribute field
+func (grp *Group) DeleteMeta(attr string) (*MetaCollection, error) {
+	if mc, err := grp.Meta(); err == nil {
+		return mc, mc.Delete(attr)
+	} else {
+		return nil, err
+	}
+}
+
+// Meta returns collection of Meta AVU triple structs of the user object
+func (grp *Group) Meta() (*MetaCollection, error) {
+
+	if grp.metaCol == nil {
+		if mc, err := newMetaCollection(grp); err == nil {
+			grp.metaCol = mc
+		} else {
+			return nil, err
+		}
+	}
+
+	return grp.metaCol, nil
 }
 
 func addToGroup(userName string, zone *Zone, groupName string, con *Connection) error {

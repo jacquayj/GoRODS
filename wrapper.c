@@ -3319,7 +3319,7 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
 	char v2[BIG_STR];
 	char fullName[MAX_NAME_LEN];
 	int  status;
-    
+
 	char *columnNames[] = {"attribute", "value", "units"};
 	
     memset(result, 0, sizeof(goRodsMetaResult_t));
@@ -3414,6 +3414,119 @@ int gorods_meta_collection(char *name, char *cwd, goRodsMetaResult_t* result, rc
     
 
 	return 0;
+}
+
+int gorods_meta_user(char *name, char *zone, goRodsMetaResult_t* result, rcComm_t* conn, char** err) {
+    char zoneArgument[MAX_NAME_LEN + 2] = "";
+
+    genQueryOut_t *genQueryOut;
+    int i1a[10];
+    int i1b[10];
+    int i2a[10];
+    char *condVal[10];
+    int status;
+    char *columnNames[] = {"attribute", "value", "units"};
+
+    char userName[NAME_LEN];
+    char userZone[NAME_LEN];
+
+    status = parseUserName( name, userName, userZone );
+    if ( status ) {
+        *err = "Invalid username format";
+        return -1;
+    }
+
+    if ( userZone[0] == '\0' ) {
+        snprintf( userZone, sizeof( userZone ), "%s", zone );
+    }
+
+    genQueryInp_t genQueryInp;
+    memset(&genQueryInp, 0, sizeof(genQueryInp));
+    memset(result, 0, sizeof(goRodsMetaResult_t));
+    
+    i1a[0] = COL_META_USER_ATTR_NAME;
+    i1b[0] = 0; /* currently unused */
+    i1a[1] = COL_META_USER_ATTR_VALUE;
+    i1b[1] = 0;
+    i1a[2] = COL_META_USER_ATTR_UNITS;
+    i1b[2] = 0;
+    genQueryInp.selectInp.inx = i1a;
+    genQueryInp.selectInp.value = i1b;
+    genQueryInp.selectInp.len = 3;
+
+    char v1[MAX_NAME_LEN];
+    char v2[MAX_NAME_LEN];
+
+    i2a[0] = COL_USER_NAME;
+
+    strcpy(v1, "='");
+    strcat(v1, userName);
+    strcat(v1, "'");
+
+    i2a[1] = COL_USER_ZONE;
+
+    strcpy(v2, "='");
+    strcat(v2, userZone);
+    strcat(v2, "'");
+
+    genQueryInp.sqlCondInp.inx = i2a;
+    genQueryInp.sqlCondInp.value = condVal;
+    genQueryInp.sqlCondInp.len = 2;
+
+    condVal[0] = v1;
+    condVal[1] = v2;
+
+    genQueryInp.maxRows = 10;
+    genQueryInp.continueInx = 0;
+    genQueryInp.condInput.len = 0;
+
+    if ( zoneArgument[0] != '\0' ) {
+        addKeyVal( &genQueryInp.condInput, ZONE_KW, zoneArgument );
+    }
+
+    int cont;
+
+    status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+    cont = genQueryOut->continueInx;
+
+    if ( status == CAT_NO_ROWS_FOUND ) {
+        freeGenQueryOut(&genQueryOut);
+
+        i1a[0] = COL_R_RESC_INFO;
+        genQueryInp.selectInp.len = 1;
+        genQueryInp.sqlCondInp.len = 1;
+        
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
+        
+        if ( status == 0 ) {
+            *err = "No rows found";
+            freeGenQueryOut(&genQueryOut);
+            return CAT_NO_ROWS_FOUND;
+        }
+
+        if ( status == CAT_NO_ROWS_FOUND ) {
+            *err = "User does not exist.\n";
+            freeGenQueryOut(&genQueryOut);
+            return status;
+        }
+    }
+
+    setGoRodsMeta(genQueryOut, columnNames, result); 
+    freeGenQueryOut(&genQueryOut);
+
+    while ( status == 0 && cont > 0 ) {
+
+        genQueryInp.continueInx = cont;
+        status = rcGenQuery(conn, &genQueryInp, &genQueryOut);
+        cont = genQueryOut->continueInx;
+
+        setGoRodsMeta(genQueryOut, columnNames, result);
+        freeGenQueryOut(&genQueryOut);
+    }
+
+
+    return 0;
 }
 
 int gorods_mod_meta(char* type, char* path, char* oa, char* ov, char* ou, char* na, char* nv, char* nu, rcComm_t* conn, char** err) {
