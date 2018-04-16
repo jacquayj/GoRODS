@@ -96,7 +96,6 @@ func main() {
 package main
 
 import (
-	"fmt"
 	"github.com/jjacquay712/GoRODS"
 	"log"
 	"net/http"
