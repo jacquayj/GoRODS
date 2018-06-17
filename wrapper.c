@@ -1504,6 +1504,8 @@ void gorods_free_map_result(goRodsHashResult_t* result) {
 
 }
 
+
+
 int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err) {
     /*
       NoDistinctFlag is 1 if the user is requesting 'distinct' to be skipped.
@@ -1569,6 +1571,78 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
         }
 
         freeGenQueryOut(&genQueryOut);
+    }
+
+    return 0;
+
+}
+
+int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int argsLen, char* zoneArgument, goRodsHashResult_t* result, char** err) {
+    specificQueryInp_t specificQueryInp;
+    int status, i, argsOffset;
+    genQueryOut_t *genQueryOut = NULL;
+    char *cp;
+    int nQuestionMarks, nArgs;
+    char *format = "";
+    char myFormat[300] = "";
+
+    memset( &specificQueryInp, 0, sizeof( specificQueryInp_t ) );
+    specificQueryInp.maxRows = MAX_SQL_ROWS;
+    specificQueryInp.continueInx = 0;
+    specificQueryInp.sql = sql;
+
+    if ( zoneArgument != 0 && zoneArgument[0] != '\0' ) {
+        addKeyVal( &specificQueryInp.condInput, ZONE_KW, zoneArgument );
+    }
+
+    /* To differentiate format from args, count the ? in the SQL and the
+       arguments */
+    cp = specificQueryInp.sql;
+    nQuestionMarks = 0;
+    while ( *cp != '\0' ) {
+        if ( *cp++ == '?' ) {
+            nQuestionMarks++;
+        }
+    }
+    i = argsOffset;
+    nArgs = 0;
+    while ( args[i] != NULL && strlen( args[i] ) > 0 ) {
+        nArgs++;
+        i++;
+    }
+    /* If the SQL is an alias, counting the ?'s won't be accurate so now
+       the following is only done if nQuestionMarks is > 0.  But this means
+       iquest won't be able to notice a Format statement when using aliases,
+       but will instead assume all are parameters to the SQL. */
+    if ( nQuestionMarks > 0 && nArgs > nQuestionMarks ) {
+        format = args[argsOffset];  /* this must be the format */
+        argsOffset++;
+        strncpy( myFormat, format, 300 - 10 );
+        strcat( myFormat, "\n" ); /* since \n is difficult to pass in
+				on the command line, add one by default */
+    }
+
+    i = 0;
+    while ( args[argsOffset] != NULL && strlen( args[argsOffset] ) > 0 ) {
+        specificQueryInp.args[i++] = args[argsOffset];
+        argsOffset++;
+    }
+    status = rcSpecificQuery( conn, &specificQueryInp, &genQueryOut );
+    if ( status < 0 ) {
+        return status;
+    }
+
+    gorods_build_iquest_result(genQueryOut, result, err);
+
+    while ( status == 0 && genQueryOut->continueInx > 0 ) {
+
+        specificQueryInp.continueInx = genQueryOut->continueInx;
+        status = rcSpecificQuery( conn, &specificQueryInp, &genQueryOut );
+        if ( status < 0 ) {
+            return status;
+        }
+
+        gorods_build_iquest_result(genQueryOut, result, err);
     }
 
     return 0;

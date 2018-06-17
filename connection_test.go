@@ -44,3 +44,19 @@ func TestUserDefinedConnection(t *testing.T) {
 	}
 
 }
+
+func TestIQuestSQL(t *testing.T) {
+	irods, conErr := NewConnection(&testCreds)
+	if conErr != nil {
+		t.Fatal(conErr)
+	}
+
+	results, _ := irods.IQuestSQL("ls")
+
+	if er := irods.Disconnect(); er != nil {
+		t.Fatal(er)
+	}
+
+	t.Log(results)
+
+}
