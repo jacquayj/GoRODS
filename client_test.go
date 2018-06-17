@@ -3,19 +3,13 @@
 
 package gorods
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestClientConnection(t *testing.T) {
-	cli, conErr := New(ConnectionOptions{
-		Type: UserDefined,
 
-		Host: "localhost",
-		Port: 1247,
-		Zone: "tempZone",
-
-		Username: "rods",
-		Password: "password",
-	})
+	cli, conErr := New(testCreds)
 
 	// Ensure the client initialized successfully and connected to the iCAT server
 	if conErr != nil {
@@ -25,6 +19,7 @@ func TestClientConnection(t *testing.T) {
 	oconErr := cli.OpenConnection(func(con *Connection) {
 
 	})
+
 	if oconErr != nil {
 		t.Fatal(oconErr)
 	}

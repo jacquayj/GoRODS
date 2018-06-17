@@ -3,23 +3,17 @@
 
 package gorods
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 //import "strings"
 
 //import "fmt"
 
 func TestMetaRead(t *testing.T) {
-	client, conErr := New(ConnectionOptions{
-		Type: UserDefined,
-
-		Host: "localhost",
-		Port: 1247,
-		Zone: "tempZone",
-
-		Username: "rods",
-		Password: "password",
-	})
+	client, conErr := New(testCreds)
 
 	// Ensure the client initialized successfully and connected to the iCAT server
 	if conErr != nil {
@@ -27,7 +21,7 @@ func TestMetaRead(t *testing.T) {
 	}
 
 	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *DataObj, con *Connection) {
+	if openErr := client.OpenDataObject(fmt.Sprintf("/%v/home/%v/hello.txt", testCreds.Zone, testCreds.Username), func(myFile *DataObj, con *Connection) {
 
 		// read the contents
 		if m, metaErr := myFile.Meta(); metaErr == nil {
@@ -51,16 +45,7 @@ func TestMetaRead(t *testing.T) {
 }
 
 func TestMetaWrite(t *testing.T) {
-	client, conErr := New(ConnectionOptions{
-		Type: UserDefined,
-
-		Host: "localhost",
-		Port: 1247,
-		Zone: "tempZone",
-
-		Username: "rods",
-		Password: "password",
-	})
+	client, conErr := New(testCreds)
 
 	// Ensure the client initialized successfully and connected to the iCAT server
 	if conErr != nil {
@@ -68,7 +53,7 @@ func TestMetaWrite(t *testing.T) {
 	}
 
 	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *DataObj, con *Connection) {
+	if openErr := client.OpenDataObject(fmt.Sprintf("/%v/home/%v/hello.txt", testCreds.Zone, testCreds.Username), func(myFile *DataObj, con *Connection) {
 
 		// read the contents
 		if m, metaErr := myFile.Meta(); metaErr == nil {

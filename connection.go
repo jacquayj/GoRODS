@@ -290,6 +290,10 @@ type ConnectionOptions struct {
 	Threads       int
 }
 
+func (conOpts *ConnectionOptions) String() string {
+	return fmt.Sprintf("%#v", conOpts)
+}
+
 // Connection structs hold information about the iRODS iCAT server, and the user who's connecting. It also contains a cache of opened Collections and DataObjs
 type Connection struct {
 	ccon       *C.rcComm_t
