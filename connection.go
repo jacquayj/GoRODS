@@ -890,11 +890,11 @@ func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][
 	defer C.free(unsafe.Pointer(cQueryString))
 
 	cQueryArgs := []*C.char{
-		// C.CString("iquest"),
-		// C.CString("--sql"),
+		C.CString("iquest"),
+		C.CString("--sql"),
 	}
-	// defer C.free(unsafe.Pointer(cQueryArgs[0]))
-	// defer C.free(unsafe.Pointer(cQueryArgs[1]))
+	defer C.free(unsafe.Pointer(cQueryArgs[0]))
+	defer C.free(unsafe.Pointer(cQueryArgs[1]))
 
 	for i := range queryArgs {
 		qa := C.CString(queryArgs[i])
@@ -902,11 +902,9 @@ func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][
 		defer C.free(unsafe.Pointer(qa))
 	}
 
-	//qArgsLen := len(queryArgs)
-
 	ccon := con.GetCcon()
 
-	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(0), cZoneName, &result, &err); status != 0 {
+	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(2), cZoneName, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
 		if status == C.CAT_NO_ROWS_FOUND {
 			return make([][]string, 0), nil
@@ -916,39 +914,28 @@ func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][
 	}
 
 	con.ReturnCcon(ccon)
-	//defer C.gorods_free_map_result(&result)
+	defer C.gorods_free_gen_query_result(&result)
 
-	// unsafeKeyArr := unsafe.Pointer(result.hashKeys)
-	// keyArrLen := int(result.keySize)
-
-	// unsafeValArr := unsafe.Pointer(result.hashValues)
-	// valArrLen := int(result.size) * keyArrLen
+	unsafeRows := unsafe.Pointer(result.result)
+	rowsLen := int(result.rowSize)
+	attrLen := int(result.attrSize)
 
 	response := make([][]string, 0)
 
-	// fmt.Printf("keyArrLen;valArrLen %v %v", keyArrLen, valArrLen)
+	// Convert C array to slice
+	rowSlice := (*[1 << 30]**C.char)(unsafeRows)[:rowsLen:rowsLen]
 
-	// // Convert C array to slice
-	// keySlice := (*[1 << 30]*C.char)(unsafeKeyArr)[:keyArrLen:keyArrLen]
-	// valSlice := (*[1 << 30]*C.char)(unsafeValArr)[:valArrLen:valArrLen]
+	for _, val := range rowSlice {
 
-	// for n, val := range valSlice {
-	// 	mapInx := n / keyArrLen
+		row := make([]string, attrLen)
+		attrSlice := (*[1 << 30]*C.char)(unsafe.Pointer(val))[:attrLen:attrLen]
 
-	// 	var key string
+		for i, attr := range attrSlice {
+			row[i] = C.GoString(attr)
+		}
 
-	// 	if n == 0 {
-	// 		key = C.GoString(keySlice[0])
-	// 	} else {
-	// 		key = C.GoString(keySlice[int(math.Mod(float64(n), float64(keyArrLen)))])
-	// 	}
-
-	// 	if response[mapInx] == nil {
-	// 		response[mapInx] = make(map[string]string)
-	// 	}
-
-	// 	response[mapInx][key] = C.GoString(val)
-	// }
+		response = append(response, row)
+	}
 
 	return response, nil
 }

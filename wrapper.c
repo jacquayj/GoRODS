@@ -1577,33 +1577,48 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
 
 }
 
+// typedef struct {
+// 	int rowSize;
+// 	int attrSize;
+// 	char*** result;
+// } goRodsGenQueryResult_t;
+
+void gorods_free_gen_query_result(goRodsGenQueryResult_t* result) {
+    int i, j;
+    for ( i = 0; i < result->rowSize; i++ ) {
+        for ( j = 0; j < result->attrSize; j++ ) {
+            free(result->result[i][j]);
+        }
+        free(result->result[i]);
+    }
+    free(result->result);
+}
 
 
-void printBasicGenQueryOut( genQueryOut_t *genQueryOut, goRodsGenQueryResult_t* result ) {
+void gorods_build_iquest_spec_result(genQueryOut_t *genQueryOut, goRodsGenQueryResult_t* result) {
     int i, j;
 
-    result->result = (char***)gorods_malloc(genQueryOut->rowCnt * sizeof(char**));
-    result->rowSize = genQueryOut->rowCnt;
+    if ( result->rowSize == 0 ) {
+        result->result = (char***)gorods_malloc(genQueryOut->rowCnt * sizeof(char**));
+        result->rowSize = genQueryOut->rowCnt;
+        result->attrSize = genQueryOut->attriCnt;
+    } else {
+        result->rowSize += genQueryOut->rowCnt;
+        result->result = (char***)realloc(result->result, result->rowSize * sizeof(char**));
+    }
 
     for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
-        if ( i > 0 ) {
-            printf( "----\n" );
-        }
 
         result->result[i] = (char**)gorods_malloc(genQueryOut->attriCnt * sizeof(char*));
-        result->rowSize = genQueryOut->attriCnt;
-
+        
         for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
             char *tResult;
             tResult = genQueryOut->sqlResult[j].value;
             tResult += i * genQueryOut->sqlResult[j].len;
 
             result->result[i][j] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
-
-            printf( "%s\n", tResult );
         }
     }
-    
 
 }
 
@@ -1663,7 +1678,7 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
         return status;
     }
 
-   printBasicGenQueryOut( genQueryOut, result );
+   gorods_build_iquest_spec_result( genQueryOut, result );
 
     while ( status == 0 && genQueryOut->continueInx > 0 ) {
 
@@ -1673,7 +1688,7 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
             return status;
         }
 
-        printBasicGenQueryOut( genQueryOut, result );
+        gorods_build_iquest_spec_result( genQueryOut, result );
     }
 
     return 0;

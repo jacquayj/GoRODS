@@ -103,6 +103,7 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
 int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDistinctFlag, int upperCaseFlag, char *zoneName, goRodsHashResult_t* result, char** err);
 void gorods_free_map_result(goRodsHashResult_t* result);
 int gorods_exec_specific_query(rcComm_t*, char*, char *args[], int, char*, goRodsGenQueryResult_t*, char**);
+void gorods_free_gen_query_result(goRodsGenQueryResult_t* result);
 
 int gorods_get_users(rcComm_t* conn, goRodsStringResult_t* result, char** err);
 int gorods_get_user(char *user, rcComm_t* conn, goRodsStringResult_t* result, char** err);
