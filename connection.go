@@ -870,13 +870,14 @@ func (con *Connection) Threads() int {
 }
 
 // IQuestSQL
-func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([]map[string]string, error) {
+func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][]string, error) {
 	var (
-		result C.goRodsHashResult_t
+		result C.goRodsGenQueryResult_t
 		err    *C.char
 	)
 
-	result.size = C.int(0)
+	result.rowSize = C.int(0)
+	result.attrSize = C.int(0)
 
 	z, zErr := con.LocalZone()
 	if zErr != nil {
@@ -888,65 +889,66 @@ func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([]m
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cQueryString))
 
-	qArgsLen := len(queryArgs)
-	if qArgsLen == 0 {
-		qArgsLen = 1
+	cQueryArgs := []*C.char{
+		// C.CString("iquest"),
+		// C.CString("--sql"),
+	}
+	// defer C.free(unsafe.Pointer(cQueryArgs[0]))
+	// defer C.free(unsafe.Pointer(cQueryArgs[1]))
+
+	for i := range queryArgs {
+		qa := C.CString(queryArgs[i])
+		cQueryArgs = append(cQueryArgs, qa)
+		defer C.free(unsafe.Pointer(qa))
 	}
 
-	cQueryArgs := make([]*C.char, qArgsLen)
-
-	if len(queryArgs) > 0 {
-		i := 0
-		for i < qArgsLen {
-			qa := C.CString(queryArgs[i])
-			cQueryArgs[i] = qa
-			defer C.free(unsafe.Pointer(qa))
-		}
-	}
+	//qArgsLen := len(queryArgs)
 
 	ccon := con.GetCcon()
 
-	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(len(queryArgs)), cZoneName, &result, &err); status != 0 {
+	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(0), cZoneName, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
 		if status == C.CAT_NO_ROWS_FOUND {
-			return make([]map[string]string, 0), nil
+			return make([][]string, 0), nil
 		} else {
 			return nil, newError(Fatal, status, fmt.Sprintf("iRODS iquest Failed: %v", C.GoString(err)))
 		}
 	}
 
 	con.ReturnCcon(ccon)
-	defer C.gorods_free_map_result(&result)
+	//defer C.gorods_free_map_result(&result)
 
-	unsafeKeyArr := unsafe.Pointer(result.hashKeys)
-	keyArrLen := int(result.keySize)
+	// unsafeKeyArr := unsafe.Pointer(result.hashKeys)
+	// keyArrLen := int(result.keySize)
 
-	unsafeValArr := unsafe.Pointer(result.hashValues)
-	valArrLen := int(result.size) * keyArrLen
+	// unsafeValArr := unsafe.Pointer(result.hashValues)
+	// valArrLen := int(result.size) * keyArrLen
 
-	response := make([]map[string]string, int(result.size))
+	response := make([][]string, 0)
 
-	// Convert C array to slice
-	keySlice := (*[1 << 30]*C.char)(unsafeKeyArr)[:keyArrLen:keyArrLen]
-	valSlice := (*[1 << 30]*C.char)(unsafeValArr)[:valArrLen:valArrLen]
+	// fmt.Printf("keyArrLen;valArrLen %v %v", keyArrLen, valArrLen)
 
-	for n, val := range valSlice {
-		mapInx := n / keyArrLen
+	// // Convert C array to slice
+	// keySlice := (*[1 << 30]*C.char)(unsafeKeyArr)[:keyArrLen:keyArrLen]
+	// valSlice := (*[1 << 30]*C.char)(unsafeValArr)[:valArrLen:valArrLen]
 
-		var key string
+	// for n, val := range valSlice {
+	// 	mapInx := n / keyArrLen
 
-		if n == 0 {
-			key = C.GoString(keySlice[0])
-		} else {
-			key = C.GoString(keySlice[int(math.Mod(float64(n), float64(keyArrLen)))])
-		}
+	// 	var key string
 
-		if response[mapInx] == nil {
-			response[mapInx] = make(map[string]string)
-		}
+	// 	if n == 0 {
+	// 		key = C.GoString(keySlice[0])
+	// 	} else {
+	// 		key = C.GoString(keySlice[int(math.Mod(float64(n), float64(keyArrLen)))])
+	// 	}
 
-		response[mapInx][key] = C.GoString(val)
-	}
+	// 	if response[mapInx] == nil {
+	// 		response[mapInx] = make(map[string]string)
+	// 	}
+
+	// 	response[mapInx][key] = C.GoString(val)
+	// }
 
 	return response, nil
 }

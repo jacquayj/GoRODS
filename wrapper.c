@@ -1577,7 +1577,38 @@ int gorods_iquest_general(rcComm_t *conn, char *selectConditionString, int noDis
 
 }
 
-int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int argsLen, char* zoneArgument, goRodsHashResult_t* result, char** err) {
+
+
+void printBasicGenQueryOut( genQueryOut_t *genQueryOut, goRodsGenQueryResult_t* result ) {
+    int i, j;
+
+    result->result = (char***)gorods_malloc(genQueryOut->rowCnt * sizeof(char**));
+    result->rowSize = genQueryOut->rowCnt;
+
+    for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
+        if ( i > 0 ) {
+            printf( "----\n" );
+        }
+
+        result->result[i] = (char**)gorods_malloc(genQueryOut->attriCnt * sizeof(char*));
+        result->rowSize = genQueryOut->attriCnt;
+
+        for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
+            char *tResult;
+            tResult = genQueryOut->sqlResult[j].value;
+            tResult += i * genQueryOut->sqlResult[j].len;
+
+            result->result[i][j] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+
+            printf( "%s\n", tResult );
+        }
+    }
+    
+
+}
+
+int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int argsLen, char* zoneArgument, goRodsGenQueryResult_t* result, char** err) {
+    
     specificQueryInp_t specificQueryInp;
     int status, i, argsOffset;
     genQueryOut_t *genQueryOut = NULL;
@@ -1604,7 +1635,7 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
             nQuestionMarks++;
         }
     }
-    i = argsOffset;
+    i = argsLen;
     nArgs = 0;
     while ( args[i] != NULL && strlen( args[i] ) > 0 ) {
         nArgs++;
@@ -1632,7 +1663,7 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
         return status;
     }
 
-    gorods_build_iquest_result(genQueryOut, result, err);
+   printBasicGenQueryOut( genQueryOut, result );
 
     while ( status == 0 && genQueryOut->continueInx > 0 ) {
 
@@ -1642,7 +1673,7 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
             return status;
         }
 
-        gorods_build_iquest_result(genQueryOut, result, err);
+        printBasicGenQueryOut( genQueryOut, result );
     }
 
     return 0;
@@ -1654,6 +1685,9 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
     sqlResult_t *v[MAX_SQL_ATTR];
     char * cname[MAX_SQL_ATTR];
 
+
+    printf("Build iquest request\n");
+
     n = genQueryOut->attriCnt;
  
     for ( i = 0; i < n; i++ ) {
@@ -1661,11 +1695,13 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
         cname[i] = getAttrNameFromAttrId(v[i]->attriInx);
         if ( cname[i] == NULL ) {
             *err = "Error in gorods_build_iquest_result, column not found";
+            printf("CRAPPP\n");
             return NO_COLUMN_NAME_FOUND;
         }
     }
 
     if ( result->size == 0 ) {
+         printf("Build iquest request size: 0\n");
         result->size = genQueryOut->rowCnt;
         result->keySize = genQueryOut->attriCnt;
         
@@ -1687,6 +1723,8 @@ int gorods_build_iquest_result(genQueryOut_t * genQueryOut, goRodsHashResult_t* 
     }
 
  
+     printf("Build iquest request row count %i\n", genQueryOut->rowCnt);
+
     for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
      
         for ( j = 0; j < n; j++ ) {
