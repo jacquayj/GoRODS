@@ -889,22 +889,26 @@ func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][
 	defer C.free(unsafe.Pointer(cZoneName))
 	defer C.free(unsafe.Pointer(cQueryString))
 
-	cQueryArgs := []*C.char{
-		C.CString("iquest"),
-		C.CString("--sql"),
-	}
-	defer C.free(unsafe.Pointer(cQueryArgs[0]))
-	defer C.free(unsafe.Pointer(cQueryArgs[1]))
+	queryArgsLen := len(queryArgs)
+	cQueryArgs := make([]*C.char, queryArgsLen)
 
 	for i := range queryArgs {
 		qa := C.CString(queryArgs[i])
-		cQueryArgs = append(cQueryArgs, qa)
+		cQueryArgs[i] = qa
 		defer C.free(unsafe.Pointer(qa))
+	}
+
+	// Solve index out of range issue for 0 args
+	if queryArgsLen == 0 {
+		blankStr := C.CString("")
+		defer C.free(unsafe.Pointer(blankStr))
+
+		cQueryArgs = append(cQueryArgs, blankStr)
 	}
 
 	ccon := con.GetCcon()
 
-	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(2), cZoneName, &result, &err); status != 0 {
+	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(queryArgsLen), cZoneName, &result, &err); status != 0 {
 		con.ReturnCcon(ccon)
 		if status == C.CAT_NO_ROWS_FOUND {
 			return make([][]string, 0), nil

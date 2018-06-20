@@ -1630,7 +1630,6 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
     char *cp;
     int nQuestionMarks, nArgs;
     char *format = "";
-    char myFormat[300] = "";
 
     memset( &specificQueryInp, 0, sizeof( specificQueryInp_t ) );
     specificQueryInp.maxRows = MAX_SQL_ROWS;
@@ -1641,38 +1640,10 @@ int gorods_exec_specific_query(rcComm_t *conn, char *sql, char *args[], int args
         addKeyVal( &specificQueryInp.condInput, ZONE_KW, zoneArgument );
     }
 
-    /* To differentiate format from args, count the ? in the SQL and the
-       arguments */
-    cp = specificQueryInp.sql;
-    nQuestionMarks = 0;
-    while ( *cp != '\0' ) {
-        if ( *cp++ == '?' ) {
-            nQuestionMarks++;
-        }
-    }
-    i = argsLen;
-    nArgs = 0;
-    while ( args[i] != NULL && strlen( args[i] ) > 0 ) {
-        nArgs++;
-        i++;
-    }
-    /* If the SQL is an alias, counting the ?'s won't be accurate so now
-       the following is only done if nQuestionMarks is > 0.  But this means
-       iquest won't be able to notice a Format statement when using aliases,
-       but will instead assume all are parameters to the SQL. */
-    if ( nQuestionMarks > 0 && nArgs > nQuestionMarks ) {
-        format = args[argsOffset];  /* this must be the format */
-        argsOffset++;
-        strncpy( myFormat, format, 300 - 10 );
-        strcat( myFormat, "\n" ); /* since \n is difficult to pass in
-				on the command line, add one by default */
+    for ( i = 0; i < argsLen; i++ ) {
+        specificQueryInp.args[i] = args[i];
     }
 
-    i = 0;
-    while ( args[argsOffset] != NULL && strlen( args[argsOffset] ) > 0 ) {
-        specificQueryInp.args[i++] = args[argsOffset];
-        argsOffset++;
-    }
     status = rcSpecificQuery( conn, &specificQueryInp, &genQueryOut );
     if ( status < 0 ) {
         return status;
