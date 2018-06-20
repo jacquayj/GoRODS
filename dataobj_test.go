@@ -3,162 +3,133 @@
 
 package gorods
 
-import "testing"
-import "strings"
-
 //import "fmt"
 
-func TestDataObjCreateDeleteWrite(t *testing.T) {
-	client, conErr := New(ConnectionOptions{
-		Type: UserDefined,
+// func TestDataObjCreateDeleteWrite(t *testing.T) {
 
-		Host: "localhost",
-		Port: 1247,
-		Zone: "tempZone",
+// 	client, conErr := New(testCreds)
 
-		Username: "rods",
-		Password: "password",
-	})
+// 	// Ensure the client initialized successfully and connected to the iCAT server
+// 	if conErr != nil {
+// 		t.Fatal(conErr)
+// 	}
 
-	// Ensure the client initialized successfully and connected to the iCAT server
-	if conErr != nil {
-		t.Fatal(conErr)
-	}
+// 	// Open a data object reference for /tempZone/home/rods/hello.txt
+// 	if openErr := client.OpenCollection(CollectionOptions{
+// 		Path: fmt.Sprintf("/%v/home/%v", testCreds.Zone, testCreds.Username),
+// 	}, func(col *Collection, con *Connection) {
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenCollection(CollectionOptions{
-		Path: "/tempZone/home/rods",
-	}, func(col *Collection, con *Connection) {
+// 		do, createErr := col.CreateDataObj(DataObjOptions{
+// 			Name: "test123.txt",
+// 		})
 
-		do, createErr := col.CreateDataObj(DataObjOptions{
-			Name: "test123.txt",
-		})
+// 		if createErr != nil {
+// 			t.Fatal(createErr)
+// 		}
 
-		if createErr != nil {
-			t.Fatal(createErr)
-		}
+// 		wrErr := do.Write([]byte("test123content"))
+// 		if wrErr != nil {
+// 			t.Fatal(wrErr)
+// 		}
 
-		wrErr := do.Write([]byte("test123content"))
-		if wrErr != nil {
-			t.Fatal(wrErr)
-		}
+// 		_, statErr := do.Stat()
+// 		if statErr != nil {
+// 			t.Fatal(statErr)
+// 		}
 
-		_, statErr := do.Stat()
-		if statErr != nil {
-			t.Fatal(statErr)
-		}
+// 		// if chErr := do.Chmod("developers", Write, false); chErr != nil {
+// 		// 	t.Fatal(chErr)
+// 		// }
 
-		if chErr := do.Chmod("developers", Write, false); chErr != nil {
-			t.Fatal(chErr)
-		}
+// 		// acl, aclErr := do.ACL()
+// 		// if aclErr != nil {
+// 		// 	t.Fatal(aclErr)
+// 		// }
 
-		acl, aclErr := do.ACL()
-		if aclErr != nil {
-			t.Fatal(aclErr)
-		}
+// 		// acl[0].String()
 
-		acl[0].String()
+// 		// if acl[1].User().Name() != "rods" {
+// 		// 	t.Errorf("Expected string 'rods', got '%s'", acl[1].User().Name())
+// 		// }
 
-		if acl[1].User().Name() != "rods" {
-			t.Errorf("Expected string 'rods', got '%s'", acl[1].User().Name())
-		}
+// 		// if acl[0].Group().Name() != "developers" {
+// 		// 	t.Errorf("Expected string 'developers', got '%s'", acl[0].Group().Name())
+// 		// }
 
-		if acl[0].Group().Name() != "developers" {
-			t.Errorf("Expected string 'developers', got '%s'", acl[0].Group().Name())
-		}
+// 		cont, readErr := do.Read()
+// 		if readErr != nil {
+// 			t.Fatal(readErr)
+// 		}
 
-		cont, readErr := do.Read()
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
+// 		if string(cont) != "test123content" {
+// 			t.Errorf("Expected string 'test123content', got '%s'", string(cont))
+// 		}
 
-		if string(cont) != "test123content" {
-			t.Errorf("Expected string 'test123content', got '%s'", string(cont))
-		}
+// 		delErr := do.Delete(false)
+// 		if delErr != nil {
+// 			t.Fatal(delErr)
+// 		}
 
-		delErr := do.Delete(false)
-		if delErr != nil {
-			t.Fatal(delErr)
-		}
+// 	}); openErr != nil {
+// 		t.Fatal(openErr)
+// 	}
 
-	}); openErr != nil {
-		t.Fatal(openErr)
-	}
+// }
 
-}
+// func TestDataObjRead(t *testing.T) {
+// 	client, conErr := New(testCreds)
 
-func TestDataObjRead(t *testing.T) {
-	client, conErr := New(ConnectionOptions{
-		Type: UserDefined,
+// 	// Ensure the client initialized successfully and connected to the iCAT server
+// 	if conErr != nil {
+// 		t.Fatal(conErr)
+// 	}
 
-		Host: "localhost",
-		Port: 1247,
-		Zone: "tempZone",
+// 	// Open a data object reference for /tempZone/home/rods/hello.txt
+// 	if openErr := client.OpenDataObject(fmt.Sprintf("/%v/home/%v/hello.txt", testCreds.Zone, testCreds.Username), func(myFile *DataObj, con *Connection) {
 
-		Username: "rods",
-		Password: "password",
-	})
+// 		// read the contents
+// 		if contents, readErr := myFile.Read(); readErr == nil {
 
-	// Ensure the client initialized successfully and connected to the iCAT server
-	if conErr != nil {
-		t.Fatal(conErr)
-	}
+// 			c := string(contents)
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *DataObj, con *Connection) {
+// 			if strings.Trim(c, "\n") != "Hello, World!" {
+// 				t.Errorf("Expected string 'Hello, World!', got '%s'", c)
+// 			}
+// 		} else {
+// 			t.Fatal(readErr)
+// 		}
 
-		// read the contents
-		if contents, readErr := myFile.Read(); readErr == nil {
+// 	}); openErr != nil {
+// 		t.Fatal(openErr)
+// 	}
 
-			c := string(contents)
+// }
 
-			if strings.Trim(c, "\n") != "Hello, World!" {
-				t.Errorf("Expected string 'Hello, World!', got '%s'", c)
-			}
-		} else {
-			t.Fatal(readErr)
-		}
+// func TestDataObjReadBytes(t *testing.T) {
+// 	client, conErr := New(testCreds)
 
-	}); openErr != nil {
-		t.Fatal(openErr)
-	}
+// 	// Ensure the client initialized successfully and connected to the iCAT server
+// 	if conErr != nil {
+// 		t.Fatal(conErr)
+// 	}
 
-}
+// 	// Open a data object reference for /tempZone/home/rods/hello.txt
+// 	if openErr := client.OpenDataObject(fmt.Sprintf("/%v/home/%v/hello.txt", testCreds.Zone, testCreds.Username), func(myFile *DataObj, con *Connection) {
 
-func TestDataObjReadBytes(t *testing.T) {
-	client, conErr := New(ConnectionOptions{
-		Type: UserDefined,
+// 		// read the contents
+// 		if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
 
-		Host: "localhost",
-		Port: 1247,
-		Zone: "tempZone",
+// 			c := string(contents)
 
-		Username: "rods",
-		Password: "password",
-	})
+// 			if c != "World!" {
+// 				t.Errorf("Expected string 'World!', got '%s'", c)
+// 			}
+// 		} else {
+// 			t.Fatal(readErr)
+// 		}
 
-	// Ensure the client initialized successfully and connected to the iCAT server
-	if conErr != nil {
-		t.Fatal(conErr)
-	}
+// 	}); openErr != nil {
+// 		t.Fatal(openErr)
+// 	}
 
-	// Open a data object reference for /tempZone/home/rods/hello.txt
-	if openErr := client.OpenDataObject("/tempZone/home/rods/hello.txt", func(myFile *DataObj, con *Connection) {
-
-		// read the contents
-		if contents, readErr := myFile.ReadBytes(7, 6); readErr == nil {
-
-			c := string(contents)
-
-			if c != "World!" {
-				t.Errorf("Expected string 'World!', got '%s'", c)
-			}
-		} else {
-			t.Fatal(readErr)
-		}
-
-	}); openErr != nil {
-		t.Fatal(openErr)
-	}
-
-}
+// }

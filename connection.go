@@ -290,6 +290,10 @@ type ConnectionOptions struct {
 	Threads       int
 }
 
+func (conOpts *ConnectionOptions) String() string {
+	return fmt.Sprintf("%#v", conOpts)
+}
+
 // Connection structs hold information about the iRODS iCAT server, and the user who's connecting. It also contains a cache of opened Collections and DataObjs
 type Connection struct {
 	ccon       *C.rcComm_t
@@ -855,12 +859,89 @@ func (con *Connection) PathType(p string) (int, error) {
 
 }
 
+// SetThreads changes the ccon.transStat.numThreads value. Not sure if it does anything.
 func (con *Connection) SetThreads(num int) {
 	con.ccon.transStat.numThreads = C.int(num)
 }
 
+// Threads returns ccon.transStat.numThreads
 func (con *Connection) Threads() int {
 	return int(con.ccon.transStat.numThreads)
+}
+
+// IQuestSQL
+func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][]string, error) {
+	var (
+		result C.goRodsGenQueryResult_t
+		err    *C.char
+	)
+
+	result.rowSize = C.int(0)
+	result.attrSize = C.int(0)
+
+	z, zErr := con.LocalZone()
+	if zErr != nil {
+		return nil, zErr
+	}
+
+	cQueryString := C.CString(specificQuery)
+	cZoneName := C.CString(z.Name())
+	defer C.free(unsafe.Pointer(cZoneName))
+	defer C.free(unsafe.Pointer(cQueryString))
+
+	queryArgsLen := len(queryArgs)
+	cQueryArgs := make([]*C.char, queryArgsLen)
+
+	for i := range queryArgs {
+		qa := C.CString(queryArgs[i])
+		cQueryArgs[i] = qa
+		defer C.free(unsafe.Pointer(qa))
+	}
+
+	// Solve index out of range issue for 0 args
+	if queryArgsLen == 0 {
+		blankStr := C.CString("")
+		defer C.free(unsafe.Pointer(blankStr))
+
+		cQueryArgs = append(cQueryArgs, blankStr)
+	}
+
+	ccon := con.GetCcon()
+
+	if status := C.gorods_exec_specific_query(ccon, cQueryString, (**C.char)(unsafe.Pointer(&cQueryArgs[0])), C.int(queryArgsLen), cZoneName, &result, &err); status != 0 {
+		con.ReturnCcon(ccon)
+		if status == C.CAT_NO_ROWS_FOUND {
+			return make([][]string, 0), nil
+		} else {
+			return nil, newError(Fatal, status, fmt.Sprintf("iRODS iquest Failed: %v", C.GoString(err)))
+		}
+	}
+
+	con.ReturnCcon(ccon)
+	defer C.gorods_free_gen_query_result(&result)
+
+	unsafeRows := unsafe.Pointer(result.result)
+	rowsLen := int(result.rowSize)
+	attrLen := int(result.attrSize)
+
+	response := make([][]string, 0)
+
+	// Convert C array to slice
+	rowSlice := (*[1 << 30]**C.char)(unsafeRows)[:rowsLen:rowsLen]
+
+	for _, val := range rowSlice {
+
+		row := make([]string, attrLen)
+		attrSlice := (*[1 << 30]*C.char)(unsafe.Pointer(val))[:attrLen:attrLen]
+
+		for i, attr := range attrSlice {
+			row[i] = C.GoString(attr)
+		}
+
+		response = append(response, row)
+	}
+
+	return response, nil
 }
 
 // IQuest accepts a SQL query fragment, returns results in slice of maps

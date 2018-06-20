@@ -12,9 +12,18 @@ Install GoRODS (assuming GOPATH is setup)
 * [iRODS 4.2.0 Instructions](https://github.com/jjacquay712/GoRODS/blob/master/4-2-0_BUILD_README.md) (now master branch default)
 
 ```
+$ export CGO_LDFLAGS_ALLOW=.*
 $ go get github.com/jjacquay712/GoRODS 
 ```
 
+### Run Tests In Docker Container
+
+Clone repository and run:
+
+```
+$ docker build -t gorods .
+$ docker run -it gorods -irods.host=192.168.1.147 -irods.username=rods -irods.password=mypassword
+```
 
 ### Docs
 
