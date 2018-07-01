@@ -71,7 +71,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 	if err == nil {
 		copy(p, rsp)
-		r.pos += n
+		r.pos += int64(n)
 
 		if n == 0 {
 			err = io.EOF
