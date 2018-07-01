@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -71,6 +72,10 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	if err == nil {
 		copy(p, rsp)
 		r.pos += n
+
+		if n == 0 {
+			err = io.EOF
+		}
 	}
 
 	return
