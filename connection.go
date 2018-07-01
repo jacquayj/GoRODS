@@ -869,7 +869,8 @@ func (con *Connection) Threads() int {
 	return int(con.ccon.transStat.numThreads)
 }
 
-// IQuestSQL
+// IQuestSQL executes a specific query on the iCAT server and returns a multi-dimensional string slice of results.
+// Equivalent to: "iquest --sql {specificQuery} {queryArgs}..."
 func (con *Connection) IQuestSQL(specificQuery string, queryArgs ...string) ([][]string, error) {
 	var (
 		result C.goRodsGenQueryResult_t

@@ -53,6 +53,43 @@ type DataObj struct {
 	chandle C.int
 }
 
+// Reader provides an io.Reader interface for *gorods.DataObj
+type Reader struct {
+	d   *DataObj
+	pos int64
+}
+
+// Read implements io.Reader interface
+func (r *Reader) Read(p []byte) (n int, err error) {
+	var rsp []byte
+
+	readUpTo := len(p)
+
+	rsp, err = r.d.ReadBytes(r.pos, readUpTo)
+	n = len(rsp)
+
+	if err == nil {
+		copy(p, rsp)
+		r.pos += n
+	}
+
+	return
+}
+
+// Writer provides an io.Writer interface for *gorods.DataObj
+type Writer struct {
+	d *DataObj
+}
+
+// Write implements io.Writer interface
+func (w *Writer) Write(p []byte) (n int, err error) {
+	err = w.d.WriteBytes(p)
+	if err == nil {
+		n = len(p)
+	}
+	return
+}
+
 // DataObjOptions is used for passing options to the CreateDataObj and DataObj.Copy function
 type DataObjOptions struct {
 	Name     string
@@ -246,7 +283,17 @@ func (obj *DataObj) initRW() error {
 	return nil
 }
 
-// GetACL retuns a slice of ACL structs. Example of slice in string format:
+// Reader returns *gorods.Reader whuch implements io.Reader interface
+func (obj *DataObj) Reader() *Reader {
+	return &Reader{obj, int64(0)}
+}
+
+// Writer returns *gorods.Writer whuch implements io.Writer interface
+func (obj *DataObj) Writer() *Writer {
+	return &Writer{obj}
+}
+
+// ACL retuns a slice of ACL structs. Example of slice in string format:
 // [rods#tempZone:own
 // developers#tempZone:modify object
 // designers#tempZone:read object]
