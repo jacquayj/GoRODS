@@ -267,11 +267,12 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 
 	coll.con.ReturnCcon(ccon)
 
-	coll.Refresh()
+	//coll.Refresh()
+	//newCol := coll.Cd(name)
 
-	newCol := coll.Cd(name)
-
-	return newCol, nil
+	return coll.Con().Collection(CollectionOptions{
+		Path: path,
+	})
 
 }
 
