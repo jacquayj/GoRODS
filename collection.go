@@ -254,7 +254,8 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 		errMsg *C.char
 	)
 
-	path := C.CString(coll.path + "/" + name)
+	newColPath := coll.path + "/" + name
+	path := C.CString(newColPath)
 
 	defer C.free(unsafe.Pointer(path))
 
@@ -271,7 +272,7 @@ func CreateCollection(name string, coll *Collection) (*Collection, error) {
 	//newCol := coll.Cd(name)
 
 	return coll.Con().Collection(CollectionOptions{
-		Path: path,
+		Path: newColPath,
 	})
 
 }
