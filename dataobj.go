@@ -260,9 +260,9 @@ func CreateDataObj(opts DataObjOptions, coll *Collection) (*DataObj, error) {
 	}
 	coll.con.ReturnCcon(ccon)
 
-	if err := coll.Refresh(); err != nil {
-		return nil, err
-	}
+	// if err := coll.Refresh(); err != nil {
+	// 	return nil, err
+	// }
 
 	if do, err := getDataObj(C.GoString(path), coll.con); err != nil {
 		return nil, err
