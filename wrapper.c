@@ -1596,27 +1596,29 @@ void gorods_free_gen_query_result(goRodsGenQueryResult_t* result) {
 
 
 void gorods_build_iquest_spec_result(genQueryOut_t *genQueryOut, goRodsGenQueryResult_t* result) {
-    int i, j;
+    int i, j, k;
+    k = 0;
 
     if ( result->rowSize == 0 ) {
         result->result = (char***)gorods_malloc(genQueryOut->rowCnt * sizeof(char**));
         result->rowSize = genQueryOut->rowCnt;
         result->attrSize = genQueryOut->attriCnt;
     } else {
+        k = result->rowSize;
         result->rowSize += genQueryOut->rowCnt;
         result->result = (char***)realloc(result->result, result->rowSize * sizeof(char**));
     }
 
     for ( i = 0; i < genQueryOut->rowCnt; i++ ) {
 
-        result->result[i] = (char**)gorods_malloc(genQueryOut->attriCnt * sizeof(char*));
+        result->result[i + k] = (char**)gorods_malloc(genQueryOut->attriCnt * sizeof(char*));
         
         for ( j = 0; j < genQueryOut->attriCnt; j++ ) {
             char *tResult;
             tResult = genQueryOut->sqlResult[j].value;
             tResult += i * genQueryOut->sqlResult[j].len;
 
-            result->result[i][j] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
+            result->result[i + k][j] = strcpy(gorods_malloc(strlen(tResult) + 1), tResult);
         }
     }
 
