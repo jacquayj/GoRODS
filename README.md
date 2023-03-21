@@ -1,5 +1,7 @@
 # GoRODS
 
+**NOTICE:** See [cyverse/go-irodsclient](https://github.com/cyverse/go-irodsclient) for the maintained pure go iRODS client implementation.
+
 Golang binding for iRODS C API. Compatible with golang version >= 1.5
 
 [![GoDoc](https://godoc.org/github.com/jjacquay712/GoRODS?status.svg)](https://godoc.org/github.com/jjacquay712/GoRODS)
